@@ -1,55 +1,80 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
+// Thème de l'application : couleurs, typographie, espacements et traits.
+// DA : dessin au trait noir sur fond blanc, ombres franches décalées,
+// pions en couleurs pastel douces. Toute couleur ou police utilisée dans
+// l'interface doit venir d'ici.
 
-import '@/global.css';
-
-import { Platform } from 'react-native';
+import { Platform, type TextStyle } from 'react-native';
 
 export const Colors = {
-  light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
-  },
-  dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-  },
+  /** Fond de l'application et intérieur des formes. */
+  paper: '#FFFFFF',
+  /** Trait, texte et ombres. */
+  ink: '#111111',
+  /** Texte secondaire. */
+  inkSoft: '#6B6B6B',
+  /** Cases vides et séparateurs discrets. */
+  line: '#D9D9D9',
+  /** Voile derrière une fenêtre (écran de victoire). */
+  scrim: 'rgba(255, 255, 255, 0.82)',
 } as const;
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+/**
+ * Couleurs pastel des joueurs, dans l'ordre des identifiants du moteur.
+ * `piece` pour les pions, `tint` (plus pâle) pour teinter leur branche de départ.
+ */
+export const PlayerColors = [
+  { name: 'Rose', piece: '#F6B8C8', tint: '#FDECF1' },
+  { name: 'Bleu', piece: '#A9CBEF', tint: '#EAF3FC' },
+  { name: 'Menthe', piece: '#B3E6CF', tint: '#EBF8F2' },
+  { name: 'Citron', piece: '#F8E7A1', tint: '#FDF8E4' },
+  { name: 'Lavande', piece: '#D2BEEA', tint: '#F3EDFA' },
+  { name: 'Pêche', piece: '#FACBA8', tint: '#FEF0E6' },
+] as const;
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
+export function playerColor(player: number) {
+  return PlayerColors[player % PlayerColors.length];
+}
+
+const displayFamily = Platform.select({
+  ios: 'ui-rounded',
+  web: 'ui-rounded, "SF Pro Rounded", "Nunito", "Hiragino Maru Gothic ProN", system-ui, sans-serif',
+  default: 'sans-serif',
 });
+
+const textFamily = Platform.select({
+  ios: 'system-ui',
+  web: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  default: 'sans-serif',
+});
+
+/** Styles de texte prêts à l'emploi. */
+export const Typography = {
+  display: { fontFamily: displayFamily, fontSize: 48, fontWeight: '900', color: Colors.ink, letterSpacing: -1 },
+  title: { fontFamily: displayFamily, fontSize: 26, fontWeight: '900', color: Colors.ink },
+  heading: { fontFamily: displayFamily, fontSize: 18, fontWeight: '800', color: Colors.ink },
+  body: { fontFamily: textFamily, fontSize: 16, fontWeight: '400', color: Colors.ink },
+  caption: { fontFamily: textFamily, fontSize: 13, fontWeight: '500', color: Colors.inkSoft },
+  button: { fontFamily: displayFamily, fontSize: 18, fontWeight: '800', color: Colors.ink },
+} as const satisfies Record<string, TextStyle>;
+
+/** Épaisseurs du trait « dessiné ». */
+export const Stroke = {
+  thin: 1.5,
+  regular: 2,
+  bold: 3,
+} as const;
+
+/** Ombre franche décalée vers le bas à droite, comme un trait de feutre. */
+export const Shadow = {
+  offset: 4,
+} as const;
+
+export const Radius = {
+  small: 12,
+  medium: 20,
+  large: 28,
+  round: 999,
+} as const;
 
 export const Spacing = {
   half: 2,
@@ -61,5 +86,7 @@ export const Spacing = {
   six: 64,
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const MaxContentWidth = 560;
+
+/** Durée d'un saut ou d'un pas lors de l'animation d'un coup (ms). */
+export const MoveHopDuration = 170;
