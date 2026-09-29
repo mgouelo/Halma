@@ -30,6 +30,16 @@ npx expo-doctor      # diagnostic des dépendances
 
 Toujours installer les paquets Expo avec `npx expo install <paquet>` pour obtenir des versions compatibles.
 
+## Organisation
+
+- `src/app/` : routes Expo Router, `index.tsx` (accueil) et `game.tsx` (partie locale à deux).
+- `src/components/` : composants d'affichage, dont `board/` (plateau SVG, pion animé, calcul de mise en page).
+- `src/hooks/` : état d'interface de la partie locale (sélection, animation), qui délègue toutes les règles à `src/game/`.
+- `src/constants/theme.ts` : couleurs, couleurs pastel des joueurs, typographie, traits, espacements.
+- `src/game/` : moteur de règles (voir ci-dessous).
+
+Aucune règle de jeu dans les composants : ils affichent l'état et transmettent les touches.
+
 ## Moteur de règles (`src/game/`)
 
 Tout s'importe depuis `src/game` (`import { createGame, applyMove } from '@/game'`).
@@ -85,7 +95,7 @@ aussi les règles choisies, le joueur courant, le nombre de coups, le statut, le
 ## Feuille de route
 
 1. ~~Module de règles : plateau, déplacements, sauts en chaîne, victoire (avec tests).~~ Fait.
-2. Plateau en SVG, partie locale à deux sur le même téléphone.
+2. ~~Plateau en SVG, partie locale à deux sur le même téléphone.~~ Fait.
 3. IA simple pour jouer seul.
 4. Comptes et parties en ligne avec Supabase.
 5. Notifications « c'est ton tour », classement, publication sur les stores.
