@@ -58,23 +58,29 @@ Les branches sont numérotées dans le sens horaire depuis le haut (disposition 
 **Victoire.** Un joueur gagne dès que ses 10 pions occupent la branche opposée à sa branche de départ ;
 la partie s'arrête alors. Un joueur qui n'a aucun coup possible passe son tour.
 
+**Règle anti-blocage** (activée par défaut). Pour qu'un adversaire ne puisse pas empêcher la victoire en
+laissant des pions dans la branche d'arrivée d'un joueur, ce joueur gagne aussi dès que sa branche
+d'arrivée est pleine et contient au moins un de ses pions. Le coup qui complète la branche peut venir
+de n'importe quel joueur. On la désactive avec `createGame(n, { antiBlocking: false })` ; le choix est
+enregistré dans `state.rules`.
+
 **API principale.**
 
 | Fonction | Rôle |
 | -------- | ---- |
-| `createGame(n)` | nouvelle partie à 2, 3, 4 ou 6 joueurs |
+| `createGame(n, rules?)` | nouvelle partie à 2, 3, 4 ou 6 joueurs (`rules` : `{ antiBlocking }`) |
 | `getLegalMoves(state, cell)` | coups légaux d'un pion, un par destination, avec le chemin complet (le plus court) |
 | `getAllLegalMoves(state, player)` | tous les coups d'un joueur |
 | `validateMove(state, move)` | `{ ok: true }` ou `{ ok: false, reason }` ; accepte tout chemin valide (validation serveur) |
 | `applyMove(state, move)` | renvoie le nouvel état (fonction pure) ; lève `IllegalMoveError` si le coup est illégal |
-| `hasWon(state, player)` | le joueur a-t-il rempli sa branche d'arrivée ? |
+| `hasWon(state, player)` | le joueur a-t-il rempli sa branche d'arrivée (selon `state.rules`) ? |
 
 Un coup s'écrit `{ from, path }` : `path` liste les cases traversées, la dernière étant la destination.
 
 **État sérialisable.** `GameState` ne contient que des objets, tableaux, nombres et chaînes :
 `JSON.parse(JSON.stringify(state))` donne un état identique et jouable. Le plateau est un objet
 `board` qui associe la clé `"q,r"` de chaque case occupée au joueur propriétaire ; l'état garde
-aussi le joueur courant, le nombre de coups, le statut, le vainqueur et l'historique des coups.
+aussi les règles choisies, le joueur courant, le nombre de coups, le statut, le vainqueur et l'historique des coups.
 
 ## Feuille de route
 

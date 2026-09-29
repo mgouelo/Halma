@@ -15,6 +15,7 @@ import type {
   Cell,
   CellKey,
   Corner,
+  GameRules,
   GameState,
   Move,
   MoveValidation,
@@ -49,8 +50,12 @@ export function isPlayerCount(n: number): n is PlayerCount {
   return n === 2 || n === 3 || n === 4 || n === 6;
 }
 
+export const DEFAULT_RULES: GameRules = {
+  antiBlocking: true,
+};
+
 /** Crée une partie avec les placements de départ standard. */
-export function createGame(playerCount: PlayerCount): GameState {
+export function createGame(playerCount: PlayerCount, rules: Partial<GameRules> = {}): GameState {
   if (!isPlayerCount(playerCount)) {
     throw new Error(`Nombre de joueurs invalide : ${playerCount} (2, 3, 4 ou 6 attendu)`);
   }
@@ -66,6 +71,7 @@ export function createGame(playerCount: PlayerCount): GameState {
     }
   }
   return {
+    rules: { ...DEFAULT_RULES, ...rules },
     players,
     board,
     currentPlayer: 0,
@@ -200,11 +206,20 @@ export function validateMove(state: GameState, move: Move): MoveValidation {
   return { ok: true };
 }
 
-/** Vrai si tous les pions du joueur occupent sa branche d'arrivée. */
+/**
+ * Vrai si le joueur a rempli sa branche d'arrivée : ses 10 cases sont à lui,
+ * ou, avec la règle anti-blocage, elles sont toutes occupées et au moins une
+ * l'est par un de ses pions (des pions adverses qui ne bougent pas ne peuvent
+ * donc pas l'empêcher de gagner).
+ */
 export function hasWon(state: GameState, player: PlayerId): boolean {
   const target = state.players[player]?.target;
   if (target === undefined) return false;
-  return cornerCells(target).every((cell) => pieceAt(state, cell) === player);
+  const owners = cornerCells(target).map((cell) => pieceAt(state, cell));
+  if (state.rules.antiBlocking) {
+    return owners.every((owner) => owner !== null) && owners.includes(player);
+  }
+  return owners.every((owner) => owner === player);
 }
 
 /**
@@ -212,8 +227,10 @@ export function hasWon(state: GameState, player: PlayerId): boolean {
  * Lève `IllegalMoveError` si le coup est illégal.
  *
  * Après le coup : si le joueur a rempli sa branche d'arrivée, il gagne et la
- * partie s'arrête. Sinon la main passe au joueur suivant ; un joueur sans
- * aucun coup possible est sauté.
+ * partie s'arrête. Avec la règle anti-blocage, un coup peut aussi faire gagner
+ * un autre joueur, en complétant sa branche d'arrivée (un coup ne remplit
+ * qu'une case, donc un seul joueur peut gagner à la fois). Sinon la main passe
+ * au joueur suivant ; un joueur sans aucun coup possible est sauté.
  */
 export function applyMove(state: GameState, move: Move): GameState {
   const validation = validateMove(state, move);
@@ -236,13 +253,14 @@ export function applyMove(state: GameState, move: Move): GameState {
     history: [...state.history, { player, move: recorded }],
   };
 
-  if (hasWon(next, player)) {
-    return { ...next, status: 'finished', winner: player };
+  const count = state.players.length;
+  for (let i = 0; i < count; i++) {
+    const candidate = (player + i) % count;
+    if (hasWon(next, candidate)) return { ...next, status: 'finished', winner: candidate };
   }
 
   // Le joueur qui vient de jouer peut toujours annuler son coup (le chemin
   // inverse reste libre), donc la boucle trouve au pire lui-même.
-  const count = state.players.length;
   let candidate = player;
   for (let i = 1; i <= count; i++) {
     candidate = (player + i) % count;

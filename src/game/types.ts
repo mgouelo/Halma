@@ -46,7 +46,18 @@ export interface Move {
 
 export type GameStatus = 'playing' | 'finished';
 
+/** Variantes de règles, fixées à la création de la partie. */
+export interface GameRules {
+  /**
+   * Règle anti-blocage : un joueur gagne aussi quand sa branche d'arrivée est
+   * pleine et contient au moins un de ses pions, même si des pions adverses
+   * y restent. Sans elle, il faut que les 10 cases soient à lui.
+   */
+  antiBlocking: boolean;
+}
+
 export interface GameState {
+  rules: GameRules;
   players: Player[];
   /** Cases occupées : clé "q,r" → joueur propriétaire du pion. */
   board: Record<CellKey, PlayerId>;
