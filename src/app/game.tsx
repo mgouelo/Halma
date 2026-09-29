@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,26 +10,49 @@ import { DrawnCard } from '@/components/drawn-card';
 import { PlayerChip } from '@/components/player-chip';
 import { VictoryOverlay } from '@/components/victory-overlay';
 import { Colors, MaxContentWidth, Shadow, Spacing, Stroke, Typography } from '@/constants/theme';
+import { AI_LEVEL_LABELS, parseControllers } from '@/hooks/game-setup';
+import type { Controller } from '@/hooks/local-game-reducer';
+import { useIsClient } from '@/hooks/use-is-client';
 import { useLocalGame } from '@/hooks/use-local-game';
 import { useMeasuredSize } from '@/hooks/use-measured-size';
 
 /** Place prise par le cadre de la carte autour du plateau (bords, marge, ombre). */
 const CARD_INSET = (Stroke.bold + Spacing.two) * 2 + Shadow.offset;
 
+function describeController(controller: Controller, vsAi: boolean): string | undefined {
+  if (controller !== 'human') return `IA · ${AI_LEVEL_LABELS[controller]}`;
+  return vsAi ? 'Toi' : undefined;
+}
+
 export default function GameScreen() {
+  // Les paramètres de l'URL sont inconnus lors de l'export statique web : on ne
+  // dessine la partie qu'au client pour éviter un écart à l'hydratation.
+  const isClient = useIsClient();
+  return isClient ? <GameView /> : <SafeAreaView style={styles.screen} />;
+}
+
+function GameView() {
+  const { ai } = useLocalSearchParams<{ ai?: string }>();
+  const [controllers] = useState(() => parseControllers(ai));
+  const vsAi = controllers.some((c) => c !== 'human');
   const area = useMeasuredSize();
-  const { game, selected, moves, animating, tap, animationEnd, reset } = useLocalGame(2);
+  const { game, selected, moves, animating, aiThinking, tap, animationEnd, reset } = useLocalGame(controllers);
 
   const layout = useMemo(
     () => computeBoardLayout(area.width - CARD_INSET, area.height - CARD_INSET),
     [area.width, area.height],
   );
 
-  const goHome = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  const goHome = () => router.dismissTo('/');
   const showVictory = game.status === 'finished' && game.winner !== null && !animating;
   const winnerMoves = game.history.filter((entry) => entry.player === game.winner).length;
+  const winnerIsHuman = game.winner !== null && controllers[game.winner] === 'human';
   const hint = game.status === 'finished'
     ? 'Partie terminée.'
+    : aiThinking
+    ? 'L’IA réfléchit…'
+    : animating
+    ? ' '
     : selected
     ? moves.length > 0
       ? 'Touche une case en pointillés pour jouer.'
@@ -46,7 +69,11 @@ export default function GameScreen() {
 
         <View style={styles.turn} accessibilityLiveRegion="polite">
           <Text style={Typography.caption}>Au tour de</Text>
-          <PlayerChip player={game.currentPlayer} size={22} />
+          <PlayerChip
+            player={game.currentPlayer}
+            size={22}
+            detail={describeController(controllers[game.currentPlayer], vsAi)}
+          />
           <Text style={[Typography.caption, styles.hint]}>{hint}</Text>
         </View>
 
@@ -70,7 +97,14 @@ export default function GameScreen() {
       </View>
 
       {showVictory && (
-        <VictoryOverlay winner={game.winner!} moveCount={winnerMoves} onReplay={reset} onHome={goHome} />
+        <VictoryOverlay
+          winner={game.winner!}
+          title={vsAi && !winnerIsHuman ? 'Perdu !' : 'Victoire !'}
+          winnerDetail={vsAi ? describeController(controllers[game.winner!], vsAi) : undefined}
+          moveCount={winnerMoves}
+          onReplay={reset}
+          onHome={goHome}
+        />
       )}
     </SafeAreaView>
   );

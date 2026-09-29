@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import { cornerCells, cornerOf, createGame, parseCellKey, piecesOf, type PlayerCount } from '..';
 
-const COUNTS: PlayerCount[] = [2, 3, 4, 6];
+const COUNTS: PlayerCount[] = [2, 3, 4, 5, 6];
 
 describe('création de partie', () => {
   it.each(COUNTS)('place 10 pions par joueur dans sa branche (%i joueurs)', (count) => {
@@ -22,6 +22,7 @@ describe('création de partie', () => {
     expect(createGame(2).players.map((p) => p.home)).toEqual([3, 0]);
     expect(createGame(3).players.map((p) => p.home)).toEqual([3, 5, 1]);
     expect(createGame(4).players.map((p) => p.home)).toEqual([4, 5, 1, 2]);
+    expect(createGame(5).players.map((p) => p.home)).toEqual([3, 4, 5, 0, 1]);
     expect(createGame(6).players.map((p) => p.home)).toEqual([3, 4, 5, 0, 1, 2]);
   });
 
@@ -50,7 +51,7 @@ describe('création de partie', () => {
   });
 
   it('refuse un nombre de joueurs invalide', () => {
-    for (const n of [0, 1, 5, 7]) {
+    for (const n of [0, 1, 2.5, 7]) {
       expect(() => createGame(n as PlayerCount)).toThrow();
     }
   });

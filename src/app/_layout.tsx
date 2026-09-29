@@ -13,7 +13,8 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: Colors.paper },
         }}>
         <Stack.Screen name="index" options={{ title: 'Halma' }} />
-        <Stack.Screen name="game" options={{ title: 'Partie à deux' }} />
+        <Stack.Screen name="ai-setup" options={{ title: 'Jouer contre l’IA' }} />
+        <Stack.Screen name="game" options={{ title: 'Partie' }} />
       </Stack>
     </>
   );

@@ -7,8 +7,7 @@ import { Board } from '@/components/board/board';
 import { computeBoardLayout } from '@/components/board/layout';
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
-import { PlayerChip } from '@/components/player-chip';
-import { Colors, MaxContentWidth, Spacing, Typography } from '@/constants/theme';
+import { Colors, MaxContentWidth, playerColor, Spacing, Typography } from '@/constants/theme';
 import { createGame } from '@/game';
 import { useMeasuredSize } from '@/hooks/use-measured-size';
 
@@ -35,16 +34,22 @@ export default function HomeScreen() {
           {layout.width > 0 && <Board game={preview} layout={layout} />}
         </View>
 
-        <DrawnCard contentStyle={styles.card}>
-          <Text style={Typography.heading}>Partie locale</Text>
-          <Text style={Typography.caption}>À deux sur le même appareil, chacun son tour.</Text>
-          <View style={styles.players}>
-            <PlayerChip player={0} />
-            <Text style={Typography.caption}>contre</Text>
-            <PlayerChip player={1} />
-          </View>
-          <DrawnButton label="Jouer" onPress={() => router.push('/game')} color={Colors.paper} />
-        </DrawnCard>
+        <View style={styles.modes}>
+          <DrawnCard contentStyle={styles.card}>
+            <Text style={Typography.heading}>Contre l’IA</Text>
+            <Text style={Typography.caption}>De 1 à 5 adversaires, trois niveaux.</Text>
+            <DrawnButton
+              label="Jouer contre l’IA"
+              onPress={() => router.push('/ai-setup')}
+              color={playerColor(0).piece}
+            />
+          </DrawnCard>
+          <DrawnCard contentStyle={styles.card}>
+            <Text style={Typography.heading}>Partie locale</Text>
+            <Text style={Typography.caption}>À deux sur le même appareil, chacun son tour.</Text>
+            <DrawnButton label="Jouer à deux" onPress={() => router.push('/game')} />
+          </DrawnCard>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -73,13 +78,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  card: {
-    padding: Spacing.four,
+  modes: {
     gap: Spacing.three,
   },
-  players: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
+  card: {
+    padding: Spacing.three,
+    gap: Spacing.two,
   },
 });
