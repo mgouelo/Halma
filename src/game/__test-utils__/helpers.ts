@@ -1,13 +1,13 @@
-import { cellKey, createGame, type Cell, type GameState, type PlayerCount, type PlayerId } from '..';
+import { cellKey, createGame, type Cell, type GameRules, type GameState, type PlayerCount, type PlayerId } from '..';
 
 export const c = (q: number, r: number): Cell => ({ q, r });
 
 /** Partie à `playerCount` joueurs avec uniquement les pions donnés : [q, r, joueur]. */
 export function stateWith(
   pieces: [number, number, PlayerId][],
-  options: { playerCount?: PlayerCount; currentPlayer?: PlayerId } = {},
+  options: { playerCount?: PlayerCount; currentPlayer?: PlayerId; rules?: Partial<GameRules> } = {},
 ): GameState {
-  const base = createGame(options.playerCount ?? 2);
+  const base = createGame(options.playerCount ?? 2, options.rules);
   const board: GameState['board'] = {};
   for (const [q, r, player] of pieces) board[cellKey({ q, r })] = player;
   return { ...base, board, currentPlayer: options.currentPlayer ?? 0 };

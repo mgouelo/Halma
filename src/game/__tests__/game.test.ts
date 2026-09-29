@@ -124,14 +124,17 @@ describe('victoire', () => {
     expect(() => applyMove(finished, { from: c(0, 4), path: [c(0, 3)] })).toThrow(IllegalMoveError);
   });
 
-  it('une branche d’arrivée pleine mais contenant un pion adverse ne fait pas gagner', () => {
-    const target = cornerCells(0);
-    const state = stateWith(
-      target.map((cell, i): [number, number, PlayerId] => [cell.q, cell.r, i === 0 ? 1 : 0]),
-    );
+  it('ne fait pas gagner avec une branche d’arrivée pleine de pions adverses', () => {
+    const state = stateWith(cornerCells(0).map((cell): [number, number, PlayerId] => [cell.q, cell.r, 1]));
     expect(hasWon(state, 0)).toBe(false);
   });
 
+  it('ne fait pas gagner tant que la branche d’arrivée n’est pas pleine', () => {
+    // 8 pions du joueur 0, 1 pion adverse, 1 case vide.
+    const target = cornerCells(0).filter((cell) => cellKey(cell) !== '1,-5');
+    const state = stateWith(target.map((cell, i): [number, number, PlayerId] => [cell.q, cell.r, i === 0 ? 1 : 0]));
+    expect(hasWon(state, 0)).toBe(false);
+  });
   it('fonctionne à 6 joueurs pour un joueur qui n’est pas le premier', () => {
     const base = createGame(6);
     const player = base.players[3];
@@ -139,6 +142,48 @@ describe('victoire', () => {
     for (const cell of cornerCells(player.target)) board[cellKey(cell)] = player.id;
     expect(hasWon({ ...base, board }, player.id)).toBe(true);
   });
+});
+
+describe('règle anti-blocage', () => {
+  /** Branche d'arrivée du joueur 0 pleine : 9 pions à lui, 1 pion adverse qui bloque. */
+  function blocked(rules?: { antiBlocking: boolean }): GameState {
+    const target = cornerCells(0);
+    return stateWith(
+      [...target.map((cell, i): [number, number, PlayerId] => [cell.q, cell.r, i === 0 ? 1 : 0]), [0, 4, 0]],
+      { rules },
+    );
+  }
+
+  it('est activée par défaut et enregistrée dans l’état', () => {
+    expect(createGame(2).rules).toEqual({ antiBlocking: true });
+    expect(createGame(4, { antiBlocking: false }).rules).toEqual({ antiBlocking: false });
+  });
+
+  it('fait gagner quand la branche d’arrivée est pleine avec au moins un pion à soi', () => {
+    expect(hasWon(blocked(), 0)).toBe(true);
+  });
+
+  it('désactivée, un pion adverse dans la branche d’arrivée empêche la victoire', () => {
+    expect(hasWon(blocked({ antiBlocking: false }), 0)).toBe(false);
+  });
+
+  it('fait gagner le joueur 0 quand un pion adverse vient compléter sa branche d’arrivée', () => {
+    // Branche d'arrivée du joueur 0 : 8 pions à lui, 1 pion du joueur 1, (1,-5) vide.
+    const target = cornerCells(0).filter((cell) => cellKey(cell) !== '1,-5');
+    const state = stateWith(
+      [
+        ...target.map((cell, i): [number, number, PlayerId] => [cell.q, cell.r, i === 0 ? 1 : 0]),
+        [0, 4, 0],
+        [0, 5, 0],
+        [1, -4, 1],
+      ],
+      { currentPlayer: 1 },
+    );
+    const next = applyMove(state, { from: c(1, -4), path: [c(1, -5)] });
+    expect(next.status).toBe('finished');
+    expect(next.winner).toBe(0);
+  });
+
 });
 
 describe('sérialisation', () => {
