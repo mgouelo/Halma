@@ -19,7 +19,7 @@ export type CellKey = string;
 export type Corner = 0 | 1 | 2 | 3 | 4 | 5;
 
 /** Nombre de joueurs possibles. */
-export type PlayerCount = 2 | 3 | 4 | 6;
+export type PlayerCount = 2 | 3 | 4 | 5 | 6;
 
 /** Indice du joueur dans `GameState.players`. */
 export type PlayerId = number;

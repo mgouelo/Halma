@@ -90,7 +90,7 @@ describe('applyMove', () => {
 
 describe('victoire', () => {
   it('personne n’a gagné au départ', () => {
-    for (const count of [2, 3, 4, 6] as const) {
+    for (const count of [2, 3, 4, 5, 6] as const) {
       const state = createGame(count);
       expect(state.players.some((p) => hasWon(state, p.id))).toBe(false);
     }

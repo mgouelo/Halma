@@ -2,14 +2,25 @@ import { describe, expect, it } from '@jest/globals';
 
 import { cellKey, cornerCells, createGame, type GameState, type PlayerId } from '@/game';
 
-import { destinationOf, initLocalGame, localGameReducer, type LocalGameState } from '../local-game-reducer';
+import {
+  destinationOf,
+  initLocalGame,
+  isAiTurn,
+  localGameReducer,
+  type Controller,
+  type LocalGameState,
+} from '../local-game-reducer';
 
 const c = (q: number, r: number) => ({ q, r });
 
-function withBoard(pieces: [number, number, PlayerId][], currentPlayer: PlayerId = 0): LocalGameState {
+function withBoard(
+  pieces: [number, number, PlayerId][],
+  currentPlayer: PlayerId = 0,
+  controllers: Controller[] = ['human', 'human'],
+): LocalGameState {
   const game: GameState = { ...createGame(2), board: {}, currentPlayer };
   for (const [q, r, player] of pieces) game.board[cellKey({ q, r })] = player;
-  return { game, selected: null, moves: [], animating: null };
+  return { game, controllers, selected: null, moves: [], animating: null };
 }
 
 describe('localGameReducer', () => {
@@ -74,6 +85,56 @@ describe('localGameReducer', () => {
   it('recommence une partie', () => {
     let state = localGameReducer(withBoard([[0, 0, 0]]), { type: 'tap', cell: c(0, 0) });
     state = localGameReducer(state, { type: 'reset' });
-    expect(state).toEqual(initLocalGame(2));
+    expect(state).toEqual(initLocalGame());
+  });
+});
+
+describe('localGameReducer avec des IA', () => {
+  const vsAi: Controller[] = ['human', 'hard'];
+
+  it('crée une partie à autant de joueurs que de contrôleurs', () => {
+    const state = initLocalGame(['human', 'easy', 'medium', 'hard', 'easy', 'medium']);
+    expect(state.game.players).toHaveLength(6);
+    expect(state.controllers).toEqual(['human', 'easy', 'medium', 'hard', 'easy', 'medium']);
+    expect(() => initLocalGame(['human'])).toThrow();
+  });
+
+  it('ignore les touches pendant le tour de l’IA', () => {
+    const state = withBoard([[0, 0, 0], [0, 4, 1]], 1, vsAi);
+    expect(isAiTurn(state)).toBe(true);
+    expect(localGameReducer(state, { type: 'tap', cell: c(0, 4) })).toBe(state);
+  });
+
+  it('joue le coup de l’IA avec animation', () => {
+    const state = withBoard([[0, 0, 0], [0, 4, 1]], 1, vsAi);
+    const move = { from: c(0, 4), path: [c(0, 3)] };
+    const next = localGameReducer(state, { type: 'aiMove', move, turn: state.game.turn });
+    expect(next.game.board['0,3']).toBe(1);
+    expect(next.game.currentPlayer).toBe(0);
+    expect(next.animating).toMatchObject({ move, player: 1 });
+    expect(isAiTurn(next)).toBe(false);
+  });
+
+  it('ignore un coup d’IA arrivé trop tard ou hors de son tour', () => {
+    const aiTurn = withBoard([[0, 0, 0], [0, 4, 1]], 1, vsAi);
+    const move = { from: c(0, 4), path: [c(0, 3)] };
+    expect(localGameReducer(aiTurn, { type: 'aiMove', move, turn: aiTurn.game.turn + 1 })).toBe(aiTurn);
+    const humanTurn = withBoard([[0, 0, 0], [0, 4, 1]], 0, vsAi);
+    expect(localGameReducer(humanTurn, { type: 'aiMove', move, turn: humanTurn.game.turn })).toBe(humanTurn);
+  });
+
+  it('attend la fin de l’animation avant le tour suivant de l’IA', () => {
+    let state = withBoard([[0, 0, 0], [0, 4, 1]], 0, vsAi);
+    state = localGameReducer(state, { type: 'tap', cell: c(0, 0) });
+    state = localGameReducer(state, { type: 'tap', cell: c(0, -1) });
+    expect(state.game.currentPlayer).toBe(1);
+    expect(isAiTurn(state)).toBe(false);
+    state = localGameReducer(state, { type: 'animationEnd' });
+    expect(isAiTurn(state)).toBe(true);
+  });
+
+  it('garde les mêmes contrôleurs en recommençant', () => {
+    const state = localGameReducer(initLocalGame(['human', 'easy', 'hard']), { type: 'reset' });
+    expect(state.controllers).toEqual(['human', 'easy', 'hard']);
   });
 });

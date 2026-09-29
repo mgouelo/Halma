@@ -7,6 +7,10 @@ import { DrawnCard } from './drawn-card';
 
 interface VictoryOverlayProps {
   winner: number;
+  /** « Victoire ! » ou « Perdu ! » selon qui a gagné. */
+  title: string;
+  /** Précision sur le vainqueur (ex. « IA · Difficile », « Toi »). */
+  winnerDetail?: string;
   /** Nombre de coups joués par le vainqueur. */
   moveCount: number;
   onReplay: () => void;
@@ -14,17 +18,18 @@ interface VictoryOverlayProps {
 }
 
 /** Écran de victoire, affiché par-dessus le plateau en fin de partie. */
-export function VictoryOverlay({ winner, moveCount, onReplay, onHome }: VictoryOverlayProps) {
+export function VictoryOverlay({ winner, title, winnerDetail, moveCount, onReplay, onHome }: VictoryOverlayProps) {
   const color = playerColor(winner);
   return (
     <View style={styles.scrim} accessibilityViewIsModal>
       <DrawnCard style={styles.card} contentStyle={styles.content}>
         <View style={[styles.medal, { backgroundColor: color.piece }]} />
         <Text style={Typography.title} accessibilityRole="header">
-          Victoire !
+          {title}
         </Text>
         <Text style={[Typography.body, styles.center]}>
-          {color.name} a rempli la branche d’en face en {moveCount} coups.
+          {color.name}
+          {winnerDetail ? ` (${winnerDetail})` : ''} a rempli la branche d’en face en {moveCount} coups.
         </Text>
         <View style={styles.actions}>
           <DrawnButton label="Rejouer" onPress={onReplay} color={color.piece} />

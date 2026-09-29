@@ -32,9 +32,9 @@ Toujours installer les paquets Expo avec `npx expo install <paquet>` pour obteni
 
 ## Organisation
 
-- `src/app/` : routes Expo Router, `index.tsx` (accueil) et `game.tsx` (partie locale à deux).
+- `src/app/` : routes Expo Router : `index.tsx` (accueil), `ai-setup.tsx` (réglage d'une partie contre l'IA) et `game.tsx` (la partie ; `/game` à deux sur le même appareil, `/game?ai=medium,hard` contre des IA).
 - `src/components/` : composants d'affichage, dont `board/` (plateau SVG, pion animé, calcul de mise en page).
-- `src/hooks/` : état d'interface de la partie locale (sélection, animation), qui délègue toutes les règles à `src/game/`.
+- `src/hooks/` : état d'interface de la partie (sélection, animation, tour des IA), qui délègue règles et IA à `src/game/`.
 - `src/constants/theme.ts` : couleurs, couleurs pastel des joueurs, typographie, traits, espacements.
 - `src/game/` : moteur de règles (voir ci-dessous).
 
@@ -57,6 +57,7 @@ Les branches sont numérotées dans le sens horaire depuis le haut (disposition 
 | 2 | 3, 0 | bas contre haut |
 | 3 | 3, 5, 1 | une branche sur deux ; chacun vise une branche vide |
 | 4 | 4, 5, 1, 2 | deux paires face à face, haut et bas vides |
+| 5 | 3, 4, 5, 0, 1 | la branche bas-droite reste vide |
 | 6 | 3, 4, 5, 0, 1, 2 | toutes les branches |
 
 **Coups.**
@@ -78,7 +79,7 @@ enregistré dans `state.rules`.
 
 | Fonction | Rôle |
 | -------- | ---- |
-| `createGame(n, rules?)` | nouvelle partie à 2, 3, 4 ou 6 joueurs (`rules` : `{ antiBlocking }`) |
+| `createGame(n, rules?)` | nouvelle partie de 2 à 6 joueurs (`rules` : `{ antiBlocking }`) |
 | `getLegalMoves(state, cell)` | coups légaux d'un pion, un par destination, avec le chemin complet (le plus court) |
 | `getAllLegalMoves(state, player)` | tous les coups d'un joueur |
 | `validateMove(state, move)` | `{ ok: true }` ou `{ ok: false, reason }` ; accepte tout chemin valide (validation serveur) |
@@ -92,11 +93,34 @@ Un coup s'écrit `{ from, path }` : `path` liste les cases traversées, la derni
 `board` qui associe la clé `"q,r"` de chaque case occupée au joueur propriétaire ; l'état garde
 aussi les règles choisies, le joueur courant, le nombre de coups, le statut, le vainqueur et l'historique des coups.
 
+## IA hors ligne (`src/game/ai.ts`)
+
+Trois niveaux, en TypeScript pur comme le reste du moteur :
+
+| Niveau | Principe |
+| ------ | -------- |
+| Facile (`easy`) | coup tiré au hasard, pondéré pour préférer ceux qui avancent |
+| Moyen (`medium`) | meilleur coup immédiat selon la distance à l'objectif (à égalité : le pion le plus en retard) |
+| Difficile (`hard`) | minimax avec élagage alpha-bêta, profondeur 5 au plus, approfondissement itératif |
+
+L'évaluation d'une position est l'écart entre le coût moyen des adversaires et celui de l'IA ;
+le coût d'un joueur est la somme des distances de ses pions à la pointe de sa branche d'arrivée
+(plus un terme pour le pion le plus en retard). À plus de deux joueurs, le niveau difficile utilise
+la variante « meilleure réponse » (Best-Reply Search) : les niveaux de recherche alternent entre un coup
+de l'IA et une seule réponse, la plus gênante parmi tous les adversaires. À deux joueurs, c'est le
+minimax classique.
+
+- `chooseMove(state, level, options?)` : calcul d'un seul tenant (serveur, tests).
+- `chooseMoveAsync(state, level, options?)` : calcul découpé en tranches d'environ 12 ms séparées par
+  un `setTimeout(0)`, pour ne jamais figer l'interface ; annulable avec `signal`.
+- `timeLimitMs` (800 ms par défaut) borne la réflexion du niveau difficile : à la limite, il garde
+  le meilleur coup de la dernière profondeur terminée.
+
 ## Feuille de route
 
 1. ~~Module de règles : plateau, déplacements, sauts en chaîne, victoire (avec tests).~~ Fait.
 2. ~~Plateau en SVG, partie locale à deux sur le même téléphone.~~ Fait.
-3. IA simple pour jouer seul.
+3. ~~IA hors ligne à trois niveaux, de 1 à 5 adversaires.~~ Fait.
 4. Comptes et parties en ligne avec Supabase.
 5. Notifications « c'est ton tour », classement, publication sur les stores.
 

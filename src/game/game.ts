@@ -30,12 +30,15 @@ import type {
  * - 2 joueurs : bas contre haut ;
  * - 3 joueurs : une branche sur deux, chacun vise une branche vide ;
  * - 4 joueurs : deux paires face à face, les branches haut et bas restent vides ;
+ * - 5 joueurs : toutes les branches sauf la bas-droite (2), qui reste vide ;
+ *   le joueur parti du haut-gauche (5) vise donc une branche vide ;
  * - 6 joueurs : toutes les branches.
  */
 export const STARTING_CORNERS: Record<PlayerCount, readonly Corner[]> = {
   2: [3, 0],
   3: [3, 5, 1],
   4: [4, 5, 1, 2],
+  5: [3, 4, 5, 0, 1],
   6: [3, 4, 5, 0, 1, 2],
 };
 
@@ -47,7 +50,7 @@ export class IllegalMoveError extends Error {
 }
 
 export function isPlayerCount(n: number): n is PlayerCount {
-  return n === 2 || n === 3 || n === 4 || n === 6;
+  return Number.isInteger(n) && n >= 2 && n <= 6;
 }
 
 export const DEFAULT_RULES: GameRules = {
@@ -57,7 +60,7 @@ export const DEFAULT_RULES: GameRules = {
 /** Crée une partie avec les placements de départ standard. */
 export function createGame(playerCount: PlayerCount, rules: Partial<GameRules> = {}): GameState {
   if (!isPlayerCount(playerCount)) {
-    throw new Error(`Nombre de joueurs invalide : ${playerCount} (2, 3, 4 ou 6 attendu)`);
+    throw new Error(`Nombre de joueurs invalide : ${playerCount} (de 2 à 6 attendu)`);
   }
   const players: Player[] = STARTING_CORNERS[playerCount].map((home, id) => ({
     id,
