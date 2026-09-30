@@ -35,7 +35,7 @@
       "favicon": "./assets/images/favicon.png",
       "name": "Halma",
       "shortName": "Halma",
-      "description": "Dames chinoises (Halma) de 2 à 6 joueurs : contre l'IA, à deux ou en ligne.",
+      "description": "Dames chinoises (Halma) de 2 à 6 joueurs : contre l'IA, entre amis ou en ligne.",
       "lang": "fr",
       "themeColor": "#FFFFFF",
       "backgroundColor": "#FFFFFF"
@@ -55,6 +55,6 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
-    "description": "Dames chinoises (Halma) de 2 à 6 joueurs : contre l'IA, à deux ou en ligne."
+    "description": "Dames chinoises (Halma) de 2 à 6 joueurs : contre l'IA, entre amis ou en ligne."
   }
 }

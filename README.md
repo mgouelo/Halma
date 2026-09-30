@@ -23,7 +23,7 @@ npx expo start
 
 Ensuite : scanner le QR code avec l'appli Expo Go sur le téléphone, ou appuyer sur `w` pour ouvrir la version web.
 
-Sans configuration Supabase, l'application fonctionne hors ligne (contre l'IA ou à deux) ; seuls les comptes et
+Sans configuration Supabase, l'application fonctionne hors ligne (contre l'IA ou de 2 à 6 amis sur le même appareil) ; seuls les comptes et
 le jeu en ligne sont indisponibles.
 
 ## Comptes (Supabase)
@@ -81,8 +81,11 @@ Pour une compilation EAS, définir les mêmes variables dans l'environnement EAS
 ### Ce qui est en place
 
 - Écrans `/sign-in` (connexion, bouton « Jouer en invité »), `/sign-up` (pseudo, e-mail, mot de passe)
-  et `/upgrade` (un invité crée son compte). L'accueil affiche le pseudo du joueur connecté, ou un bouton
-  « Se connecter ».
+  et `/upgrade` (« Créer mon compte » : un invité ajoute un e-mail à son compte), tous avec la barre de
+  navigation. L'accueil affiche le pseudo du joueur connecté, ou « Connecte-toi pour conserver ta progression »
+  et un bouton « Se connecter ».
+- **Profil d'un invité** (`/profile`, entrée « Profil » de la barre) : son pseudo `invite-xxxxxx`, son avatar, ses
+  statistiques et une carte « Conserve ta progression » avec le bouton « Créer mon compte » (vers `/upgrade`).
 - Table `profiles` (`id`, `pseudo`, `avatar`, `created_at`), remplie automatiquement à l'inscription par un
   trigger : le pseudo vient du formulaire, ou `invite-xxxxxx` pour un invité.
 - Pseudos : 3 à 20 caractères parmi les lettres sans accent, les chiffres, « _ », « - » et « . », dont
@@ -97,9 +100,10 @@ Pour une compilation EAS, définir les mêmes variables dans l'environnement EAS
 
 ### Du compte invité au compte e-mail
 
-Un compte invité est lié à l'appareil : après déconnexion, il ne peut pas être retrouvé. Depuis l'accueil,
-« Créer mon compte » (écran `/upgrade`) le transforme en compte e-mail **sans changer d'identifiant** : le
-profil, et plus tard les parties, sont conservés.
+Un compte invité est lié à l'appareil : après déconnexion, il ne peut pas être retrouvé. Depuis l'accueil, son
+profil ou l'onglet Classements, « Créer mon compte » (écran `/upgrade`) le transforme en compte e-mail **sans
+changer d'identifiant** : le profil et toute la progression (statistiques, série de connexion) sont conservés, et
+le joueur apparaît alors dans les classements.
 
 1. Le pseudo choisi remplace `invite-xxxxxx` (mise à jour du profil ; l'index unique refuse un pseudo pris).
 2. L'e-mail et le mot de passe sont ajoutés au compte (`supabase.auth.updateUser`).
@@ -125,9 +129,53 @@ Il vérifie aussi la migration `rooms` (`supabase/checks/rooms-check.sql`) : lec
 de la room, aucune écriture directe, salle d'attente, lancement, fin de partie ; et la migration
 `player_stats` (`supabase/checks/stats-check.sql`) : aucune écriture par les clients, parties lancées,
 victoires (niveau de l'IA la plus forte, idempotence, forfaits et abandons exclus), séries de connexion,
-classements (cinq, sans les parties lancées ; départage, top 50, ligne du joueur) ; enfin
+classements (cinq, sans les parties lancées ; départage, top 50, ligne du joueur ; invités exclus et refusés,
+invité devenu compte e-mail classé avec ses scores d'invité) ; enfin
 `supabase/checks/account-check.sql` : suppression de compte (hôte en pleine partie, salles d'attente,
 statistiques et classements), limites d'essais de codes et de rooms, nettoyage des rooms abandonnées.
+
+## Parties hors ligne
+
+Deux modes, sur l'accueil (carte « Hors ligne ») :
+
+- **Contre l'IA** (`/ai-setup`) : de 1 à 5 IA, niveau au choix pour chacune ; le joueur est en bas.
+- **Entre amis** (`/local-setup`) : de 2 à 6 joueurs humains sur le même appareil, choisis avec un stepper ; l'écran
+  montre l'ordre du tour et la couleur de chacun, dans l'ordre du moteur (Rose, Bleu, Menthe, Citron, Lavande,
+  Pêche ; à 5, une branche reste vide). La partie s'ouvre sur `/game?players=N`. L'écran de jeu, la pastille « Au
+  tour de » et l'écran de victoire (couleur du vainqueur) fonctionnent de 2 à 6 joueurs, sur téléphone comme sur
+  grand écran.
+
+### Quitter ou recommencer une partie en cours
+
+Tant qu'une partie locale est **en cours** (au moins un coup joué, partie pas terminée), l'application demande
+confirmation avant de la perdre, dans une fenêtre dessinée (`src/components/confirm-dialog.tsx`) :
+
+- « Nouvelle partie » → « Nouvelle partie ? » : **Continuer la partie** ou **Recommencer** ;
+- « ‹ Accueil », geste de retour (iOS), bouton retour d'Android, retour du navigateur → « Quitter la partie ? » :
+  **Continuer la partie** ou **Quitter**.
+
+Sur une partie pas encore commencée ou terminée, rien n'est demandé. La fenêtre n'utilise pas `Alert` (absent du
+web) : `Modal` de React Native, rôle « alertdialog », reste de l'écran masqué aux lecteurs d'écran, focus sur
+« Continuer la partie » et gardé dans la fenêtre (web), Échap et le bouton retour d'Android ferment sans rien faire.
+
+Côté code : `usePreventRemove` (Expo Router) bloque les retraits d'écran (boutons, gestes, retour Android) ; sur le
+web, le retour du navigateur ne passe pas par là (le routeur remplace toute la pile), il est donc intercepté avant
+le routeur par `src/navigation/web-back-guard.ts`, importé par le layout racine (`src/hooks/use-leave-guard.ts`).
+
+**Que devient une partie locale quand on quitte l'écran ?** Elle est supprimée : son état n'existe que dans le
+`useReducer` de l'écran de jeu (`useLocalGame`), rien n'est écrit (ni AsyncStorage, ni serveur). Quitter l'écran
+le retire de la pile et le démonte : l'état est perdu, et le calcul d'une IA en cours est annulé
+(`AbortController`). Revenir sur `/game` (y compris avec le bouton « suivant » du navigateur) démarre une partie
+neuve. Vérifié par `src/hooks/__tests__/local-game-screen.test.tsx`.
+
+Tests : `local-game-screen.test.tsx` (écran de jeu avec le vrai routeur d'Expo Router et un faux plateau :
+confirmations, retour en arrière, partie supprimée, partie à 4), `leave-guard.test.ts` (quand demander),
+`game-setup.test.ts` (paramètres `players` et `ai`), `src/components/__tests__/confirm-dialog.test.tsx` et
+`victory-overlay.test.tsx`, `src/navigation/__tests__/web-back-guard.test.ts` (retour du navigateur). Les tests
+d'écran utilisent `@testing-library/react-native` et `expo-router/testing-library`.
+
+Les parties hors ligne ne comptent pas dans les statistiques ni les classements (voir « Statistiques et
+classements »).
 
 ## Jeu en ligne
 
@@ -224,7 +272,15 @@ double grâce au verrou de version.
   arrêtée faute d'humains (`abandoned`), une victoire d'IA, et **les parties locales hors ligne**. Ces dernières se
   jouent entièrement sur l'appareil : le serveur n'en voit ni les coups ni le résultat, n'importe qui pourrait donc
   en déclarer autant qu'il veut. Seules les parties en ligne, dont chaque coup est validé par le moteur dans
-  l'Edge Function, entrent dans un classement public. L'écran de classement le rappelle en une phrase.
+  l'Edge Function, entrent dans un classement public. **Décision confirmée** : les parties hors ligne (contre l'IA
+  ou entre amis sur le même appareil) ne comptent pas et ne sont envoyées nulle part (ni fonction serveur, ni file
+  d'attente locale). L'application reste discrète sur ces règles : l'écran de classement n'affiche qu'une phrase
+  d'accroche, « Seules les légendes apparaissent ici. », et les descriptions des onglets ne parlent pas de parties
+  en ligne ou hors ligne ; c'est ce README qui les documente.
+- **Invités** : leurs statistiques sont comptées comme celles de tout joueur (victoires en ligne, parties lancées,
+  série de connexion), mais un compte invité (connexion anonyme, `auth.users.is_anonymous`) **n'apparaît dans aucun
+  classement et ne peut pas les consulter**. Quand il crée son compte avec un e-mail, son identifiant ne change pas
+  et Supabase passe `is_anonymous` à `false` : il apparaît aussitôt avec toute sa progression d'invité.
 - **Une victoire par partie** : `record_game_win` relit la partie dans la base (statut, raison de fin, vainqueur,
   participants) et note la partie dans `stats_wins` (clé primaire) ; un deuxième appel ne change rien. L'Edge
   Function l'appelle juste après avoir enregistré un coup gagnant ; si cet appel échoue, la prochaine demande sur
@@ -249,11 +305,15 @@ double grâce au verrou de version.
   `insert`, `update` ni `delete`, et ne lisent que leur propre ligne (profil). `stats_wins` leur est invisible.
 - `record_game_win` et `advance_login_streak` ne sont pas appelables par les clients (seulement la clé
   `service_role` de l'Edge Function pour la première, rien pour la seconde).
-- `get_leaderboards()` (joueurs connectés, invités compris) renvoie, pour chacun des 5 classements, les
+- `get_leaderboards()` (comptes e-mail seulement) renvoie, pour chacun des 5 classements, les
   50 premiers et la ligne du joueur lui-même, même plus loin : **pseudo, avatar, score, rang** et `is_me`, rien
   d'autre. L'avatar est `profiles.avatar`, ou à défaut l'identifiant du joueur, qui sert de graine à son avatar
   par défaut (les profils sont de toute façon lisibles par les joueurs connectés). Seuls les scores positifs
   sont classés ; à score égal, le premier à l'avoir atteint passe devant, puis l'ordre alphabétique du pseudo.
+- Invités (migration `20261007120000_leaderboards_without_guests.sql`) : les lignes des utilisateurs anonymes sont
+  exclues de tous les classements, et un appelant anonyme est refusé avec l'erreur courte `guest_not_ranked`,
+  traduite par l'application (`describeLeaderboardError`, `src/stats/leaderboard.ts`). L'application n'envoie de
+  toute façon aucune requête de classement pour un invité.
 
 ### Écrans
 
@@ -262,10 +322,16 @@ double grâce au verrou de version.
   rang (podium dessiné pour les trois premiers : marche de la bonne hauteur, numéro et pion), avatar, pseudo,
   score. Sa propre ligne est teintée, marquée d'un trait épais et de « C'est toi », et répétée en bas quand on est
   hors du top 50 (ou pas encore classé). États de chargement, d'erreur (« Réessayer ») et de classement vide ;
-  invitation à se connecter ; message clair sans configuration Supabase.
+  message clair sans configuration Supabase. Sous le titre, une seule phrase d'accroche : « Seules les légendes
+  apparaissent ici. »
+- **Invité ou non connecté** : à la place de la liste, « Rejoins les légendes » (il faut se connecter à son compte
+  pour apparaître dans les classements et les consulter), avec « Créer mon compte » (invité, vers `/upgrade`) ou
+  « Se connecter » (non connecté), et un lien secondaire. Aucune requête de classement n'est envoyée ; la barre de
+  navigation reste affichée.
 - **Profil** : victoires, parties lancées, série actuelle et meilleure série.
 
-Code : `supabase/migrations/20261003120000_player_stats.sql` et `20261004120000_leaderboards_without_games_started.sql`, `src/stats/` (appels à Supabase, mise en forme
+Code : `supabase/migrations/20261003120000_player_stats.sql`, `20261004120000_leaderboards_without_games_started.sql`
+et `20261007120000_leaderboards_without_guests.sql`, `src/stats/` (appels à Supabase, mise en forme
 des classements, jour de Paris et séries, connexion du jour), `src/app/(main)/leaderboard.tsx`,
 `src/components/profile-stats.tsx`.
 
@@ -274,7 +340,7 @@ des classements, jour de Paris et séries, connexion du jour), `src/app/(main)/l
 Une barre dessinée en bas de l'écran, dans la DA (trait noir épais, ombre franche) :
 
 - à gauche **Profil** : l'avatar du joueur, ou une silhouette dessinée s'il n'est pas connecté (l'entrée mène alors
-  à la connexion) ;
+  à la connexion) ; un invité arrive sur sa page de profil ;
 - au milieu **Accueil** : le logo (l'étoile de `assets/icon-source/icon.svg`, redessinée en SVG avec un pion pastel
   par branche), un peu plus grand et qui dépasse de la barre ;
 - à droite **Classements** : une montagne au trait noir, un pion pastel sur chaque sommet.
@@ -285,11 +351,13 @@ Zones touchables d'au moins 44 points, libellés « Profil », « Accueil », «
 grand écran, la barre reste en bas, centrée, 440 points au plus. Sur Android, elle se cache clavier ouvert.
 
 **Routes** : les écrans avec la barre sont dans le groupe `src/app/(main)/` (accueil, jouer en ligne, contre l'IA,
-profil, avatar, classements), dont le layout empile une pile Expo Router au-dessus de la barre. Les parties
-(`/game`), les rooms (`/room/[id]`), la connexion, l'inscription et `/upgrade` restent dans la pile principale,
-**par-dessus** le groupe : la barre y est masquée sans condition à maintenir. Toucher une entrée revient à
-l'accueil (`dismissTo`), empile depuis l'accueil, ou remplace l'écran courant d'une entrée à l'autre
-(`src/navigation/nav-bar.ts`, testé).
+entre amis, profil, avatar, classements, connexion, inscription et création de compte `/upgrade`), dont le layout
+empile une pile Expo Router au-dessus de la barre. Seules les parties (`/game`) et les rooms (`/room/[id]`) restent
+dans la pile principale, **par-dessus** le groupe : la barre y est masquée sans condition à maintenir. L'entrée
+« Profil » est active sur le profil et ses sous-écrans (avatar, connexion, inscription, création de compte). Toucher
+une entrée revient à l'accueil (`dismissTo`), revient au profil depuis ses sous-écrans, empile depuis l'accueil, ou
+remplace l'écran courant d'une entrée à l'autre (`src/navigation/nav-bar.ts`, testé, avec un test qui vérifie quels
+écrans sont dans `(main)`).
 
 ## Avatars (Humation)
 
@@ -534,13 +602,13 @@ Toujours installer les paquets Expo avec `npx expo install <paquet>` pour obteni
 
 ## Organisation
 
-- `src/app/` : routes Expo Router. Avec la barre de navigation, dans `(main)/` : `index.tsx` (accueil), `ai-setup.tsx` (réglage d'une partie contre l'IA), `online.tsx` (créer, rejoindre, reprendre), `profile.tsx`, `avatar.tsx`, `leaderboard.tsx` (classements), `credits.tsx`, `privacy.tsx` et `terms.tsx`. Sans la barre : `game.tsx` (la partie ; `/game` à deux sur le même appareil, `/game?ai=medium,hard` contre des IA), `room/[id].tsx` (salle d'attente puis partie en ligne), `sign-in.tsx`, `sign-up.tsx`, `upgrade.tsx`.
+- `src/app/` : routes Expo Router. Avec la barre de navigation, dans `(main)/` : `index.tsx` (accueil), `ai-setup.tsx` (réglage d'une partie contre l'IA), `local-setup.tsx` (réglage d'une partie entre amis), `online.tsx` (créer, rejoindre, reprendre), `profile.tsx`, `avatar.tsx`, `leaderboard.tsx` (classements), `credits.tsx`, `privacy.tsx`, `terms.tsx`, `sign-in.tsx`, `sign-up.tsx` et `upgrade.tsx`. Sans la barre : `game.tsx` (la partie ; `/game?players=4` pour 2 à 6 amis sur le même appareil, `/game?ai=medium,hard` contre des IA, `/game` seul à deux), `room/[id].tsx` (salle d'attente puis partie en ligne).
 - `src/navigation/` : logique de la barre de navigation ; `src/components/nav-bar/` : la barre et ses icônes.
 - `src/stats/` : statistiques, classements et séries de connexion (voir « Statistiques et classements »).
 - `src/credits/` : données de la page Crédits (générées par `scripts/generate-licenses.mjs`) ; `src/legal/` : textes
   de la politique de confidentialité et des conditions d'utilisation (brouillons).
 - `src/components/` : composants d'affichage, dont `board/` (plateau SVG, pion animé, calcul de mise en page), `game-layout.tsx` (mise en page des parties, téléphone et grand écran) et `state-view.tsx` (chargement, erreurs).
-- `src/hooks/` : état d'interface de la partie (sélection, animation, tour des IA), qui délègue règles et IA à `src/game/`.
+- `src/hooks/` : état d'interface de la partie (sélection, animation, tour des IA), qui délègue règles et IA à `src/game/` ; paramètres de partie (`game-setup.ts`) ; confirmation avant de quitter ou recommencer une partie locale (`leave-guard.ts`, `use-leave-guard.ts`).
 - `src/constants/theme.ts` : couleurs, couleurs pastel des joueurs, police et typographie, traits, espacements ; `src/constants/fonts.ts` : fichiers de la police.
 - `src/auth/` et `src/lib/supabase.ts` : comptes (voir « Comptes (Supabase) »).
 - `src/avatar/` : avatars Humation (configuration, rendu SVG, libellés) ; `src/components/avatar.tsx` : composant `<Avatar />` ; `src/app/(main)/profile.tsx` et `src/app/(main)/avatar.tsx` : profil et éditeur.
@@ -636,7 +704,9 @@ minimax classique.
 6. ~~Barre de navigation, statistiques et cinq classements (comptés côté serveur).~~ Fait.
 7. ~~Préparation à la production : police, crédits, suppression de compte, pages légales (brouillons),
    nettoyage des rooms, limites d'abus.~~ Fait.
-8. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », amis.
+8. ~~Retouches : confirmations dans les parties locales, parties entre amis de 2 à 6, barre de navigation des
+   invités, invités hors des classements.~~ Fait.
+9. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », amis.
 
 ## Inspiration
 

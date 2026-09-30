@@ -27,10 +27,14 @@ import { getSupabase } from '@/lib/supabase';
 import {
   BOARD_INFO,
   BOARDS,
+  describeLeaderboardError,
   entryLabel,
   formatRank,
   formatUnit,
   groupLeaderboards,
+  LEADERBOARD_ERROR_MESSAGES,
+  LEADERBOARD_TAGLINE,
+  leaderboardAccess,
   podiumPlace,
   type Board,
   type BoardView,
@@ -38,33 +42,45 @@ import {
 } from '@/stats/leaderboard';
 import { fetchLeaderboards } from '@/stats/stats-service';
 
-/** Pourquoi les parties hors ligne ne comptent pas (aussi dans le README). */
-const ONLINE_ONLY =
-  'Seules les parties en ligne comptent : validées par le serveur, elles ne peuvent pas être truquées, contrairement aux parties hors ligne jouées sur l’appareil.';
-
 type Load =
   | { status: 'loading' }
-  | { status: 'error' }
+  | { status: 'error'; message: string }
   | { status: 'ready'; views: Record<Board, BoardView> };
 
-/** Cinq classements, choisis par onglets ; lus en un seul appel au serveur. */
+/**
+ * Cinq classements, choisis par onglets ; lus en un seul appel au serveur.
+ * Réservés aux comptes e-mail : un invité (ou un joueur non connecté) voit une
+ * invitation à se connecter, et aucune requête de classement n'est envoyée.
+ */
 export default function LeaderboardScreen() {
   const edges = useScreenEdges();
-  const { configured, loading, session } = useAuth();
+  const { configured, loading, session, isGuest } = useAuth();
   const [board, setBoard] = useState<Board>('wins');
+  const access = leaderboardAccess(session && { isGuest });
 
   let body;
   if (!configured) {
     body = <NotConfiguredCard />;
   } else if (loading) {
     body = <LoadingState label="Chargement…" />;
-  } else if (!session) {
+  } else if (access === 'guest') {
     body = (
       <EmptyState
         icon={<MountainIcon size={64} />}
-        title="Connecte-toi pour voir les classements"
-        message="Un compte invité suffit. Tes victoires en ligne te feront grimper."
-        action={{ label: 'Se connecter', onPress: () => router.push('/sign-in') }}
+        title="Rejoins les légendes"
+        message={`${LEADERBOARD_ERROR_MESSAGES.guest_not_ranked} En créant ton compte, tu gardes toute ta progression d’invité.`}
+        action={{ label: 'Créer mon compte', onPress: () => router.push('/upgrade'), color: playerColor(1).piece }}
+        secondaryAction={{ label: 'J’ai déjà un compte', onPress: () => router.push('/sign-in') }}
+      />
+    );
+  } else if (access === 'signed_out' || !session) {
+    body = (
+      <EmptyState
+        icon={<MountainIcon size={64} />}
+        title="Rejoins les légendes"
+        message={LEADERBOARD_ERROR_MESSAGES.guest_not_ranked}
+        action={{ label: 'Se connecter', onPress: () => router.push('/sign-in'), color: playerColor(1).piece }}
+        secondaryAction={{ label: 'Créer un compte', onPress: () => router.push('/sign-up') }}
       />
     );
   } else {
@@ -78,8 +94,7 @@ export default function LeaderboardScreen() {
           <Text style={Typography.title} accessibilityRole="header">
             Classements
           </Text>
-          <Text style={Typography.caption}>{ONLINE_ONLY}</Text>
-          <Text style={Typography.caption}>Tes parties lancées sont comptées sur ton profil.</Text>
+          <Text style={styles.tagline}>{LEADERBOARD_TAGLINE}</Text>
         </View>
         {body}
       </ScrollView>
@@ -98,9 +113,13 @@ function Boards({ board, onBoard }: { board: Board; onBoard: (board: Board) => v
       .then((rows) => {
         if (id === request.current) setLoad({ status: 'ready', views: groupLeaderboards(rows) });
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         // Relecture discrète ratée : on garde ce qui est affiché.
-        if (id === request.current) setLoad((prev) => (quiet && prev.status === 'ready' ? prev : { status: 'error' }));
+        if (id === request.current) {
+          setLoad((prev) =>
+            quiet && prev.status === 'ready' ? prev : { status: 'error', message: describeLeaderboardError(error) },
+          );
+        }
       });
   }, []);
 
@@ -124,7 +143,7 @@ function Boards({ board, onBoard }: { board: Board; onBoard: (board: Board) => v
       {load.status === 'error' && (
         <ErrorState
           title="Classements indisponibles"
-          message="Impossible de lire les classements. Vérifie ta connexion."
+          message={load.message}
           onRetry={() => reload(false)}
         />
       )}
@@ -234,6 +253,11 @@ const styles = StyleSheet.create({
   },
   titles: {
     gap: Spacing.one,
+  },
+  // Phrase d'accroche : texte courant en demi-gras, comme une devise.
+  tagline: {
+    ...Typography.body,
+    fontFamily: Fonts.semibold,
   },
   boardTitles: {
     gap: Spacing.one,

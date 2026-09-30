@@ -55,7 +55,7 @@ returns public.player_stats
 language sql
 as $$ select * from public.player_stats where user_id = who $$;
 
--- Joueurs : Hugo, Iris, Jules (e-mail) et un invité.
+-- Joueurs : Hugo, Iris, Jules (e-mail) et un invité (qui deviendra Dana).
 insert into auth.users (id, email, raw_user_meta_data) values
   ('a2000000-0000-0000-0000-000000000001', 'hugo@example.com', '{"pseudo": "Hugo"}'),
   ('b2000000-0000-0000-0000-000000000002', 'iris@example.com', '{"pseudo": "Iris"}'),
@@ -279,12 +279,62 @@ begin
   assert (select avatar from public.get_leaderboards() where board = 'wins' and pseudo = 'Hugo')
     = 'a2000000-0000-0000-0000-000000000001', 'graine de l’avatar par défaut';
 end $$;
--- Un invité lit aussi les classements.
+reset role;
+
+-- Invités : leurs statistiques sont comptées, mais ils ne sont jamais classés
+-- et ne peuvent pas lire les classements (migration leaderboards_without_guests).
+do $$
+declare
+  guest constant uuid := 'd2000000-0000-0000-0000-000000000004';
+begin
+  assert public.record_game_win(pg_temp.finished_game(array[guest], array['hard'], 0, 'win')),
+    'la victoire en ligne de l’invité est comptée';
+  assert (pg_temp.stats(guest)).wins = 1 and (pg_temp.stats(guest)).wins_hard = 1, 'victoires de l’invité';
+  assert (pg_temp.stats(guest)).best_streak = 1, 'série de l’invité';
+end $$;
+set role authenticated;
+set request.jwt.claim.sub = 'c2000000-0000-0000-0000-000000000003';
+do $$
+declare
+  rows text;
+begin
+  assert not exists (
+    select 1 from public.get_leaderboards() l join public.profiles p on p.pseudo = l.pseudo
+    where p.id = 'd2000000-0000-0000-0000-000000000004'
+  ), 'l’invité n’apparaît dans aucun classement';
+  select string_agg(format('%s:%s=%s', rank, pseudo, score), ' ' order by rank) into rows
+    from public.get_leaderboards() where board = 'wins';
+  assert rows = '1:Hugo=3 2:Iris=1 3:Jules=1', format('victoires sans l’invité : %s', rows);
+end $$;
+-- L'invité lui-même est refusé, avec un code court traduit par l'application.
+set request.jwt.claim.sub = 'd2000000-0000-0000-0000-000000000004';
+select pg_temp.expect_error('select * from public.get_leaderboards()', 'guest_not_ranked');
+reset role;
+
+-- L'invité crée son compte avec un e-mail : même identifiant, Supabase passe
+-- is_anonymous à false. Il apparaît alors avec toute sa progression.
+update auth.users set is_anonymous = false, email = 'dana@example.com'
+  where id = 'd2000000-0000-0000-0000-000000000004';
+update public.profiles set pseudo = 'Dana' where id = 'd2000000-0000-0000-0000-000000000004';
+set role authenticated;
 set request.jwt.claim.sub = 'd2000000-0000-0000-0000-000000000004';
 do $$
+declare
+  rows text;
 begin
-  assert (select score from public.get_leaderboards() where board = 'best_streak' and is_me) = 1,
-    'série de l’invité classée';
+  select string_agg(format('%s:%s=%s', rank, pseudo, score), ' ' order by rank) into rows
+    from public.get_leaderboards() where board = 'wins';
+  assert rows = '1:Hugo=3 2:Iris=1 3:Jules=1 4:Dana=1', format('Dana classée avec sa victoire d’invitée : %s', rows);
+  assert (select rank = 3 and score = 1 and is_me from public.get_leaderboards() where board = 'wins_hard' and pseudo = 'Dana'),
+    'Dana dans le hall des pros';
+  assert (select score = 1 and is_me and rank is not null from public.get_leaderboards() where board = 'best_streak' and pseudo = 'Dana'),
+    'Dana garde sa série de connexion';
+end $$;
+set request.jwt.claim.sub = 'c2000000-0000-0000-0000-000000000003';
+do $$
+begin
+  assert exists (select 1 from public.get_leaderboards() where board = 'wins' and pseudo = 'Dana' and not is_me),
+    'les autres joueurs voient Dana';
 end $$;
 reset role;
 

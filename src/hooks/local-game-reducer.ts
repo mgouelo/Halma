@@ -59,6 +59,15 @@ export function destinationOf(move: Move): Cell {
   return move.path[move.path.length - 1];
 }
 
+/**
+ * Vrai quand quitter ou recommencer ferait perdre quelque chose : au moins un
+ * coup joué et partie pas encore terminée. Une partie locale n'est jamais
+ * sauvegardée (elle ne vit que dans l'état de l'écran de jeu).
+ */
+export function isGameInProgress(game: GameState): boolean {
+  return game.status === 'playing' && game.history.length > 0;
+}
+
 /** Contrôleur du joueur dont c'est le tour. */
 export function currentController(state: LocalGameState): Controller {
   return state.controllers[state.game.currentPlayer];

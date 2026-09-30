@@ -3,11 +3,15 @@ import { describe, expect, it } from '@jest/globals';
 import {
   BOARD_INFO,
   BOARDS,
+  describeLeaderboardError,
   entryLabel,
   formatRank,
   formatScore,
   formatUnit,
   groupLeaderboards,
+  LEADERBOARD_ERROR_MESSAGES,
+  LEADERBOARD_TAGLINE,
+  leaderboardAccess,
   podiumPlace,
   type LeaderboardRow,
 } from '../leaderboard';
@@ -89,5 +93,33 @@ describe('classements', () => {
     expect(entryLabel('best_streak', { rank: null, pseudo: 'Bob', avatar: null, score: 0, isMe: true })).toBe(
       'pas encore classé, Bob (toi), 0 jour',
     );
+  });
+});
+
+describe('accès aux classements', () => {
+  it('réservé aux comptes e-mail : un invité est invité à se connecter', () => {
+    expect(leaderboardAccess({ isGuest: false })).toBe('allowed');
+    expect(leaderboardAccess({ isGuest: true })).toBe('guest');
+    expect(leaderboardAccess(null)).toBe('signed_out');
+  });
+
+  it('traduit le refus du serveur pour un invité', () => {
+    expect(describeLeaderboardError({ message: 'guest_not_ranked', code: 'P0001' })).toBe(
+      'Connecte-toi à ton compte pour apparaître dans les classements et les consulter.',
+    );
+    expect(describeLeaderboardError(new Error('not_authenticated'))).toBe(LEADERBOARD_ERROR_MESSAGES.not_authenticated);
+  });
+
+  it('message générique pour les autres erreurs', () => {
+    expect(describeLeaderboardError(new Error('Failed to fetch'))).toMatch(/Vérifie ta connexion/);
+    expect(describeLeaderboardError(null)).toMatch(/Vérifie ta connexion/);
+    expect(describeLeaderboardError({ message: 'toString' })).toMatch(/Vérifie ta connexion/);
+  });
+
+  it('reste discret sur ce qui compte : une seule phrase d’accroche', () => {
+    expect(LEADERBOARD_TAGLINE).toBe('Seules les légendes apparaissent ici.');
+    for (const board of BOARDS) {
+      expect(BOARD_INFO[board].description).not.toMatch(/en ligne|hors ligne|serveur/);
+    }
   });
 });

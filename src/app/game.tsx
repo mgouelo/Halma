@@ -5,14 +5,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/auth/auth-context';
 import { aiAvatar } from '@/avatar/avatar';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DrawnButton } from '@/components/drawn-button';
 import { GameLayout, TurnStatus } from '@/components/game-layout';
 import { PlayerChip } from '@/components/player-chip';
 import { VictoryOverlay } from '@/components/victory-overlay';
 import { Colors, Typography } from '@/constants/theme';
 import { AI_LEVEL_LABELS, parseControllers } from '@/hooks/game-setup';
+import { GUARD_TEXTS, needsConfirmation } from '@/hooks/leave-guard';
 import type { Controller } from '@/hooks/local-game-reducer';
 import { useIsClient } from '@/hooks/use-is-client';
+import { useLeaveGuard } from '@/hooks/use-leave-guard';
 import { useLocalGame } from '@/hooks/use-local-game';
 
 function describeController(controller: Controller, vsAi: boolean): string | undefined {
@@ -28,8 +31,8 @@ export default function GameScreen() {
 }
 
 function GameView() {
-  const { ai } = useLocalSearchParams<{ ai?: string }>();
-  const [controllers] = useState(() => parseControllers(ai));
+  const { ai, players } = useLocalSearchParams<{ ai?: string; players?: string }>();
+  const [controllers] = useState(() => parseControllers(ai, players));
   const vsAi = controllers.some((c) => c !== 'human');
   const { session, profile } = useAuth();
   // Contre l'IA : ton avatar (tiré de ton compte, ou d'une graine locale sans compte) et ceux des IA.
@@ -39,6 +42,9 @@ function GameView() {
       : { value: aiAvatar(`local-${player}`), seed: `local-${player}` };
   const { game, selected, moves, animating, aiThinking, tap, animationEnd, reset } = useLocalGame(controllers);
 
+  // La partie n'existe que dans l'état de cet écran : le quitter la supprime.
+  // Tant qu'elle est en cours, on demande d'abord confirmation (voir useLeaveGuard).
+  const guard = useLeaveGuard(needsConfirmation(game), reset);
   const goHome = () => router.dismissTo('/');
   const showVictory = game.status === 'finished' && game.winner !== null && !animating;
   const winnerMoves = game.history.filter((entry) => entry.player === game.winner).length;
@@ -82,19 +88,29 @@ function GameView() {
         />
       }
       board={{ game, selected, moves, animating, onCellPress: tap, onAnimationEnd: animationEnd }}
-      footer={<DrawnButton label="Nouvelle partie" size="small" onPress={reset} style={styles.reset} />}
+      footer={
+        <DrawnButton label="Nouvelle partie" size="small" onPress={guard.requestRestart} style={styles.reset} />
+      }
       overlay={
-        showVictory && (
-          <VictoryOverlay
-            winner={game.winner!}
-            title={vsAi && !winnerIsHuman ? 'Perdu !' : 'Victoire !'}
-            winnerDetail={vsAi ? describeController(controllers[game.winner!], vsAi) : undefined}
-            winnerAvatar={vsAi ? avatarOf(game.winner!) : undefined}
-            moveCount={winnerMoves}
-            onReplay={reset}
-            onHome={goHome}
+        <>
+          {showVictory && (
+            <VictoryOverlay
+              winner={game.winner!}
+              title={vsAi && !winnerIsHuman ? 'Perdu !' : 'Victoire !'}
+              winnerDetail={vsAi ? describeController(controllers[game.winner!], vsAi) : undefined}
+              winnerAvatar={vsAi ? avatarOf(game.winner!) : undefined}
+              moveCount={winnerMoves}
+              onReplay={reset}
+              onHome={goHome}
+            />
+          )}
+          <ConfirmDialog
+            visible={guard.kind !== null}
+            {...GUARD_TEXTS[guard.kind ?? 'leave']}
+            onCancel={guard.cancel}
+            onConfirm={guard.confirm}
           />
-        )
+        </>
       }
     />
   );

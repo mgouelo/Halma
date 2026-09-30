@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, type Ref } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Colors, Radius, Shadow, Spacing, Stroke, TouchTarget, Typography } from '@/constants/theme';
@@ -16,6 +16,8 @@ interface DrawnButtonProps {
   disabled?: boolean;
   /** Action en cours : roue d'attente, et le bouton ne réagit plus (pas de double envoi). */
   busy?: boolean;
+  /** Pour donner le focus au bouton (fenêtre de confirmation). */
+  ref?: Ref<View>;
 }
 
 /**
@@ -32,12 +34,14 @@ export function DrawnButton({
   accessibilityHint,
   disabled = false,
   busy = false,
+  ref,
 }: DrawnButtonProps) {
   const [hovered, setHovered] = useState(false);
   const small = size === 'small';
   const inactive = disabled || busy;
   return (
     <Pressable
+      ref={ref}
       onPress={onPress}
       disabled={inactive}
       onHoverIn={() => setHovered(true)}
