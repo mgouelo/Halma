@@ -5,7 +5,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/auth/auth-context';
 import { Avatar } from '@/components/avatar';
-import { Colors, playerColor, Radius, Shadow, Spacing, Stroke, TouchTarget, Typography } from '@/constants/theme';
+import {
+  Colors,
+  Fonts,
+  playerColor,
+  Radius,
+  Shadow,
+  Spacing,
+  Stroke,
+  TouchTarget,
+  Typography,
+} from '@/constants/theme';
 import { activeTab, navAction, navHref, NAV_LABELS, type NavTab } from '@/navigation/nav-bar';
 
 import { MountainIcon, Silhouette, StarLogo } from './icons';
@@ -220,7 +230,7 @@ const styles = StyleSheet.create({
   },
   // Entrée active : texte gras et souligné, lisible sans la couleur.
   labelActive: {
-    fontWeight: '900',
+    fontFamily: Fonts.bold,
     textDecorationLine: 'underline',
   },
 });

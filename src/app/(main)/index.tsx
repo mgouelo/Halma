@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CreditsLink } from '@/components/about-links';
 import { AccountBar } from '@/components/account-bar';
 import { Board } from '@/components/board/board';
 import { computeBoardLayout } from '@/components/board/layout';
@@ -24,11 +25,14 @@ export default function HomeScreen() {
 
   const header = (
     <View style={styles.header}>
-      <View style={styles.titles}>
-        <Text style={Typography.display} accessibilityRole="header">
-          Halma
-        </Text>
-        <Text style={Typography.caption}>Dames chinoises</Text>
+      <View style={styles.titleRow}>
+        <View style={styles.titles}>
+          <Text style={Typography.display} accessibilityRole="header">
+            Halma
+          </Text>
+          <Text style={Typography.caption}>Dames chinoises</Text>
+        </View>
+        <CreditsLink />
       </View>
       <AccountBar />
     </View>
@@ -116,6 +120,11 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: Spacing.three,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   titles: {
     gap: Spacing.one,

@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Colors, Radius, Spacing, Stroke, TouchTarget, Typography } from '@/constants/theme';
+import { Colors, Fonts, Radius, Spacing, Stroke, TouchTarget, Typography } from '@/constants/theme';
 
 interface SegmentedPickerProps<T extends string> {
   options: readonly T[];
@@ -65,6 +65,6 @@ const styles = StyleSheet.create({
     color: Colors.ink,
   },
   labelSelected: {
-    fontWeight: '800',
+    fontFamily: Fonts.bold,
   },
 });

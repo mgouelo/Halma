@@ -1,10 +1,25 @@
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 
 import { AuthProvider } from '@/auth/auth-context';
 import { Colors } from '@/constants/theme';
+import { useAppFonts } from '@/hooks/use-app-fonts';
+
+// L'écran de démarrage reste affiché jusqu'au chargement de la police.
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
+/** Écran de secours en cas d'erreur inattendue dans n'importe quel écran. */
+export { ErrorScreen as ErrorBoundary } from '@/components/error-screen';
 
 export default function RootLayout() {
+  const fontsReady = useAppFonts();
+  useEffect(() => {
+    if (fontsReady) SplashScreen.hideAsync().catch(() => {});
+  }, [fontsReady]);
+  if (!fontsReady) return null;
+
   return (
     <AuthProvider>
       <StatusBar style="dark" />

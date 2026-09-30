@@ -25,6 +25,9 @@ export default function MainLayout() {
           <Stack.Screen name="profile" options={{ title: 'Profil' }} />
           <Stack.Screen name="avatar" options={{ title: 'Ton avatar' }} />
           <Stack.Screen name="leaderboard" options={{ title: 'Classements' }} />
+          <Stack.Screen name="credits" options={{ title: 'Crédits et licences' }} />
+          <Stack.Screen name="privacy" options={{ title: 'Politique de confidentialité' }} />
+          <Stack.Screen name="terms" options={{ title: 'Conditions d’utilisation' }} />
         </Stack>
       </NavBarContext.Provider>
       <NavBar />

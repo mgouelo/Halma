@@ -4,7 +4,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } fr
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Colors, MaxContentWidth, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
+import { Colors, Fonts, MaxContentWidth, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
 
 import { DrawnButton } from './drawn-button';
 import { DrawnCard } from './drawn-card';
@@ -74,12 +74,12 @@ export const authStyles = StyleSheet.create({
     textAlign: 'center',
   },
   inlineLink: {
-    fontWeight: '700',
+    fontFamily: Fonts.semibold,
     textDecorationLine: 'underline',
   },
   link: {
     ...Typography.body,
-    fontWeight: '700',
+    fontFamily: Fonts.semibold,
     textDecorationLine: 'underline',
     textAlign: 'center',
   },

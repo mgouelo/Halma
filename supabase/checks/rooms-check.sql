@@ -89,7 +89,11 @@ begin
     'Bob prend la place 1';
   assert (select count(*) from public.room_players) = 2, 'Bob voit les joueurs de la room';
 end $$;
-select pg_temp.expect_error($$select public.join_room('ZZZZZZ')$$, 'room_not_found');
+-- Code inconnu : null (l'essai est compté, voir account-check.sql pour la limite).
+do $$
+begin
+  assert public.join_room('ZZZZZZ') is null, 'code inconnu : aucune room';
+end $$;
 -- Seul l'hôte gère les IA.
 select pg_temp.expect_error($$select public.add_ai((select id from ids where name = 'room'), 'easy')$$, 'not_host');
 

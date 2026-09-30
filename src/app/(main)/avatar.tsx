@@ -29,6 +29,7 @@ import { ErrorState, LoadingState } from '@/components/state-view';
 import {
   AvatarPalettes,
   Colors,
+  Fonts,
   MaxContentWidth,
   MaxWideContentWidth,
   playerColor,
@@ -281,7 +282,7 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     color: Colors.ink,
-    fontWeight: '700',
+    fontFamily: Fonts.semibold,
   },
   tabLabelSelected: {
     color: Colors.paper,

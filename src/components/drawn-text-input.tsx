@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
-import { Colors, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
+import { Colors, Fonts, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
 
 interface DrawnTextInputProps extends TextInputProps {
   label: string;
@@ -62,6 +62,6 @@ const styles = StyleSheet.create({
   },
   error: {
     color: Colors.ink,
-    fontWeight: '700',
+    fontFamily: Fonts.semibold,
   },
 });

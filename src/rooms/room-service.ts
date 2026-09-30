@@ -104,7 +104,11 @@ export function createRoom(client: SupabaseClient): Promise<string> {
 export async function joinRoom(client: SupabaseClient, input: string): Promise<string> {
   const code = normalizeRoomCode(input);
   if (!isValidRoomCode(code)) throw new OnlineError('room_not_found', 'Un code de room compte 6 lettres ou chiffres.');
-  return rpc<string>(client, 'join_room', { p_code: code });
+  // Code inconnu : la base renvoie null (plutôt qu'une erreur) pour garder la
+  // trace de l'essai, qui compte dans la limite d'essais (too_many_attempts).
+  const roomId = await rpc<string | null>(client, 'join_room', { p_code: code });
+  if (!roomId) throw new OnlineError('room_not_found');
+  return roomId;
 }
 
 export function leaveRoom(client: SupabaseClient, roomId: string): Promise<void> {

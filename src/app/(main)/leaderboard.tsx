@@ -13,6 +13,7 @@ import { useScreenEdges } from '@/components/nav-bar/screen-edges';
 import { EmptyState, ErrorState, LoadingState } from '@/components/state-view';
 import {
   Colors,
+  Fonts,
   MaxContentWidth,
   playerColor,
   Radius,
@@ -277,7 +278,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   tabLabelSelected: {
-    fontWeight: '900',
+    fontFamily: Fonts.bold,
   },
   list: {
     gap: Spacing.two,
@@ -321,7 +322,7 @@ const styles = StyleSheet.create({
   meTag: {
     ...Typography.caption,
     color: Colors.ink,
-    fontWeight: '800',
+    fontFamily: Fonts.semibold,
   },
   scoreBox: {
     alignItems: 'flex-end',
