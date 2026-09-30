@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Colors, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
+import { Colors, Radius, Spacing, Stroke, TouchTarget, Typography } from '@/constants/theme';
 
 interface SegmentedPickerProps<T extends string> {
   options: readonly T[];
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 36,
+    minHeight: TouchTarget,
     paddingHorizontal: Spacing.two,
     backgroundColor: Colors.paper,
   },

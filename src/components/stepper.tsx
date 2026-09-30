@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Colors, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
+import { Colors, Radius, Spacing, Stroke, TouchTarget, Typography } from '@/constants/theme';
 
 interface StepperProps {
   value: number;
@@ -36,8 +36,9 @@ function StepButton({ label, disabled, onPress }: { label: string; disabled: boo
       onPress={onPress}
       disabled={disabled}
       accessibilityLabel={label === '+' ? 'Plus' : 'Moins'}
-      style={({ pressed }) => [styles.button, disabled && styles.disabled, pressed && styles.pressed]}>
-      <Text style={Typography.title}>{label}</Text>
+      accessibilityState={{ disabled }}
+      style={({ pressed }) => [styles.button, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>
+      <Text style={[Typography.title, disabled && styles.labelDisabled]}>{label}</Text>
     </Pressable>
   );
 }
@@ -49,8 +50,8 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   button: {
-    width: 44,
-    height: 44,
+    width: TouchTarget,
+    height: TouchTarget,
     borderRadius: Radius.round,
     borderWidth: Stroke.bold,
     borderColor: Colors.ink,
@@ -58,8 +59,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: Colors.paper,
   },
+  // Inactif : trait en pointillés et gris lisible, comme les boutons (pas de transparence).
   disabled: {
-    opacity: 0.3,
+    borderStyle: 'dashed',
+    borderColor: Colors.inkSoft,
+  },
+  labelDisabled: {
+    color: Colors.inkSoft,
   },
   pressed: {
     backgroundColor: Colors.line,

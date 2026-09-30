@@ -104,5 +104,17 @@ export const Spacing = {
 
 export const MaxContentWidth = 560;
 
+/** Taille minimale d'une zone touchable (recommandations iOS et Android : 44 à 48 points). */
+export const TouchTarget = 44;
+
+/**
+ * Largeur à partir de laquelle l'écran passe en disposition « grand écran »
+ * (tablette, ordinateur) : deux colonnes au lieu d'une.
+ */
+export const WideBreakpoint = 900;
+
+/** Largeur maximale du contenu en disposition grand écran. */
+export const MaxWideContentWidth = 1120;
+
 /** Durée d'un saut ou d'un pas lors de l'animation d'un coup (ms). */
 export const MoveHopDuration = 170;

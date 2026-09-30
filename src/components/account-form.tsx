@@ -74,7 +74,12 @@ export function AccountForm({ submitLabel, pendingLabel, pending, error, onSubmi
         onSubmitEditing={submit}
       />
       {error && <Notice>{error}</Notice>}
-      <DrawnButton label={pending ? pendingLabel : submitLabel} onPress={submit} color={playerColor(0).piece} />
+      <DrawnButton
+        label={pending ? pendingLabel : submitLabel}
+        onPress={submit}
+        color={playerColor(0).piece}
+        busy={pending}
+      />
     </DrawnCard>
   );
 }

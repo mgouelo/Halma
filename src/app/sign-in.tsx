@@ -74,6 +74,7 @@ export default function SignInScreen() {
             {error && <Notice>{error}</Notice>}
             <DrawnButton
               label={pending ? 'Connexion…' : 'Se connecter'}
+              busy={pending}
               onPress={submit}
               color={playerColor(0).piece}
             />
@@ -84,7 +85,7 @@ export default function SignInScreen() {
               Pas encore de compte ? Inscris-toi
             </Link>
             <Text style={Typography.caption}>ou</Text>
-            <DrawnButton label="Jouer en invité" size="small" onPress={playAsGuest} />
+            <DrawnButton label="Jouer en invité" size="small" onPress={playAsGuest} disabled={pending} />
             <Text style={[Typography.caption, authStyles.center]}>
               Un compte invité reçoit un pseudo automatique. Il reste lié à cet appareil.
             </Text>
