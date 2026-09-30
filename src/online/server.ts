@@ -13,6 +13,7 @@ import { FORFEIT_AFTER_MS, SERVER_AI_TIME_LIMIT_MS } from './constants.ts';
 import { ONLINE_ERROR_MESSAGES, OnlineError } from './errors.ts';
 import { parseGameRequest } from './protocol.ts';
 import { advance, resign, submitMove, type Ruling } from './referee.ts';
+import { winAward } from './stats.ts';
 import type { GameRequest, GameResponse, OnlineErrorCode, OnlineGame, Participant, RoomRecord, StoredGame } from './types.ts';
 
 export interface LoadedRoom {
@@ -32,6 +33,12 @@ export interface GameStore {
   begin(roomId: string, hostId: string, state: GameState): Promise<void>;
   /** Écrit `next` si la partie est toujours à la version de `current` ; sinon renvoie null. */
   save(current: StoredGame, next: OnlineGame): Promise<StoredGame | null>;
+  /**
+   * Compte la victoire d'une partie finie dans les statistiques (classement).
+   * La base relit la partie et décide elle-même ; idempotent : une partie
+   * n'est comptée qu'une fois. Renvoie vrai si la victoire vient d'être comptée.
+   */
+  recordWin(gameId: string): Promise<boolean>;
 }
 
 export interface ServerOptions {
@@ -73,6 +80,20 @@ function decide(
   }
 }
 
+/**
+ * Compte la victoire si la partie vient de se terminer par `win` d'un humain.
+ * Une panne ici ne doit pas faire échouer le coup, déjà enregistré : l'erreur
+ * est journalisée, et la prochaine demande sur la partie réessaie.
+ */
+async function recordWinIfAny(store: GameStore, game: StoredGame, participants: Participant[]): Promise<void> {
+  if (!winAward(game, participants)) return;
+  try {
+    await store.recordWin(game.id);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 async function start(store: GameStore, loaded: LoadedRoom, userId: string): Promise<GameResponse> {
   const { room, participants } = loaded;
   if (room.hostId !== userId) return failure('not_host');
@@ -108,13 +129,19 @@ export async function handleGameRequest(
 
       const { game, participants } = loaded;
       if (!game) return failure('game_not_started');
+      // Partie déjà gagnée : on (re)compte la victoire, sans effet si c'est déjà fait
+      // (rattrapage si l'écriture des statistiques a échoué juste après le coup gagnant).
+      await recordWinIfAny(store, game, participants);
       const ruling = decide(request, game, participants, userId, options);
       if (!ruling.ok) return ruling;
       // Rien n'a changé (par exemple un « tick » sans forfait ni IA à faire jouer).
       if (ruling.game === game) return { ok: true, game };
 
       const saved = await store.save(game, ruling.game);
-      if (saved) return { ok: true, game: saved };
+      if (saved) {
+        await recordWinIfAny(store, saved, participants);
+        return { ok: true, game: saved };
+      }
     }
     return failure('conflict');
   } catch (error) {

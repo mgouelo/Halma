@@ -3,6 +3,8 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { AppState, Platform } from 'react-native';
 
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
+import { createDailyLoginTracker } from '@/stats/daily-login';
+import { recordDailyLogin } from '@/stats/stats-service';
 
 import { fetchProfile, refreshAccount, type Profile } from './auth-service';
 
@@ -21,6 +23,8 @@ export interface AuthState {
   profileError: boolean;
   /** Relit le profil (après un changement de pseudo, par exemple). */
   refreshProfile: () => void;
+  /** Change quand les statistiques du joueur ont pu changer (connexion du jour enregistrée). */
+  statsVersion: number;
 }
 
 const AuthContext = createContext<AuthState>({
@@ -32,6 +36,7 @@ const AuthContext = createContext<AuthState>({
   pendingEmail: null,
   profileError: false,
   refreshProfile: () => {},
+  statsVersion: 0,
 });
 
 /** Session Supabase et profil du joueur connecté, pour toute l'application. */
@@ -41,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileVersion, setProfileVersion] = useState(0);
   const [profileError, setProfileError] = useState(false);
+  const [statsVersion, setStatsVersion] = useState(0);
 
   // Session : lecture initiale puis suivi des changements (connexion, déconnexion, rafraîchissement).
   useEffect(() => {
@@ -105,6 +111,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [userId, profileVersion]);
 
+  // Connexion du jour (série de connexion) : à l'ouverture et à chaque retour
+  // dans l'application, une fois par jour. En arrière-plan : rien n'attend
+  // cette demande, et un échec (hors ligne) est simplement réessayé plus tard.
+  useEffect(() => {
+    if (!userId) return;
+    let active = true;
+    const tracker = createDailyLoginTracker(() => recordDailyLogin(getSupabase()));
+    const check = () =>
+      tracker.check().then((recorded) => {
+        if (recorded && active) setStatsVersion((v) => v + 1);
+      });
+    check();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') check();
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [userId]);
+
   const value: AuthState = {
     configured: isSupabaseConfigured,
     loading,
@@ -119,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfileError(false);
       setProfileVersion((v) => v + 1);
     },
+    statsVersion,
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

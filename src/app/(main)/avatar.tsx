@@ -24,6 +24,7 @@ import { Avatar } from '@/components/avatar';
 import { AuthScreen, Notice, NotConfiguredCard } from '@/components/auth-screen';
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
+import { useScreenEdges } from '@/components/nav-bar/screen-edges';
 import { ErrorState, LoadingState } from '@/components/state-view';
 import {
   AvatarPalettes,
@@ -87,6 +88,7 @@ function AvatarEditor({ userId, saved }: { userId: string; saved: string | null 
   const [tab, setTab] = useState<Tab>('head');
   const wide = useWideLayout();
   const { pending, error, run } = useAuthAction();
+  const edges = useScreenEdges();
 
   const choosePart = (slot: AvatarSlot, id: string) =>
     setAvatar((prev) => ({ ...prev, selections: { ...prev.selections, [slot]: id } }));
@@ -105,7 +107,7 @@ function AvatarEditor({ userId, saved }: { userId: string; saved: string | null 
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={edges}>
       <ScrollView contentContainerStyle={[styles.content, wide && styles.wideContent]}>
         <View style={styles.header}>
           <DrawnButton

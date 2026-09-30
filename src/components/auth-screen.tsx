@@ -8,11 +8,13 @@ import { Colors, MaxContentWidth, Radius, Spacing, Stroke, Typography } from '@/
 
 import { DrawnButton } from './drawn-button';
 import { DrawnCard } from './drawn-card';
+import { useScreenEdges } from './nav-bar/screen-edges';
 
 /** Cadre commun des écrans de connexion et d'inscription. */
 export function AuthScreen({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+  const edges = useScreenEdges();
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={edges}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>

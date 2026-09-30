@@ -2,6 +2,7 @@ import { createGame, getAllLegalMoves, type AiLevel, type GameState, type Move, 
 
 import { newOnlineGame } from '../referee';
 import type { GameStore, LoadedRoom } from '../server';
+import { winAward } from '../stats';
 import type { OnlineGame, Participant, RoomRecord, StoredGame } from '../types';
 
 export const ROOM_ID = '0b5a3c1e-8d2f-4e6a-9b7c-1d2e3f4a5b6c';
@@ -52,6 +53,12 @@ export class MemoryStore implements GameStore {
   /** Exécuté juste avant la prochaine écriture (pour simuler une écriture concurrente). */
   beforeSave: (() => void) | null = null;
   failLoad: Error | null = null;
+  /** Statistiques comptées (comme player_stats) : victoires par joueur et par niveau d'IA. */
+  wins = new Map<string, { total: number; easy: number; medium: number; hard: number }>();
+  /** Parties dont la victoire est déjà comptée (comme stats_wins). */
+  countedGames = new Set<string>();
+  recordWinCalls = 0;
+  failRecordWin: Error | null = null;
 
   constructor(options: { participants: Participant[]; hostId?: string; game?: OnlineGame | null }) {
     const started = options.game !== undefined && options.game !== null;
@@ -85,5 +92,20 @@ export class MemoryStore implements GameStore {
     this.game = { ...clone(next), id: current.id, roomId: current.roomId, version: current.version + 1 };
     if (next.endReason) this.room = { ...this.room, status: 'finished' };
     return clone(this.game);
+  }
+
+  /** Comme la fonction SQL record_game_win : relit la partie enregistrée, une seule fois par partie. */
+  async recordWin(gameId: string): Promise<boolean> {
+    this.recordWinCalls++;
+    if (this.failRecordWin) throw this.failRecordWin;
+    if (!this.game || this.game.id !== gameId || this.countedGames.has(gameId)) return false;
+    const award = winAward(this.game, this.participants);
+    if (!award) return false;
+    this.countedGames.add(gameId);
+    const stats = this.wins.get(award.userId) ?? { total: 0, easy: 0, medium: 0, hard: 0 };
+    stats.total++;
+    if (award.aiLevel) stats[award.aiLevel]++;
+    this.wins.set(award.userId, stats);
+    return true;
   }
 }
