@@ -21,6 +21,8 @@ export default function RootLayout() {
         <Stack.Screen name="sign-in" options={{ title: 'Connexion' }} />
         <Stack.Screen name="sign-up" options={{ title: 'Inscription' }} />
         <Stack.Screen name="upgrade" options={{ title: 'Garder ton compte' }} />
+        <Stack.Screen name="profile" options={{ title: 'Profil' }} />
+        <Stack.Screen name="avatar" options={{ title: 'Ton avatar' }} />
       </Stack>
     </AuthProvider>
   );

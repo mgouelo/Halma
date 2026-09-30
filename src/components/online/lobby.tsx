@@ -12,7 +12,7 @@ import { AI_LEVELS, type AiLevel } from '@/game';
 import { AI_LEVEL_LABELS } from '@/hooks/game-setup';
 import { getSupabase } from '@/lib/supabase';
 import { MAX_PARTICIPANTS, MIN_PARTICIPANTS, type StoredGame } from '@/online';
-import { participantName } from '@/rooms/names';
+import { participantAvatar, participantName } from '@/rooms/names';
 import { isOnline } from '@/rooms/presence';
 import {
   addAi,
@@ -165,8 +165,10 @@ function ParticipantRow({ player, index, userId, hostId, online, editable, onLev
         <View style={styles.flex}>
           <PlayerChip
             player={index}
+            size={44}
             label={player.aiLevel ? 'IA' : name}
             detail={details.length > 0 ? details.join(' · ') : undefined}
+            avatar={{ value: participantAvatar(player), seed: player.userId ?? player.id }}
           />
         </View>
         {player.aiLevel && editable && <DrawnButton label="Retirer" size="small" onPress={onRemove} />}

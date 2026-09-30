@@ -34,9 +34,11 @@ export interface RoomInfo {
   createdAt: string;
 }
 
-/** Participant avec le pseudo du joueur (null pour une IA). */
+/** Participant avec le pseudo et l'avatar du joueur (null pour une IA). */
 export interface RoomPlayer extends Participant {
   pseudo: string | null;
+  /** Valeur de `profiles.avatar` (null : avatar tiré de l'identifiant). */
+  avatar: string | null;
 }
 
 export interface RoomSnapshot {
@@ -74,11 +76,12 @@ export function roomFromRow(row: RoomRow): RoomInfo {
   return { id: row.id, code: row.code, hostId: row.host_id, status: row.status, createdAt: row.created_at };
 }
 
-type RoomPlayerWithProfile = RoomPlayerRow & { profiles: { pseudo: string } | { pseudo: string }[] | null };
+type ProfileEmbed = { pseudo: string; avatar: string | null };
+type RoomPlayerWithProfile = RoomPlayerRow & { profiles: ProfileEmbed | ProfileEmbed[] | null };
 
 function playerFromRow(row: RoomPlayerWithProfile): RoomPlayer {
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-  return { ...participantFromRow(row), pseudo: profile?.pseudo ?? null };
+  return { ...participantFromRow(row), pseudo: profile?.pseudo ?? null, avatar: profile?.avatar ?? null };
 }
 
 /** Erreur levée par une fonction SQL : son message est un code court (room_full…). */
@@ -130,7 +133,7 @@ export async function fetchRoom(client: SupabaseClient, roomId: string): Promise
     client.from('rooms').select(ROOM_COLUMNS).eq('id', roomId).maybeSingle<RoomRow>(),
     client
       .from('room_players')
-      .select(`${ROOM_PLAYER_COLUMNS}, profiles(pseudo)`)
+      .select(`${ROOM_PLAYER_COLUMNS}, profiles(pseudo, avatar)`)
       .eq('room_id', roomId)
       .order('seat')
       .returns<RoomPlayerWithProfile[]>(),

@@ -13,7 +13,7 @@ import { VictoryOverlay } from '@/components/victory-overlay';
 import { Colors, MaxContentWidth, Radius, Shadow, Spacing, Stroke, Typography } from '@/constants/theme';
 import { useMeasuredSize } from '@/hooks/use-measured-size';
 import { participantOfPlayer, type StoredGame } from '@/online';
-import { participantName } from '@/rooms/names';
+import { participantAvatar, participantName } from '@/rooms/names';
 import { secondsBeforeForfeit } from '@/rooms/presence';
 import { describeOnlineError, type RoomSnapshot } from '@/rooms/room-service';
 import { useOnlineGame } from '@/rooms/use-online-game';
@@ -45,6 +45,10 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
   const goHome = () => router.dismissTo('/');
   const playerAt = (index: number) => participantOfPlayer(players, index);
   const nameOf = (index: number) => participantName(playerAt(index), userId);
+  const avatarOf = (index: number) => {
+    const participant = playerAt(index);
+    return participant ? { value: participantAvatar(participant), seed: participant.userId ?? participant.id } : undefined;
+  };
   const iLeft = me !== null && server.forfeited.includes(me);
   const finished = game.status === 'finished';
   const current = playerAt(game.currentPlayer);
@@ -114,7 +118,13 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
                   player.id === game.currentPlayer && !finished && styles.playerTagCurrent,
                   status === 'parti' && styles.playerTagGone,
                 ]}>
-                <PlayerChip player={player.id} size={14} label={nameOf(player.id)} detail={status ?? undefined} />
+                <PlayerChip
+                  player={player.id}
+                  size={30}
+                  label={nameOf(player.id)}
+                  detail={status ?? undefined}
+                  avatar={avatarOf(player.id)}
+                />
               </View>
             );
           })}
@@ -124,7 +134,12 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
           {!finished && (
             <>
               <Text style={Typography.caption}>Au tour de</Text>
-              <PlayerChip player={game.currentPlayer} size={22} label={nameOf(game.currentPlayer)} />
+              <PlayerChip
+                player={game.currentPlayer}
+                size={40}
+                label={nameOf(game.currentPlayer)}
+                avatar={avatarOf(game.currentPlayer)}
+              />
             </>
           )}
           <Text style={[Typography.caption, styles.center]}>{hint}</Text>
