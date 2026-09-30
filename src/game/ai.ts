@@ -11,9 +11,9 @@
 // `chooseMoveAsync` la découpe en tranches courtes entre lesquelles
 // l'interface peut se rafraîchir, et s'arrête à la limite de temps.
 
-import { cornerCells, hexDistance, parseCellKey, sameCell } from './board';
-import { applyMove, getAllLegalMoves } from './game';
-import type { Cell, Corner, GameState, Move, PlayerId } from './types';
+import { cornerCells, hexDistance, parseCellKey, sameCell } from './board.ts';
+import { applyMove, getAllLegalMoves } from './game.ts';
+import type { Cell, Corner, GameState, Move, PlayerId } from './types.ts';
 
 export type AiLevel = 'easy' | 'medium' | 'hard';
 
