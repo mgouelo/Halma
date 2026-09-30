@@ -101,7 +101,7 @@ describe('fetchRoom', () => {
         room_players: {
           data: [
             { id: 'p1', room_id: 'r', seat: 1, user_id: null, ai_level: 'easy', player_index: null, last_seen_at: 't', profiles: null },
-            { id: 'p0', room_id: 'r', seat: 0, user_id: 'u1', ai_level: null, player_index: null, last_seen_at: 't', profiles: { pseudo: 'Alice' } },
+            { id: 'p0', room_id: 'r', seat: 0, user_id: 'u1', ai_level: null, player_index: null, last_seen_at: 't', profiles: { pseudo: 'Alice', avatar: 'felix' } },
           ],
           error: null,
         },
@@ -109,9 +109,9 @@ describe('fetchRoom', () => {
     });
     const snapshot = await fetchRoom(asSupabase, 'r');
     expect(snapshot?.room).toEqual({ id: 'r', code: 'K7QM3X', hostId: 'u1', status: 'waiting', createdAt: 't' });
-    expect(snapshot?.players.map((p) => [p.id, p.pseudo, p.aiLevel])).toEqual([
-      ['p1', null, 'easy'],
-      ['p0', 'Alice', null],
+    expect(snapshot?.players.map((p) => [p.id, p.pseudo, p.avatar, p.aiLevel])).toEqual([
+      ['p1', null, null, 'easy'],
+      ['p0', 'Alice', 'felix', null],
     ]);
     expect(snapshot?.game).toBeNull();
   });

@@ -3,6 +3,8 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useAuth } from '@/auth/auth-context';
+import { aiAvatar } from '@/avatar/avatar';
 import { Board } from '@/components/board/board';
 import { computeBoardLayout } from '@/components/board/layout';
 import { DrawnButton } from '@/components/drawn-button';
@@ -35,6 +37,12 @@ function GameView() {
   const { ai } = useLocalSearchParams<{ ai?: string }>();
   const [controllers] = useState(() => parseControllers(ai));
   const vsAi = controllers.some((c) => c !== 'human');
+  const { session, profile } = useAuth();
+  // Contre l'IA : ton avatar (tiré de ton compte, ou d'une graine locale sans compte) et ceux des IA.
+  const avatarOf = (player: number) =>
+    controllers[player] === 'human'
+      ? { value: profile?.avatar ?? null, seed: session?.user.id ?? 'joueur-local' }
+      : { value: aiAvatar(`local-${player}`), seed: `local-${player}` };
   const area = useMeasuredSize();
   const { game, selected, moves, animating, aiThinking, tap, animationEnd, reset } = useLocalGame(controllers);
 
@@ -71,8 +79,9 @@ function GameView() {
           <Text style={Typography.caption}>Au tour de</Text>
           <PlayerChip
             player={game.currentPlayer}
-            size={22}
+            size={vsAi ? 40 : 22}
             detail={describeController(controllers[game.currentPlayer], vsAi)}
+            avatar={vsAi ? avatarOf(game.currentPlayer) : undefined}
           />
           <Text style={[Typography.caption, styles.hint]}>{hint}</Text>
         </View>

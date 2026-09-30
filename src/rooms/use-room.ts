@@ -81,7 +81,7 @@ export function useRoom(roomId: string) {
         const updated = participantFromRow(payload.new as RoomPlayerRow);
         setSnapshot((prev) =>
           prev
-            ? { ...prev, players: prev.players.map((p) => (p.id === updated.id ? { ...updated, pseudo: p.pseudo } : p)) }
+            ? { ...prev, players: prev.players.map((p) => (p.id === updated.id ? { ...updated, pseudo: p.pseudo, avatar: p.avatar } : p)) }
             : prev,
         );
       })

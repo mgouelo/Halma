@@ -9,6 +9,8 @@ Application mobile de dames chinoises (Halma) jouable à distance, de 2 à 6 jou
 - **En ligne :** rooms dans Postgres (Row Level Security), mises à jour en direct avec Supabase Realtime ;
   coups validés par l'Edge Function `game-action` (Deno).
 - **Règles :** module TypeScript pur (sans React ni Expo) partagé entre le client et le serveur, dans `src/game/`.
+- **Avatars :** [Humation](https://github.com/humation-labs/humation) (licence MIT), `@humation/core` affiché
+  avec `react-native-svg`.
 
 ## Démarrer
 
@@ -189,6 +191,52 @@ double grâce au verrou de version.
 - `scripts/check-db.sh` : RLS et fonctions SQL (voir plus haut).
 - La fonction se vérifie avec Deno : `deno check supabase/functions/game-action/index.ts`.
 
+## Avatars (Humation)
+
+Chaque joueur a un avatar dessiné au trait noir, dans le style de l'application, tiré du jeu d'illustrations
+[Humation 1](https://github.com/humation-labs/humation) (licence MIT) : 24 coiffures, 8 hauts, 43
+accessoires et 3 paires de lunettes.
+
+### `@humation/react` ou `@humation/core` ?
+
+`@humation/react` **ne fonctionne pas en React Native** : son composant `<Avatar>` rend une balise DOM `<svg>`
+et injecte le dessin avec `dangerouslySetInnerHTML`, deux choses qui n'existent qu'avec un navigateur. Ses
+couleurs passent en outre par des variables CSS (`fill="var(--hm-hair, #000000)"`), que `react-native-svg`
+ne sait pas lire.
+
+On utilise donc **`@humation/core`** (le moteur, sans dépendance) et **`@humation/assets-humation-1`**
+(les illustrations, embarquées dans l'application : aucun accès réseau) :
+
+1. `@humation/core` compose le SVG de l'avatar à partir des morceaux choisis (`src/avatar/avatar.ts`) ;
+2. on remplace les variables CSS par les couleurs choisies et on retire ce qui ne sert pas (attributs
+   `data-hm-*`, styles) ;
+3. le composant `<Avatar />` (`src/components/avatar.tsx`) affiche ce SVG avec `SvgXml` de
+   `react-native-svg`, qui fonctionne sur iOS, Android et le web.
+
+Les versions sont fixées (`1.0.3`) : un avatar tiré d'une graine dépend de la liste des morceaux du paquet.
+Les illustrations ajoutent environ 0,8 Mo au bundle Hermes.
+
+### Ce qui est en place
+
+- **Profil** (`/profile`, en touchant son avatar sur l'accueil) : avatar, pseudo, type de compte.
+- **Éditeur** (`/avatar`) : coiffure, haut, accessoire, lunettes (chaque vignette montre l'option sur
+  son propre avatar), couleurs de la peau, des cheveux, du haut et du fond, boutons « Au hasard » et
+  « Par défaut ». Le bas (pantalons, jupes) existe dans Humation mais se trouve sous le cadrage « buste »
+  des avatars : il n'est donc pas proposé.
+- **Enregistrement** dans `profiles.avatar`, en JSON :
+  `{"v":1,"selections":{"head":"hm1-p-000020",…},"colors":{"skin":"F3C9A6",…},"background":"FDECF1"}`
+  (identifiants canoniques des morceaux, couleurs hexadécimales sans « # »). Une simple graine est aussi
+  acceptée. Sans avatar enregistré, il est tiré de l'identifiant du joueur : chacun en a un dès l'inscription.
+- **Affichage** : accueil, profil, salle d'attente, bandeau des joueurs et « Au tour de » pendant une partie
+  en ligne (avatar sur fond de la couleur des pions du joueur), et partie locale contre l'IA. Les IA ont
+  un avatar tiré au hasard, toujours avec des antennes.
+- **Sécurité** : l'avatar d'un autre joueur est relu avec prudence (morceaux inconnus et couleurs non
+  hexadécimales ignorés), rien de ce qu'il contient n'est injecté tel quel dans le SVG. La base limite
+  sa taille à 1 000 caractères.
+
+Tests : `src/avatar/__tests__/` vérifie la relecture de l'avatar, le rendu des couleurs, et fait lire chacun
+des 86 morceaux par le parseur XML de `react-native-svg`, celui qu'utilise `SvgXml` sur mobile.
+
 ## Scripts utiles
 
 ```bash
@@ -207,6 +255,7 @@ Toujours installer les paquets Expo avec `npx expo install <paquet>` pour obteni
 - `src/hooks/` : état d'interface de la partie (sélection, animation, tour des IA), qui délègue règles et IA à `src/game/`.
 - `src/constants/theme.ts` : couleurs, couleurs pastel des joueurs, typographie, traits, espacements.
 - `src/auth/` et `src/lib/supabase.ts` : comptes (voir « Comptes (Supabase) »).
+- `src/avatar/` : avatars Humation (configuration, rendu SVG, libellés) ; `src/components/avatar.tsx` : composant `<Avatar />` ; `src/app/profile.tsx` et `src/app/avatar.tsx` : profil et éditeur.
 - `src/online/` : jeu en ligne partagé avec l'Edge Function (types, arbitre, traitement des demandes) ; `src/rooms/` : côté application (appels à Supabase, Realtime, état de la partie en ligne) ; `src/components/online/` : salle d'attente et écran de partie.
 - `supabase/migrations/` : schéma SQL ; `supabase/checks/` : vérifications locales des migrations ; `supabase/functions/game-action/` : Edge Function du jeu en ligne.
 - `src/game/` : moteur de règles (voir ci-dessous).
