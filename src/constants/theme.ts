@@ -35,6 +35,22 @@ export function playerColor(player: number) {
   return PlayerColors[player % PlayerColors.length];
 }
 
+/** Hexadécimal sans « # », comme dans les avatars Humation. */
+const hex = (color: string) => color.replace(/^#/, '').toUpperCase();
+const pieces = PlayerColors.map((c) => hex(c.piece));
+
+/**
+ * Couleurs proposées dans l'éditeur d'avatar (hexadécimal sans « # »). Le trait
+ * reste noir (DA) ; la première couleur de chaque liste est celle par défaut.
+ */
+export const AvatarPalettes = {
+  skin: ['FFFFFF', 'FBE3D2', 'F3C9A6', 'DDA67F', 'B07A55', '7A4E33'],
+  hair: ['000000', '4A3728', '8A5A33', 'C98E4E', 'E9D3A1', 'B8B8B8', 'FFFFFF', ...pieces.slice(0, 2), pieces[4]],
+  clothes: ['FFFFFF', ...pieces, '000000'],
+  bottom: ['000000', '3B4A6B', '8A8A8A', 'FFFFFF', ...pieces],
+  background: ['F6F5F4', 'FFFFFF', ...PlayerColors.map((c) => hex(c.tint))],
+} as const;
+
 const displayFamily = Platform.select({
   ios: 'ui-rounded',
   web: 'ui-rounded, "SF Pro Rounded", "Nunito", "Hiragino Maru Gothic ProN", system-ui, sans-serif',
