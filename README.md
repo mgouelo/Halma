@@ -5,7 +5,9 @@ Application mobile de dames chinoises (Halma) jouable à distance, de 2 à 6 jou
 ## Stack
 
 - **Client :** Expo (React Native) + TypeScript, avec Expo Router. Cibles : iOS, Android et web.
-- **Comptes :** Supabase Auth (e-mail et invité anonyme) et table `profiles` dans Postgres. Multijoueur en ligne (Realtime) à venir.
+- **Comptes :** Supabase Auth (e-mail et invité anonyme) et table `profiles` dans Postgres.
+- **En ligne :** rooms dans Postgres (Row Level Security), mises à jour en direct avec Supabase Realtime ;
+  coups validés par l'Edge Function `game-action` (Deno).
 - **Règles :** module TypeScript pur (sans React ni Expo) partagé entre le client et le serveur, dans `src/game/`.
 
 ## Démarrer
@@ -19,7 +21,8 @@ npx expo start
 
 Ensuite : scanner le QR code avec l'appli Expo Go sur le téléphone, ou appuyer sur `w` pour ouvrir la version web.
 
-Sans configuration Supabase, l'application fonctionne hors ligne (contre l'IA ou à deux) ; seuls les comptes sont indisponibles.
+Sans configuration Supabase, l'application fonctionne hors ligne (contre l'IA ou à deux) ; seuls les comptes et
+le jeu en ligne sont indisponibles.
 
 ## Comptes (Supabase)
 
@@ -49,6 +52,18 @@ Pour une compilation EAS, définir les mêmes variables dans l'environnement EAS
    - activer **Allow anonymous sign-ins** pour le mode invité ;
    - mettre la longueur minimale des mots de passe à 8, comme l'application.
 4. Dans *Authentication → URL Configuration*, régler *Site URL* (page ouverte par le lien de confirmation).
+5. Déployer l'Edge Function du jeu en ligne, **depuis la racine du dépôt** (elle importe `src/online/` et
+   `src/game/`, que la CLI embarque en suivant les imports) :
+
+   ```bash
+   supabase functions deploy game-action --project-ref <référence-du-projet>
+   ```
+
+   Elle utilise les variables `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY` que Supabase fournit à toute
+   Edge Function : rien à configurer. Elle vérifie elle-même le jeton de l'utilisateur ; si le projet utilise
+   les nouvelles clés de signature JWT, on peut la déployer avec `--no-verify-jwt`.
+6. La migration `rooms` ajoute les tables `rooms`, `room_players` et `games` à la publication
+   `supabase_realtime` : rien à activer dans le tableau de bord.
 
 ### Ce qui est en place
 
@@ -93,6 +108,86 @@ DATABASE_URL=postgres://postgres@localhost:5432/postgres scripts/check-db.sh
 ```
 
 Le script crée une base temporaire et la supprime à la fin. Ne jamais le lancer sur la base Supabase.
+Il vérifie aussi la migration `rooms` (`supabase/checks/rooms-check.sql`) : lecture réservée aux joueurs
+de la room, aucune écriture directe, salle d'attente, lancement, fin de partie.
+
+## Jeu en ligne
+
+### Parcours
+
+- **Accueil → Jouer en ligne** (`/online`) : il faut être connecté (un compte invité suffit). On y crée une
+  room, on en rejoint une avec son code, et on retrouve ses parties en cours (« Reprendre »).
+- **Salle d'attente** (`/room/[id]`) : code à 6 caractères (sans I, L, O, 0 ni 1) à partager, liste des
+  participants avec leur pseudo, l'hôte et les joueurs déconnectés. L'hôte ajoute ou retire des IA et règle
+  leur niveau, de 2 à 6 participants en tout, puis lance la partie. Si l'hôte quitte la salle, le joueur
+  suivant devient hôte ; une room sans humain est supprimée.
+- **Partie** (même écran une fois lancée) : l'ordre des places donne l'ordre du tour et les couleurs. Chaque
+  joueur ne peut toucher que ses pions pendant son tour ; le coup s'affiche aussitôt puis est confirmé (ou
+  annulé) par le serveur. Les coups des autres arrivent par Realtime et sont animés. Bouton « Abandonner ».
+
+### Qui écrit quoi
+
+Les clients **ne peuvent rien écrire** dans `rooms`, `room_players` ni `games` (aucun droit `insert`,
+`update` ni `delete`, et la RLS ne leur montre que leurs rooms) :
+
+| Action | Passe par | Vérifications |
+| ------ | --------- | ------------- |
+| Créer, rejoindre, quitter une room ; ajouter, régler, retirer une IA ; signe de vie | fonctions SQL `create_room`, `join_room`, `leave_room`, `add_ai`, `set_ai_level`, `remove_ai`, `heartbeat` (`security definer`) | membre, hôte, room en attente, 6 places au plus |
+| Lancer la partie, jouer un coup, faire jouer une IA, déclarer forfait, abandonner | Edge Function `game-action` (clé `service_role`) | voir ci-dessous |
+
+L'Edge Function (`supabase/functions/game-action/index.ts`) authentifie le jeton, puis passe la demande à
+`src/online/server.ts`, indépendant de Supabase (et donc testé avec Jest) :
+
+1. lecture de la room, des participants et de la partie ;
+2. décision de l'arbitre (`src/online/referee.ts`), qui s'appuie sur le moteur `src/game/` : l'utilisateur
+   joue-t-il dans cette partie, n'a-t-il pas abandonné, est-ce son tour, a-t-il vu le dernier coup (numéro
+   `turn`), et surtout `validateMove` du moteur, qui accepte n'importe quel chemin de sauts valide ;
+3. écriture seulement si la version de la partie n'a pas changé depuis la lecture (verrou optimiste) ; sinon
+   la demande est rejouée sur l'état frais (un coup envoyé deux fois est alors refusé).
+
+Pour que Deno (et la CLI Supabase, qui suit les imports pour empaqueter la fonction) puisse lire
+`src/game/` et `src/online/` tels quels, ces deux dossiers importent leurs voisins avec l'extension `.ts`
+(`tsconfig.json` : `allowImportingTsExtensions`) et n'utilisent pas l'alias `@/`.
+
+### IA : côté serveur
+
+Les IA jouent **dans l'Edge Function**, pas chez l'hôte :
+
+- l'hôte n'est pas un point de panne : s'il se déconnecte, les IA continuent de jouer pour les autres ;
+- personne ne peut choisir le coup d'une IA à sa place (un hôte pourrait sinon la faire mal jouer) ;
+- un seul code et un seul chemin d'écriture pour tous les coups, validés de la même façon.
+
+Le calcul reste court : un seul coup d'IA par appel (niveau difficile limité à 600 ms), dans la limite de
+temps de calcul d'une Edge Function. Le coup est demandé par une action `tick` : le premier joueur humain
+connecté (dans l'ordre des places) l'envoie 0,7 s après la fin de l'animation, pour laisser voir le coup
+précédent ; les autres ne l'envoient qu'en secours au bout de 4 s. Le serveur ignore les demandes en
+double grâce au verrou de version.
+
+### Déconnexion, reprise et forfait
+
+- Tant que la room est ouverte, l'application envoie un signe de vie toutes les 10 s (`heartbeat`). Au-delà
+  de 25 s sans signe de vie, le joueur apparaît « déconnecté », avec le temps restant avant forfait.
+- **Reprise** : revenir dans l'application (ou rouvrir la room depuis « Tes parties en cours ») relit la
+  room et la partie, et relance le signe de vie. Si Realtime est coupé, l'application relit la room toutes
+  les 5 s en attendant la reconnexion.
+- **Forfait** après **2 minutes** sans signe de vie (`FORFEIT_AFTER_MS` dans `src/online/constants.ts`) :
+  les autres clients envoient `tick`, et le serveur, qui revérifie le délai lui-même, déclare
+  forfait. Les pions du joueur sont retirés (ils ne bloquent plus la branche d'arrivée d'un autre) et le
+  moteur saute désormais son tour. Abandonner a le même effet, immédiatement.
+- Fin de partie : un joueur qui remplit sa branche gagne ; s'il ne reste qu'un participant, il gagne par
+  forfait ; s'il ne reste que des IA, la partie est arrêtée sans vainqueur.
+
+### Tests
+
+- `src/online/__tests__/` : validation côté serveur. `server.test.ts` passe par `handleGameRequest` (le
+  code de l'Edge Function) avec une base en mémoire : demandes mal formées, coups hors tour, pion adverse,
+  sauts invalides, chemins de sauts non minimaux acceptés, coup rejoué, écritures concurrentes, victoire,
+  IA, forfaits et abandons. `referee.test.ts` et `protocol.test.ts` testent l'arbitre et la lecture des
+  demandes.
+- `src/rooms/__tests__/` : côté application (affichage optimiste et annulation, animation des coups reçus,
+  choix du joueur qui demande le coup de l'IA, appels à Supabase).
+- `scripts/check-db.sh` : RLS et fonctions SQL (voir plus haut).
+- La fonction se vérifie avec Deno : `deno check supabase/functions/game-action/index.ts`.
 
 ## Scripts utiles
 
@@ -107,12 +202,13 @@ Toujours installer les paquets Expo avec `npx expo install <paquet>` pour obteni
 
 ## Organisation
 
-- `src/app/` : routes Expo Router : `index.tsx` (accueil), `ai-setup.tsx` (réglage d'une partie contre l'IA) et `game.tsx` (la partie ; `/game` à deux sur le même appareil, `/game?ai=medium,hard` contre des IA).
+- `src/app/` : routes Expo Router : `index.tsx` (accueil), `ai-setup.tsx` (réglage d'une partie contre l'IA), `game.tsx` (la partie ; `/game` à deux sur le même appareil, `/game?ai=medium,hard` contre des IA), `online.tsx` (créer, rejoindre, reprendre) et `room/[id].tsx` (salle d'attente puis partie en ligne).
 - `src/components/` : composants d'affichage, dont `board/` (plateau SVG, pion animé, calcul de mise en page).
 - `src/hooks/` : état d'interface de la partie (sélection, animation, tour des IA), qui délègue règles et IA à `src/game/`.
 - `src/constants/theme.ts` : couleurs, couleurs pastel des joueurs, typographie, traits, espacements.
 - `src/auth/` et `src/lib/supabase.ts` : comptes (voir « Comptes (Supabase) »).
-- `supabase/migrations/` : schéma SQL ; `supabase/checks/` : vérifications locales des migrations.
+- `src/online/` : jeu en ligne partagé avec l'Edge Function (types, arbitre, traitement des demandes) ; `src/rooms/` : côté application (appels à Supabase, Realtime, état de la partie en ligne) ; `src/components/online/` : salle d'attente et écran de partie.
+- `supabase/migrations/` : schéma SQL ; `supabase/checks/` : vérifications locales des migrations ; `supabase/functions/game-action/` : Edge Function du jeu en ligne.
 - `src/game/` : moteur de règles (voir ci-dessous).
 
 Aucune règle de jeu dans les composants : ils affichent l'état et transmettent les touches.
@@ -198,7 +294,7 @@ minimax classique.
 1. ~~Module de règles : plateau, déplacements, sauts en chaîne, victoire (avec tests).~~ Fait.
 2. ~~Plateau en SVG, partie locale à deux sur le même téléphone.~~ Fait.
 3. ~~IA hors ligne à trois niveaux, de 1 à 5 adversaires.~~ Fait.
-4. Comptes et parties en ligne avec Supabase.
+4. ~~Comptes et parties en ligne avec Supabase.~~ Fait.
 5. Notifications « c'est ton tour », classement, publication sur les stores.
 
 ## Inspiration
