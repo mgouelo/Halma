@@ -67,6 +67,10 @@ export const authStyles = StyleSheet.create({
   center: {
     textAlign: 'center',
   },
+  inlineLink: {
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
   link: {
     ...Typography.body,
     fontWeight: '700',

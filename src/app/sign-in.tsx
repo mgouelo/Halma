@@ -14,7 +14,7 @@ import { playerColor, Typography } from '@/constants/theme';
 import { getSupabase } from '@/lib/supabase';
 
 export default function SignInScreen() {
-  const { configured } = useAuth();
+  const { configured, isGuest } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, FieldError>>({});
@@ -37,6 +37,12 @@ export default function SignInScreen() {
         <NotConfiguredCard />
       ) : (
         <>
+          {isGuest && (
+            <Notice tone="info">
+              Tu joues en invité : te connecter à un autre compte fera perdre ce compte invité. Pour le garder,{' '}
+              <Link href="/upgrade" style={authStyles.inlineLink}>crée plutôt ton compte</Link>.
+            </Notice>
+          )}
           <DrawnCard contentStyle={authStyles.card}>
             <DrawnTextInput
               label="E-mail"

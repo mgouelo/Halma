@@ -4,7 +4,11 @@
 --   le pseudo vient des métadonnées d'inscription (`options.data.pseudo`), ou
 --   « invite-xxxxxx » pour une connexion invité.
 -- - Pseudo unique sans tenir compte de la casse, 3 à 20 caractères parmi
---   lettres non accentuées, chiffres, « _ » et « - ».
+--   lettres (accents compris, tous alphabets), chiffres, « _ » et « - ».
+--   Les comparaisons utilisent la collation ICU « und-x-icu » : avec la
+--   collation « C » par défaut, lower('É') reste 'É' et [[:alpha:]] refuse 'é'.
+--   Le pseudo est stocké normalisé en NFC, pour qu'un « é » précomposé et un
+--   « e » suivi d'un accent combinant ne donnent pas deux pseudos identiques à l'œil.
 -- - Row Level Security : tout utilisateur connecté (invités compris) peut lire
 --   les profils ; chacun ne peut modifier que son pseudo et son avatar.
 
@@ -14,12 +18,13 @@ create table public.profiles (
   -- Avatar Humation (identifiant ou configuration sérialisée), défini à l'étape 6.
   avatar text,
   created_at timestamptz not null default now(),
-  constraint profiles_pseudo_format check (pseudo ~ '^[A-Za-z0-9_-]{3,20}$')
+  constraint profiles_pseudo_format check ((pseudo collate "und-x-icu") ~ '^[[:alpha:][:digit:]_-]{3,20}$'),
+  constraint profiles_pseudo_nfc check (pseudo is nfc normalized)
 );
 
 comment on table public.profiles is 'Profil public de chaque joueur (pseudo, avatar).';
 
-create unique index profiles_pseudo_unique on public.profiles (lower(pseudo));
+create unique index profiles_pseudo_unique on public.profiles (lower(pseudo collate "und-x-icu"));
 
 -- Row Level Security ------------------------------------------------------
 
@@ -55,7 +60,8 @@ security definer
 set search_path = ''
 as $$
   select not exists (
-    select 1 from public.profiles where lower(pseudo) = lower(candidate)
+    select 1 from public.profiles
+    where lower(pseudo collate "und-x-icu") = lower(normalize(btrim(candidate), nfc) collate "und-x-icu")
   );
 $$;
 
@@ -71,7 +77,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  wanted text := new.raw_user_meta_data ->> 'pseudo';
+  wanted text := normalize(btrim(new.raw_user_meta_data ->> 'pseudo'), nfc);
   candidate text;
 begin
   if wanted is not null and wanted <> '' then
@@ -82,7 +88,7 @@ begin
     -- Invité (ou inscription sans pseudo) : pseudo généré, unique.
     loop
       candidate := 'invite-' || substr(md5(random()::text || clock_timestamp()::text), 1, 6);
-      exit when not exists (select 1 from public.profiles where lower(pseudo) = candidate);
+      exit when public.is_pseudo_available(candidate);
     end loop;
   end if;
 

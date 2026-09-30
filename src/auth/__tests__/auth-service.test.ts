@@ -1,7 +1,15 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import { AuthApiError, AuthRetryableFetchError, type SupabaseClient } from '@supabase/supabase-js';
 
-import { fetchProfile, signInAsGuest, signInWithEmail, signOut, signUpWithEmail } from '../auth-service';
+import {
+  fetchProfile,
+  refreshAccount,
+  signInAsGuest,
+  signInWithEmail,
+  signOut,
+  signUpWithEmail,
+  upgradeGuest,
+} from '../auth-service';
 import {
   AuthFailure,
   describeAuthError,
@@ -20,8 +28,11 @@ function fakeClient(overrides: Partial<Record<string, Result>> = {}) {
     jest.fn(async (..._args: unknown[]) => overrides[name] ?? fallback);
   const query = {
     select: jest.fn(() => query),
-    eq: jest.fn(() => query),
+    update: jest.fn((_values: unknown) => query),
+    eq: jest.fn((_column: string, _value: unknown) => query),
     maybeSingle: respond('maybeSingle', ok({ id: 'u1', pseudo: 'Alice', avatar: null, created_at: '2026-09-30' })),
+    // `await client.from(...).update(...).eq(...)` : la requête elle-même est « thenable ».
+    then: (resolve: (r: Result) => unknown) => resolve(overrides.update ?? { data: null, error: null }),
   };
   const client = {
     rpc: respond('rpc', ok(true)),
@@ -31,6 +42,8 @@ function fakeClient(overrides: Partial<Record<string, Result>> = {}) {
       signInWithPassword: respond('signInWithPassword', ok({})),
       signInAnonymously: respond('signInAnonymously', ok({})),
       signOut: respond('signOut', { data: null, error: null }),
+      updateUser: respond('updateUser', ok({ user: { id: 'u1', is_anonymous: false, email: 'a@b.fr' } })),
+      refreshSession: respond('refreshSession', ok({ session: {}, user: { id: 'u1', is_anonymous: false } })),
     },
   };
   return { client, query, asSupabase: client as unknown as SupabaseClient };
@@ -48,6 +61,12 @@ describe('signUpWithEmail', () => {
       password: 'motdepasse',
       options: { data: { pseudo: 'Alice' } },
     });
+  });
+
+  it('envoie le pseudo normalisé en NFC', async () => {
+    const { client, asSupabase } = fakeClient();
+    await signUpWithEmail(asSupabase, { ...fields, pseudo: 'Zoe\u0308' });
+    expect(client.rpc).toHaveBeenCalledWith('is_pseudo_available', { candidate: 'Zoë' });
   });
 
   it('signale quand l’e-mail doit être confirmé (pas de session)', async () => {
@@ -91,6 +110,50 @@ describe('connexion, invité, déconnexion', () => {
     const { client, asSupabase } = fakeClient();
     await signOut(asSupabase);
     expect(client.auth.signOut).toHaveBeenCalled();
+  });
+});
+
+describe('upgradeGuest', () => {
+  const fields = { pseudo: ' Élodie ', email: ' elodie@example.com ', password: 'motdepasse' };
+
+  it('change le pseudo du profil, puis ajoute e-mail et mot de passe au même compte', async () => {
+    const { client, query, asSupabase } = fakeClient();
+    await expect(upgradeGuest(asSupabase, 'u1', fields)).resolves.toEqual({ needsEmailConfirmation: false });
+    expect(client.from).toHaveBeenCalledWith('profiles');
+    expect(query.update).toHaveBeenCalledWith({ pseudo: 'Élodie' });
+    expect(query.eq).toHaveBeenCalledWith('id', 'u1');
+    expect(client.auth.updateUser).toHaveBeenCalledWith({ email: 'elodie@example.com', password: 'motdepasse' });
+    expect(client.rpc).not.toHaveBeenCalled(); // l'index unique tranche, pas de vérification préalable
+  });
+
+  it('signale une confirmation d’e-mail en attente (compte encore invité)', async () => {
+    const { asSupabase } = fakeClient({
+      updateUser: ok({ user: { id: 'u1', is_anonymous: true, email: '', new_email: 'elodie@example.com' } }),
+    });
+    await expect(upgradeGuest(asSupabase, 'u1', fields)).resolves.toEqual({ needsEmailConfirmation: true });
+  });
+
+  it('traduit un pseudo déjà pris (violation d’unicité) sans toucher à l’e-mail', async () => {
+    const { client, asSupabase } = fakeClient({
+      update: { data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint' } },
+    });
+    await expect(upgradeGuest(asSupabase, 'u1', fields)).rejects.toMatchObject({ code: 'pseudo_taken' });
+    expect(client.auth.updateUser).not.toHaveBeenCalled();
+  });
+
+  it('remonte un e-mail déjà utilisé', async () => {
+    const error = new AuthApiError('A user with this email address has already been registered', 422, 'email_exists');
+    const { asSupabase } = fakeClient({ updateUser: { data: { user: null }, error } });
+    await expect(upgradeGuest(asSupabase, 'u1', fields)).rejects.toBe(error);
+    expect(describeAuthError(error)).toBe('Un compte existe déjà avec cette adresse e-mail.');
+  });
+});
+
+describe('refreshAccount', () => {
+  it('indique si le compte est toujours invité', async () => {
+    await expect(refreshAccount(fakeClient().asSupabase)).resolves.toBe(false);
+    const stillGuest = fakeClient({ refreshSession: ok({ session: {}, user: { id: 'u1', is_anonymous: true } }) });
+    await expect(refreshAccount(stillGuest.asSupabase)).resolves.toBe(true);
   });
 });
 
