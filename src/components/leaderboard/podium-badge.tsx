@@ -1,6 +1,6 @@
 import Svg, { Circle, Rect, Text as SvgText } from 'react-native-svg';
 
-import { Colors, playerColor, Stroke, Typography } from '@/constants/theme';
+import { Colors, Fonts, playerColor, Stroke } from '@/constants/theme';
 
 /** Marches du podium, de gauche à droite : 2e, 1er, 3e (boîte 42 × 36). */
 const STEPS = [
@@ -40,8 +40,7 @@ export function PodiumBadge({ place, size = 42 }: { place: 1 | 2 | 3; size?: num
         x={cx}
         y={top + Math.min(step.height - 2, 12)}
         fontSize={9}
-        fontWeight="900"
-        fontFamily={Typography.heading.fontFamily}
+        fontFamily={Fonts.bold}
         fill={Colors.ink}
         textAnchor="middle">
         {place}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { Colors, PlayerColors, TouchTarget } from '../theme';
+import { FONT_FILES } from '../fonts';
+import { Colors, FontFaces, Fonts, PlayerColors, TouchTarget, Typography } from '../theme';
 
 /** Rapport de contraste WCAG 2 entre deux couleurs « #RRGGBB ». */
 function contrast(a: string, b: string): number {
@@ -34,5 +35,27 @@ describe('contrastes (WCAG AA : 4,5 pour le texte)', () => {
 
   it('les zones touchables font au moins 44 points', () => {
     expect(TouchTarget).toBeGreaterThanOrEqual(44);
+  });
+});
+
+describe('police', () => {
+  it('une seule famille, trois graisses au plus, toutes chargées', () => {
+    const faces = Object.values(FontFaces);
+    expect(faces.length).toBeLessThanOrEqual(3);
+    expect(faces.every((face) => face.startsWith('Fredoka_'))).toBe(true);
+    expect(Object.keys(FONT_FILES).sort()).toEqual([...faces].sort());
+  });
+
+  it('chaque style de texte utilise une graisse du thème, sans fontWeight (pas de faux gras)', () => {
+    const families = Object.values(Fonts) as string[];
+    for (const style of Object.values(Typography)) {
+      expect(families).toContain(style.fontFamily);
+      expect(style).not.toHaveProperty('fontWeight');
+    }
+  });
+
+  it('garde des tailles lisibles', () => {
+    expect(Typography.caption.fontSize).toBeGreaterThanOrEqual(13);
+    expect(Typography.body.fontSize).toBeGreaterThanOrEqual(16);
   });
 });

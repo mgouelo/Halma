@@ -1,11 +1,11 @@
 // Messages d'erreur en français pour les échecs d'authentification.
 
-import { isAuthError, isAuthRetryableFetchError } from '@supabase/supabase-js';
+import { FunctionsFetchError, isAuthError, isAuthRetryableFetchError } from '@supabase/supabase-js';
 
 /** Échec connu côté application (avant même d'appeler Supabase). */
 export class AuthFailure extends Error {
   constructor(
-    readonly code: 'pseudo_taken' | 'not_configured' | 'profile_missing' | 'not_confirmed',
+    readonly code: 'pseudo_taken' | 'not_configured' | 'profile_missing' | 'not_confirmed' | 'delete_failed',
     message: string,
   ) {
     super(message);
@@ -44,6 +44,7 @@ export function describeAuthError(error: unknown): string {
     return SERVER_ERROR;
   }
   if (isAuthError(error) && error.code && MESSAGES[error.code]) return MESSAGES[error.code];
+  if (error instanceof FunctionsFetchError) return NETWORK_ERROR;
   if (error instanceof TypeError && /fetch|network/i.test(error.message)) return NETWORK_ERROR;
   return GENERIC_ERROR;
 }

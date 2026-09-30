@@ -164,7 +164,18 @@ export function resign(game: OnlineGame, participants: readonly Participant[], u
   return { ok: true, game: forfeitPlayers(game, participants, [seat.player]) };
 }
 
-/** Joueurs humains encore en jeu sans signe de vie depuis plus de `forfeitAfterMs`. */
+/**
+ * Participant dont le compte a été supprimé : sa place reste (l'ordre du tour
+ * et les couleurs ne changent pas) mais il n'est plus ni humain ni IA.
+ */
+export function isDeparted(participant: Participant): boolean {
+  return participant.userId === null && participant.aiLevel === null;
+}
+
+/**
+ * Joueurs à déclarer forfait : humains encore en jeu sans signe de vie depuis
+ * plus de `forfeitAfterMs`, et, tout de suite, ceux dont le compte a été supprimé.
+ */
 export function stalePlayers(
   game: OnlineGame,
   participants: readonly Participant[],
@@ -175,10 +186,9 @@ export function stalePlayers(
   return participants
     .filter(
       (p) =>
-        p.userId !== null &&
         p.playerIndex !== null &&
         !game.forfeited.includes(p.playerIndex) &&
-        now - parseTimestamp(p.lastSeenAt) > forfeitAfterMs,
+        (isDeparted(p) || (p.userId !== null && now - parseTimestamp(p.lastSeenAt) > forfeitAfterMs)),
     )
     .map((p) => p.playerIndex as PlayerId);
 }

@@ -85,4 +85,6 @@ export type OnlineErrorCode =
   | 'stale_turn'
   | 'illegal_move'
   | 'conflict'
+  | 'too_many_attempts'
+  | 'too_many_rooms'
   | 'server_error';

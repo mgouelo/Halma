@@ -57,3 +57,10 @@ describe('planTicks', () => {
     expect(planTicks(game, players, 'alice', NOW).checkForfeits).toBe(false);
   });
 });
+
+describe('compte supprimé en pleine partie', () => {
+  it('demande au serveur de le déclarer forfait', () => {
+    const participants = [person(0, 'alice'), { ...person(1, 'bob'), userId: null }];
+    expect(planTicks(stored(participants), participants, 'alice', NOW).checkForfeits).toBe(true);
+  });
+});

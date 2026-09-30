@@ -68,6 +68,15 @@ Pour une compilation EAS, définir les mêmes variables dans l'environnement EAS
    `supabase_realtime` : rien à activer dans le tableau de bord.
 7. Après une nouvelle migration qui touche au jeu en ligne (par exemple `player_stats`), **redéployer
    `game-action`** avec la même commande : la fonction et la base doivent aller ensemble.
+8. Déployer l'Edge Function de suppression de compte, elle aussi depuis la racine du dépôt :
+
+   ```bash
+   supabase functions deploy delete-account --project-ref <référence-du-projet>
+   ```
+
+9. Vérifier le nettoyage automatique des rooms abandonnées (voir « Production » plus bas) : la migration
+   `cleanup_abandoned_rooms` le planifie avec pg_cron si l'extension est disponible.
+10. Activer les protections contre les abus de la connexion invité (voir « Limites d'abus »).
 
 ### Ce qui est en place
 
@@ -116,7 +125,9 @@ Il vérifie aussi la migration `rooms` (`supabase/checks/rooms-check.sql`) : lec
 de la room, aucune écriture directe, salle d'attente, lancement, fin de partie ; et la migration
 `player_stats` (`supabase/checks/stats-check.sql`) : aucune écriture par les clients, parties lancées,
 victoires (niveau de l'IA la plus forte, idempotence, forfaits et abandons exclus), séries de connexion,
-classements (cinq, sans les parties lancées ; départage, top 50, ligne du joueur).
+classements (cinq, sans les parties lancées ; départage, top 50, ligne du joueur) ; enfin
+`supabase/checks/account-check.sql` : suppression de compte (hôte en pleine partie, salles d'attente,
+statistiques et classements), limites d'essais de codes et de rooms, nettoyage des rooms abandonnées.
 
 ## Jeu en ligne
 
@@ -329,6 +340,15 @@ des 86 morceaux par le parseur XML de `react-native-svg`, celui qu'utilise `SvgX
 
 ## Interface : conventions
 
+- **Police** : [Fredoka](https://github.com/hafontia/Fredoka-One) (SIL Open Font License 1.1), ronde et ludique
+  comme les avatars, lisible en petit avec tous les accents. Trois graisses (400, 600, 700), environ 50 Ko
+  chacune, chargées avec `expo-font` depuis `@expo-google-fonts/fredoka` (une importation par graisse, pour ne pas
+  embarquer les cinq). L'écran de démarrage reste affiché jusqu'au chargement ; en cas d'échec ou au-delà de
+  4 s, l'application s'affiche avec la police système (`src/hooks/use-app-fonts.ts`). Chaque graisse est une
+  famille à part : on change de graisse avec `Fonts.bold` et non `fontWeight` (le web inventerait un faux
+  gras). Candidats écartés : Baloo 2 (420 Ko par graisse, interligne très haut) et Nunito (très lisible mais
+  moins ludique).
+
 - **DA** : noir et blanc, trait noir épais, ombres franches décalées ; seuls les pions (et les avatars) sont
   en couleurs pastel. Toutes les couleurs, tailles et durées viennent de `src/constants/theme.ts`.
 - **Boutons** (`DrawnButton`) : `busy` pendant une action (roue d'attente, pas de double envoi) et
@@ -336,7 +356,9 @@ des 86 morceaux par le parseur XML de `react-native-svg`, celui qu'utilise `SvgX
   contraste). Au survol de la souris, le bouton se soulève un peu.
 - **Chargement et erreurs** : `LoadingState` (trois pions qui sautent) et `ErrorState` (message et
   « Réessayer ») dans `src/components/state-view.tsx`, utilisés par les écrans qui lisent le serveur
-  (profil, avatar, jeu en ligne, room). Un profil illisible (réseau) se réessaie depuis l'accueil.
+  (profil, avatar, jeu en ligne, room, classements). Un profil illisible (réseau) se réessaie depuis l'accueil.
+- **Erreur inattendue** : `src/app/_layout.tsx` exporte un `ErrorBoundary` (écran « Oups, un pion est tombé »,
+  `src/components/error-screen.tsx`) avec « Réessayer » et « Retour à l'accueil » : jamais d'écran blanc.
 - **Animations** (Reanimated) : fondu et zoom de l'écran de fin, fondu des messages, arrivée et départ des
   joueurs dans la salle d'attente, changement de tour, pion animé le long de son chemin. Toutes suivent le
   réglage « Réduire les animations » du système (le pion arrive alors directement).
@@ -405,6 +427,99 @@ Icône, icône adaptative Android (premier plan, fond blanc, version monochrome 
 l'étoile au trait noir avec trois pions pastel dans chaque branche, dessinée plus simplement que le plateau
 pour rester lisible à 48 pixels.
 
+## Production
+
+Checklist de publication complète : [`docs/PUBLICATION.md`](docs/PUBLICATION.md).
+
+### Suppression de compte
+
+Obligatoire sur l'App Store et Google Play : **Profil → Compte → Supprimer mon compte**, avec une confirmation
+qui détaille ce qui sera perdu. L'application appelle l'Edge Function `delete-account`
+(`supabase/functions/delete-account/`, logique dans `src/online/account.ts`), qui ne lit que le jeton : on ne
+peut supprimer que son propre compte.
+
+1. Le joueur abandonne chacune de ses parties en cours (comme avec « Abandonner »).
+2. Le compte est supprimé avec la clé `service_role` (`auth.admin.deleteUser`) ; si un abandon échoue (base
+   indisponible), rien n'est supprimé et le joueur peut réessayer.
+3. La base fait le reste (trigger `before delete` sur `profiles`, migration `account_deletion_and_limits`), même
+   pour une suppression faite depuis le tableau de bord Supabase :
+
+| Donnée | Ce qui se passe |
+| ------ | --------------- |
+| Profil, avatar, e-mail | supprimés |
+| `player_stats`, `stats_wins` | supprimés : le joueur disparaît des classements |
+| Salle d'attente | le joueur la quitte ; s'il était hôte, l'hôte passe au joueur humain suivant ; sans autre humain, la room est supprimée |
+| Partie en cours ou finie | sa place reste (ordre du tour, couleurs) avec « Compte supprimé » (`user_id` null) ; il est forfait (l'arbitre déclare aussi forfait une telle place au prochain `tick`) ; l'hôte passe au joueur humain suivant, ou la room est supprimée s'il n'en reste aucun |
+| Victoires des autres | inchangées ; une partie gagnée par un compte supprimé ne compte pour personne |
+
+### Pages légales
+
+`/privacy` (politique de confidentialité) et `/terms` (conditions d'utilisation), accessibles depuis le profil
+(connecté ou non) et depuis la page des crédits (lien « Crédits » à côté du titre de l'accueil). **Ce sont des brouillons à faire relire** : un bandeau le signale, et les coordonnées de l'éditeur,
+la région Supabase, la base légale, l'âge minimum, etc. sont des champs `[À COMPLÉTER : …]`
+(`src/legal/privacy.ts`, `src/legal/terms.ts`). Un test vérifie qu'aucune coordonnée n'y est inventée.
+
+### Crédits et licences
+
+`/credits`, depuis l'accueil (lien « Crédits » à côté du titre) et le profil : Humation (projet, auteurs, dépôt, texte complet de la licence MIT
+avec son avis de copyright : la licence exige de les joindre aux copies, et les illustrations sont embarquées),
+la police Fredoka (licence SIL OFL 1.1 et son avis de copyright) et les principales bibliothèques. Les données
+viennent de `src/credits/licenses.json`, généré depuis `node_modules` :
+
+```bash
+npm run licenses              # régénère le fichier (après une mise à jour des dépendances)
+npm run licenses -- --check   # échoue s'il n'est plus à jour (aussi vérifié par npm test)
+```
+
+### Nettoyage des rooms abandonnées
+
+`cleanup_abandoned_rooms()` (migration `cleanup_abandoned_rooms`) supprime les salles d'attente sans signe de vie
+d'un humain depuis 1 jour, les parties en cours sans signe de vie depuis 7 jours et les rooms finies depuis
+30 jours (les statistiques déjà comptées restent). La migration la planifie toutes les heures avec **pg_cron**
+(tâche `halma-cleanup-abandoned-rooms`, à la minute 17). Si l'extension n'était pas disponible (message
+« pg_cron indisponible » à l'exécution), l'activer dans *Integrations → Cron* du tableau de bord, puis :
+
+```sql
+select cron.schedule('halma-cleanup-abandoned-rooms', '17 * * * *', 'select public.cleanup_abandoned_rooms()');
+select * from cron.job;                                            -- vérifier
+select * from cron.job_run_details order by start_time desc limit 5; -- dernières exécutions
+```
+
+### Limites d'abus
+
+Ce que fait le code :
+
+- 10 codes de room inconnus au plus par joueur en 10 minutes (`join_room`, table `room_join_failures`),
+  puis « Trop de codes essayés » ;
+- 5 salles d'attente au plus par joueur (`create_room`), puis « Tu as déjà trop de rooms en attente » ;
+- toutes les écritures passent par des fonctions SQL ou des Edge Functions qui vérifient chaque demande.
+
+À régler dans le tableau de bord Supabase (rien dans le dépôt ; les noms de menus peuvent changer) :
+
+- **Limites de débit** : *Authentication → Rate Limits* ; baisser en particulier *Anonymous sign-ins* (connexions
+  invité par heure et par adresse IP), et garder des valeurs basses pour les connexions et inscriptions.
+- **Captcha** : *Authentication → Attack Protection → Enable Captcha protection* (hCaptcha ou Cloudflare
+  Turnstile). Attention : une fois activé, Supabase exige un jeton de captcha pour l'inscription, la connexion
+  et la connexion invité ; il faut alors ajouter le widget dans l'application (`options.captchaToken` de
+  `signUp`, `signInWithPassword` et `signInAnonymously`), ce qui n'est pas encore fait.
+
+Les classements restent sans garde-fou (choix assumé, voir « Statistiques et classements »).
+
+### Dépendances
+
+- Retirées car inutilisées : `@expo/ui`, `expo-device`, `expo-glass-effect`, `expo-image`, `expo-symbols`,
+  `expo-web-browser`. `depcheck` signale encore `expo-dev-client` (builds de développement),
+  `expo-system-ui` (applique `userInterfaceStyle` sur Android), `react-native-worklets` (requis par Reanimated)
+  et `typescript` : ils servent, mais sans `import`.
+- `npm audit` : 14 alertes « modérées », toutes issues de deux paquets tirés par le SDK Expo : `uuid` < 11.1.1
+  (par `xcode`, outil de compilation, jamais embarqué dans l'application) et `decode-uri-component` 0.2.2 (par
+  `query-string`, utilisé par expo-router pour lire les liens ; risque : un lien malformé très long pourrait
+  ralentir l'application). La version corrigée (0.5.0) n'existe qu'en ESM et ne peut pas remplacer celle
+  qu'attend `query-string` 7 ; `npm audit fix --force` installerait des versions d'Expo incompatibles. À
+  revoir à la prochaine mise à jour du SDK.
+- Android : `app.json` bloque les permissions ajoutées par défaut et inutiles (stockage, superposition, vibreur) ;
+  la version de production ne demande plus qu'`INTERNET`.
+
 ## Scripts utiles
 
 ```bash
@@ -412,22 +527,25 @@ npm test             # tests unitaires (Jest via jest-expo)
 npx expo lint        # lint
 npx tsc --noEmit     # vérification des types
 npx expo-doctor      # diagnostic des dépendances
+npm run licenses     # régénère src/credits/licenses.json (page Crédits)
 ```
 
 Toujours installer les paquets Expo avec `npx expo install <paquet>` pour obtenir des versions compatibles.
 
 ## Organisation
 
-- `src/app/` : routes Expo Router. Avec la barre de navigation, dans `(main)/` : `index.tsx` (accueil), `ai-setup.tsx` (réglage d'une partie contre l'IA), `online.tsx` (créer, rejoindre, reprendre), `profile.tsx`, `avatar.tsx` et `leaderboard.tsx` (classements). Sans la barre : `game.tsx` (la partie ; `/game` à deux sur le même appareil, `/game?ai=medium,hard` contre des IA), `room/[id].tsx` (salle d'attente puis partie en ligne), `sign-in.tsx`, `sign-up.tsx`, `upgrade.tsx`.
+- `src/app/` : routes Expo Router. Avec la barre de navigation, dans `(main)/` : `index.tsx` (accueil), `ai-setup.tsx` (réglage d'une partie contre l'IA), `online.tsx` (créer, rejoindre, reprendre), `profile.tsx`, `avatar.tsx`, `leaderboard.tsx` (classements), `credits.tsx`, `privacy.tsx` et `terms.tsx`. Sans la barre : `game.tsx` (la partie ; `/game` à deux sur le même appareil, `/game?ai=medium,hard` contre des IA), `room/[id].tsx` (salle d'attente puis partie en ligne), `sign-in.tsx`, `sign-up.tsx`, `upgrade.tsx`.
 - `src/navigation/` : logique de la barre de navigation ; `src/components/nav-bar/` : la barre et ses icônes.
 - `src/stats/` : statistiques, classements et séries de connexion (voir « Statistiques et classements »).
+- `src/credits/` : données de la page Crédits (générées par `scripts/generate-licenses.mjs`) ; `src/legal/` : textes
+  de la politique de confidentialité et des conditions d'utilisation (brouillons).
 - `src/components/` : composants d'affichage, dont `board/` (plateau SVG, pion animé, calcul de mise en page), `game-layout.tsx` (mise en page des parties, téléphone et grand écran) et `state-view.tsx` (chargement, erreurs).
 - `src/hooks/` : état d'interface de la partie (sélection, animation, tour des IA), qui délègue règles et IA à `src/game/`.
-- `src/constants/theme.ts` : couleurs, couleurs pastel des joueurs, typographie, traits, espacements.
+- `src/constants/theme.ts` : couleurs, couleurs pastel des joueurs, police et typographie, traits, espacements ; `src/constants/fonts.ts` : fichiers de la police.
 - `src/auth/` et `src/lib/supabase.ts` : comptes (voir « Comptes (Supabase) »).
-- `src/avatar/` : avatars Humation (configuration, rendu SVG, libellés) ; `src/components/avatar.tsx` : composant `<Avatar />` ; `src/app/profile.tsx` et `src/app/avatar.tsx` : profil et éditeur.
-- `src/online/` : jeu en ligne partagé avec l'Edge Function (types, arbitre, traitement des demandes) ; `src/rooms/` : côté application (appels à Supabase, Realtime, état de la partie en ligne) ; `src/components/online/` : salle d'attente et écran de partie.
-- `supabase/migrations/` : schéma SQL ; `supabase/checks/` : vérifications locales des migrations ; `supabase/functions/game-action/` : Edge Function du jeu en ligne.
+- `src/avatar/` : avatars Humation (configuration, rendu SVG, libellés) ; `src/components/avatar.tsx` : composant `<Avatar />` ; `src/app/(main)/profile.tsx` et `src/app/(main)/avatar.tsx` : profil et éditeur.
+- `src/online/` : jeu en ligne partagé avec les Edge Functions (types, arbitre, traitement des demandes, suppression de compte) ; `src/rooms/` : côté application (appels à Supabase, Realtime, état de la partie en ligne) ; `src/components/online/` : salle d'attente et écran de partie.
+- `supabase/migrations/` : schéma SQL ; `supabase/checks/` : vérifications locales des migrations ; `supabase/functions/game-action/` : Edge Function du jeu en ligne ; `supabase/functions/delete-account/` : suppression de compte.
 - `src/game/` : moteur de règles (voir ci-dessous).
 
 Aucune règle de jeu dans les composants : ils affichent l'état et transmettent les touches.
@@ -516,7 +634,9 @@ minimax classique.
 4. ~~Comptes et parties en ligne avec Supabase.~~ Fait.
 5. ~~Finitions de l'interface, EAS Build.~~ Fait.
 6. ~~Barre de navigation, statistiques et cinq classements (comptés côté serveur).~~ Fait.
-7. Notifications « c'est ton tour », amis, publication sur les stores.
+7. ~~Préparation à la production : police, crédits, suppression de compte, pages légales (brouillons),
+   nettoyage des rooms, limites d'abus.~~ Fait.
+8. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », amis.
 
 ## Inspiration
 

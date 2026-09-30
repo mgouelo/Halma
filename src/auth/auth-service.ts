@@ -1,7 +1,7 @@
 // Opérations d'authentification et de profil, au-dessus d'un client Supabase
 // passé en paramètre (le vrai en production, un faux dans les tests).
 
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js';
 
 import { AuthFailure } from './errors';
 import { normalizePseudo, type SignInFields, type SignUpFields } from './validation';
@@ -104,4 +104,23 @@ export async function fetchProfile(client: SupabaseClient, userId: string): Prom
 export async function updateAvatar(client: SupabaseClient, userId: string, avatar: string | null): Promise<void> {
   const { error } = await client.from('profiles').update({ avatar }).eq('id', userId);
   if (error) throw error;
+}
+
+/**
+ * Supprime définitivement le compte connecté (Edge Function `delete-account`) :
+ * profil, avatar, statistiques et classements ; le joueur abandonne ses
+ * parties en cours. Puis oublie la session sur l'appareil.
+ */
+export async function deleteMyAccount(client: SupabaseClient): Promise<void> {
+  const { error } = await client.functions.invoke('delete-account', { method: 'POST' });
+  if (error) {
+    // Refus du serveur : le corps de la réponse porte un message en français.
+    if (error instanceof FunctionsHttpError) {
+      const body = await (error.context as Response).json().catch(() => null);
+      if (typeof body?.message === 'string') throw new AuthFailure('delete_failed', body.message);
+    }
+    throw error;
+  }
+  // Le compte n'existe plus : le jeton enregistré ne sert plus à rien.
+  await client.auth.signOut({ scope: 'local' }).catch(() => {});
 }

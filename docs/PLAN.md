@@ -131,6 +131,17 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
   journalier) : choix assumé pour cette version.
 - Les parties locales ne comptent pas (non vérifiables par le serveur).
 
+## Étape 9 : préparation à la mise en production (fait)
+
+- Police Fredoka (SIL OFL), trois graisses, chargée par `expo-font` avec écran de démarrage et secours système.
+- Page `/credits` (Humation et sa licence MIT complète, police, bibliothèques ; `npm run licenses`).
+- Suppression de compte dans l'application (Edge Function `delete-account`, trigger de préparation, place
+  « Compte supprimé » dans les parties lancées).
+- Pages `/privacy` et `/terms` : brouillons à faire relire, champs à compléter.
+- Nettoyage des rooms abandonnées (pg_cron), limites d'essais de codes et de rooms en attente.
+- Dépendances inutilisées retirées, permissions Android inutiles bloquées, `ErrorBoundary` globale.
+- Checklist de publication : `docs/PUBLICATION.md`.
+
 ## Plus tard : amis
 
 - Table `friendships` (demande, acceptation), liste d'amis, invitation directe dans une room.

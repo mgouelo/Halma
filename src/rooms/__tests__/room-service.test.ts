@@ -64,6 +64,17 @@ describe('codes de room', () => {
     expect(error).toMatchObject({ code: 'room_full' });
     expect(describeOnlineError(error)).toMatch(/complète/);
   });
+
+  it('traite un code inconnu (null renvoyé par la base) comme « aucune room »', async () => {
+    const { asSupabase } = fakeClient({ rpc: { data: null, error: null } });
+    await expect(joinRoom(asSupabase, 'K7QM3X')).rejects.toMatchObject({ code: 'room_not_found' });
+  });
+
+  it('explique la limite d’essais de codes', async () => {
+    const { asSupabase } = fakeClient({ rpc: { data: null, error: { message: 'too_many_attempts', code: 'P0001' } } });
+    const error = await joinRoom(asSupabase, 'K7QM3X').catch((e: unknown) => e);
+    expect(describeOnlineError(error)).toMatch(/Trop de codes/);
+  });
 });
 
 describe('gameAction', () => {

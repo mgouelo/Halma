@@ -18,6 +18,8 @@ export const ONLINE_ERROR_MESSAGES: Record<OnlineErrorCode, string> = {
   stale_turn: 'La partie a avancé entre-temps.',
   illegal_move: 'Coup refusé.',
   conflict: 'La partie a changé en même temps. Réessaie.',
+  too_many_attempts: 'Trop de codes essayés. Attends quelques minutes avant de réessayer.',
+  too_many_rooms: 'Tu as déjà trop de rooms en attente. Lance-les ou quitte-les avant d’en créer une autre.',
   server_error: 'Le serveur rencontre un problème. Réessaie dans un moment.',
 };
 
@@ -37,6 +39,8 @@ export const ONLINE_ERROR_STATUS: Record<OnlineErrorCode, number> = {
   stale_turn: 409,
   illegal_move: 422,
   conflict: 409,
+  too_many_attempts: 429,
+  too_many_rooms: 429,
   server_error: 500,
 };
 

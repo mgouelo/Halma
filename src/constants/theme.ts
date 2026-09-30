@@ -51,26 +51,39 @@ export const AvatarPalettes = {
   background: ['F6F5F4', 'FFFFFF', ...PlayerColors.map((c) => hex(c.tint))],
 } as const;
 
-const displayFamily = Platform.select({
-  ios: 'ui-rounded',
-  web: 'ui-rounded, "SF Pro Rounded", "Nunito", "Hiragino Maru Gothic ProN", system-ui, sans-serif',
-  default: 'sans-serif',
-});
+/**
+ * Police de l'application : Fredoka (SIL Open Font License), ronde et
+ * ludique comme les avatars, lisible en petit avec tous les accents.
+ * Trois graisses seulement, chacune chargée comme une famille à part
+ * (src/constants/fonts.ts) : on change de graisse en changeant de famille,
+ * jamais avec `fontWeight` (le web inventerait un faux gras).
+ */
+export const FontFaces = {
+  regular: 'Fredoka_400Regular',
+  semibold: 'Fredoka_600SemiBold',
+  bold: 'Fredoka_700Bold',
+} as const;
 
-const textFamily = Platform.select({
-  ios: 'system-ui',
-  web: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-  default: 'sans-serif',
-});
+/** Polices système de secours, si Fredoka n'a pas pu être chargée (web ; sur mobile, le système s'en charge). */
+const FALLBACK = 'ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+const family = (face: string) => (Platform.OS === 'web' ? `${face}, ${FALLBACK}` : face);
+
+/** Familles à utiliser dans les styles (`fontFamily`), avec leur secours sur le web. */
+export const Fonts = {
+  regular: family(FontFaces.regular),
+  semibold: family(FontFaces.semibold),
+  bold: family(FontFaces.bold),
+} as const;
 
 /** Styles de texte prêts à l'emploi. */
 export const Typography = {
-  display: { fontFamily: displayFamily, fontSize: 48, fontWeight: '900', color: Colors.ink, letterSpacing: -1 },
-  title: { fontFamily: displayFamily, fontSize: 26, fontWeight: '900', color: Colors.ink },
-  heading: { fontFamily: displayFamily, fontSize: 18, fontWeight: '800', color: Colors.ink },
-  body: { fontFamily: textFamily, fontSize: 16, fontWeight: '400', color: Colors.ink },
-  caption: { fontFamily: textFamily, fontSize: 13, fontWeight: '500', color: Colors.inkSoft },
-  button: { fontFamily: displayFamily, fontSize: 18, fontWeight: '800', color: Colors.ink },
+  display: { fontFamily: Fonts.bold, fontSize: 48, color: Colors.ink, letterSpacing: -0.5 },
+  title: { fontFamily: Fonts.bold, fontSize: 26, color: Colors.ink },
+  heading: { fontFamily: Fonts.semibold, fontSize: 18, color: Colors.ink },
+  body: { fontFamily: Fonts.regular, fontSize: 16, color: Colors.ink },
+  caption: { fontFamily: Fonts.regular, fontSize: 13, color: Colors.inkSoft },
+  button: { fontFamily: Fonts.semibold, fontSize: 18, color: Colors.ink },
 } as const satisfies Record<string, TextStyle>;
 
 /** Épaisseurs du trait « dessiné ». */

@@ -5,6 +5,7 @@
 import {
   aiToPlay,
   FORFEIT_AFTER_MS,
+  isDeparted,
   isGameOver,
   OFFLINE_AFTER_MS,
   parseTimestamp,
@@ -55,8 +56,9 @@ export function planTicks(game: StoredGame, participants: readonly Participant[]
       ? AI_TURN_DELAY_MS
       : AI_TURN_FALLBACK_MS
     : null;
-  const checkForfeits = humans.some(
-    (p) => p.userId !== userId && now - parseTimestamp(p.lastSeenAt) > FORFEIT_AFTER_MS,
-  );
+  // Un joueur parti depuis trop longtemps, ou dont le compte a été supprimé : le serveur le déclarera forfait.
+  const checkForfeits =
+    inGame.some(isDeparted) ||
+    humans.some((p) => p.userId !== userId && now - parseTimestamp(p.lastSeenAt) > FORFEIT_AFTER_MS);
   return { aiDelay, checkForfeits };
 }

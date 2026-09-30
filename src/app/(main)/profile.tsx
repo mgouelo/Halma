@@ -2,15 +2,17 @@ import { router } from 'expo-router';
 import { StyleSheet, Text } from 'react-native';
 
 import { useAuth } from '@/auth/auth-context';
+import { AboutLinks } from '@/components/about-links';
 import { Avatar } from '@/components/avatar';
 import { AuthScreen, authStyles, NotConfiguredCard } from '@/components/auth-screen';
 import { DrawnButton } from '@/components/drawn-button';
+import { DeleteAccount } from '@/components/delete-account';
 import { DrawnCard } from '@/components/drawn-card';
 import { ProfileStats } from '@/components/profile-stats';
 import { ErrorState, LoadingState } from '@/components/state-view';
 import { playerColor, Typography } from '@/constants/theme';
 
-/** Profil du joueur connecté : avatar, pseudo, type de compte, statistiques. */
+/** Profil du joueur connecté : avatar, pseudo, type de compte, statistiques, suppression du compte. */
 export default function ProfileScreen() {
   const { configured, loading, session, profile, isGuest, profileError, refreshProfile } = useAuth();
 
@@ -18,6 +20,7 @@ export default function ProfileScreen() {
     return (
       <AuthScreen title="Profil" subtitle="Comptes indisponibles.">
         <NotConfiguredCard />
+        <AboutLinks />
       </AuthScreen>
     );
   }
@@ -25,6 +28,7 @@ export default function ProfileScreen() {
     return (
       <AuthScreen title="Profil" subtitle="Tu n’es pas connecté.">
         <DrawnButton label="Se connecter" onPress={() => router.push('/sign-in')} />
+        <AboutLinks />
       </AuthScreen>
     );
   }
@@ -63,6 +67,15 @@ export default function ProfileScreen() {
           style={styles.secondary}
         />
       )}
+      {profile && (
+        <DrawnCard contentStyle={authStyles.card}>
+          <Text style={Typography.heading} accessibilityRole="header">
+            Compte
+          </Text>
+          <DeleteAccount pseudo={profile.pseudo} isGuest={isGuest} />
+        </DrawnCard>
+      )}
+      <AboutLinks />
     </AuthScreen>
   );
 }
