@@ -36,3 +36,11 @@ grant execute on function auth.uid() to anon, authenticated, service_role;
 -- on fait pareil pour vérifier que la migration les restreint bien.
 alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
 alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
+
+-- Publication Realtime, créée par Supabase dans chaque projet.
+do $$
+begin
+  if not exists (select from pg_publication where pubname = 'supabase_realtime') then
+    create publication supabase_realtime;
+  end if;
+end $$;
