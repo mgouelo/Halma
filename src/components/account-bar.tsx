@@ -29,7 +29,7 @@ export function AccountBar() {
   if (!session) {
     return (
       <View style={styles.row}>
-        <Text style={[Typography.caption, styles.flex]}>Connecte-toi pour garder ton pseudo.</Text>
+        <Text style={[Typography.caption, styles.flex]}>Connecte-toi pour conserver ta progression.</Text>
         <DrawnButton label="Se connecter" size="small" onPress={() => router.push('/sign-in')} />
       </View>
     );

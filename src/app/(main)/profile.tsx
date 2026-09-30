@@ -12,9 +12,13 @@ import { ProfileStats } from '@/components/profile-stats';
 import { ErrorState, LoadingState } from '@/components/state-view';
 import { playerColor, Typography } from '@/constants/theme';
 
-/** Profil du joueur connecté : avatar, pseudo, type de compte, statistiques, suppression du compte. */
+/**
+ * Profil du joueur connecté, invité compris : avatar, pseudo, type de compte,
+ * statistiques, suppression du compte. Un invité y trouve aussi l'invitation à
+ * créer son compte (même identifiant : sa progression est conservée).
+ */
 export default function ProfileScreen() {
-  const { configured, loading, session, profile, isGuest, profileError, refreshProfile } = useAuth();
+  const { configured, loading, session, profile, isGuest, pendingEmail, profileError, refreshProfile } = useAuth();
 
   if (!configured) {
     return (
@@ -58,15 +62,31 @@ export default function ProfileScreen() {
       ) : (
         <LoadingState label="Chargement du profil…" />
       )}
-      {session && <ProfileStats userId={session.user.id} />}
       {isGuest && (
-        <DrawnButton
-          label="Créer mon compte"
-          size="small"
-          onPress={() => router.push('/upgrade')}
-          style={styles.secondary}
-        />
+        <DrawnCard contentStyle={authStyles.card}>
+          <Text style={Typography.heading} accessibilityRole="header">
+            Conserve ta progression
+          </Text>
+          {pendingEmail ? (
+            <Text style={Typography.body}>
+              Confirmation envoyée à {pendingEmail} : clique sur le lien reçu pour terminer la création de ton compte.
+            </Text>
+          ) : (
+            <>
+              <Text style={Typography.body}>
+                Tu joues en invité : ce compte n’existe que sur cet appareil. Crée ton compte pour garder tes
+                statistiques et ton avatar, et entrer dans les classements.
+              </Text>
+              <DrawnButton
+                label="Créer mon compte"
+                onPress={() => router.push('/upgrade')}
+                color={playerColor(1).piece}
+              />
+            </>
+          )}
+        </DrawnCard>
       )}
+      {session && <ProfileStats userId={session.user.id} />}
       {profile && (
         <DrawnCard contentStyle={authStyles.card}>
           <Text style={Typography.heading} accessibilityRole="header">
@@ -83,8 +103,5 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   card: {
     alignItems: 'center',
-  },
-  secondary: {
-    alignSelf: 'center',
   },
 });

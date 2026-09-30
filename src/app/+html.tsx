@@ -29,7 +29,7 @@ export default function Root({ children }: PropsWithChildren) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-        <meta name="description" content="Dames chinoises (Halma) de 2 à 6 joueurs : contre l’IA, à deux ou en ligne." />
+        <meta name="description" content="Dames chinoises (Halma) de 2 à 6 joueurs : contre l’IA, entre amis ou en ligne." />
         <meta name="theme-color" content={Colors.paper} />
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: globalCss }} />

@@ -55,7 +55,7 @@ export default function HomeScreen() {
       </DrawnCard>
       <DrawnCard contentStyle={styles.card}>
         <Text style={Typography.heading}>Hors ligne</Text>
-        <Text style={Typography.caption}>Contre 1 à 5 IA (trois niveaux), ou à deux sur le même appareil.</Text>
+        <Text style={Typography.caption}>Contre 1 à 5 IA (trois niveaux), ou de 2 à 6 amis sur le même appareil.</Text>
         <View style={styles.buttonRow}>
           <DrawnButton
             label="Contre l’IA"
@@ -64,7 +64,12 @@ export default function HomeScreen() {
             size="small"
             style={styles.flexButton}
           />
-          <DrawnButton label="À deux" onPress={() => router.push('/game')} size="small" style={styles.flexButton} />
+          <DrawnButton
+            label="Entre amis"
+            onPress={() => router.push('/local-setup')}
+            size="small"
+            style={styles.flexButton}
+          />
         </View>
       </DrawnCard>
     </View>

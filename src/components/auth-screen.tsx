@@ -52,7 +52,7 @@ export function NotConfiguredCard() {
       <Text style={Typography.heading}>Comptes indisponibles</Text>
       <Text style={Typography.body}>
         Le serveur n’est pas configuré dans cette version de l’application. Tu peux quand même jouer hors ligne,
-        contre l’IA ou à deux.
+        contre l’IA ou entre amis.
       </Text>
       <Text style={Typography.caption}>
         Développeurs : définissez EXPO_PUBLIC_SUPABASE_URL et EXPO_PUBLIC_SUPABASE_ANON_KEY (voir le README).

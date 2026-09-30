@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   FadeIn,
   useAnimatedStyle,
@@ -11,7 +11,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Colors, playerColor, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
+import { Colors, Fonts, playerColor, Radius, Spacing, Stroke, TouchTarget, Typography } from '@/constants/theme';
 
 import { DrawnButton } from './drawn-button';
 import { DrawnCard } from './drawn-card';
@@ -95,12 +95,15 @@ export function EmptyState({
   message,
   icon,
   action,
+  secondaryAction,
 }: {
   title: string;
   message: string;
   /** Dessin décoratif au-dessus du titre. */
   icon?: ReactNode;
-  action?: { label: string; onPress: () => void };
+  action?: { label: string; onPress: () => void; color?: string };
+  /** Deuxième choix, plus discret (lien souligné). */
+  secondaryAction?: { label: string; onPress: () => void };
 }) {
   return (
     <Animated.View entering={FadeIn}>
@@ -110,7 +113,16 @@ export function EmptyState({
           {title}
         </Text>
         <Text style={[Typography.body, styles.emptyText]}>{message}</Text>
-        {action && <DrawnButton label={action.label} size="small" onPress={action.onPress} />}
+        {action && <DrawnButton label={action.label} size="small" onPress={action.onPress} color={action.color} />}
+        {secondaryAction && (
+          <Pressable
+            onPress={secondaryAction.onPress}
+            accessibilityRole="button"
+            hitSlop={Spacing.two}
+            style={styles.secondary}>
+            <Text style={styles.secondaryLabel}>{secondaryAction.label}</Text>
+          </Pressable>
+        )}
       </View>
     </Animated.View>
   );
@@ -128,6 +140,15 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: 'center',
+  },
+  secondary: {
+    minHeight: TouchTarget,
+    justifyContent: 'center',
+  },
+  secondaryLabel: {
+    ...Typography.body,
+    fontFamily: Fonts.semibold,
+    textDecorationLine: 'underline',
   },
   center: {
     flexGrow: 1,

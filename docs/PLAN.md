@@ -129,7 +129,7 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
 - Écran `/leaderboard`, statistiques sur le profil.
 - Pas de garde-fou contre les scripts ou les comptes qui s'entraident (ni nombre minimal de coups, ni plafond
   journalier) : choix assumé pour cette version.
-- Les parties locales ne comptent pas (non vérifiables par le serveur).
+- Les parties locales ne comptent pas (non vérifiables par le serveur). Décision confirmée à l'étape 10.
 
 ## Étape 9 : préparation à la mise en production (fait)
 
@@ -141,6 +141,20 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
 - Nettoyage des rooms abandonnées (pg_cron), limites d'essais de codes et de rooms en attente.
 - Dépendances inutilisées retirées, permissions Android inutiles bloquées, `ErrorBoundary` globale.
 - Checklist de publication : `docs/PUBLICATION.md`.
+
+## Étape 10 : retouches après les tests de la version web (fait)
+
+- Parties locales : confirmation dans la DA (`ConfirmDialog`, accessible) avant « Nouvelle partie » et avant de
+  quitter (bouton « Accueil », geste, retour Android, retour du navigateur), seulement si la partie est en cours.
+  Une partie locale n'est jamais sauvegardée : quitter l'écran la supprime (testé).
+- Mode « Entre amis » : de 2 à 6 joueurs humains sur le même appareil (écran `/local-setup` avec un stepper).
+- Barre de navigation : connexion, inscription et création de compte passent dans le groupe `(main)` ; un invité
+  garde la barre sur son profil (pseudo, avatar, statistiques, « Créer mon compte »).
+- Classements : les invités n'y figurent pas et ne peuvent pas les consulter (migration
+  `20261007120000_leaderboards_without_guests.sql`, erreur `guest_not_ranked`) ; leurs statistiques restent
+  comptées et apparaissent quand ils créent leur compte e-mail. L'écran n'explique plus ce qui compte : une phrase
+  d'accroche, « Seules les légendes apparaissent ici. »
+- Décision confirmée : les parties hors ligne ne comptent pas dans les classements (rien n'est envoyé au serveur).
 
 ## Plus tard : amis
 

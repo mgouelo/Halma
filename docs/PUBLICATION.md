@@ -98,7 +98,7 @@ Android et un iPhone réels** :
 
 - [ ] Premier lancement : écran de démarrage, police Fredoka chargée, pas d'écran blanc.
 - [ ] Inscription par e-mail (e-mail de confirmation reçu), connexion, connexion invité, invité → compte e-mail.
-- [ ] Partie contre l'IA (les trois niveaux), partie à deux, écran de victoire.
+- [ ] Partie contre l'IA (les trois niveaux), partie entre amis (2 à 6 joueurs), confirmations « Quitter » et « Nouvelle partie », écran de victoire.
 - [ ] En ligne sur deux téléphones : créer une room, rejoindre avec le code, ajouter une IA, jouer jusqu'à la
       victoire, classement mis à jour ; couper le réseau d'un téléphone (forfait au bout de 2 minutes) ; reprise.
 - [ ] Mauvais code de room dix fois : message « Trop de codes essayés ».

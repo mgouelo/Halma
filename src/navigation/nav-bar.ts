@@ -15,7 +15,10 @@ export const NAV_LABELS: Record<NavTab, string> = {
   leaderboard: 'Classements',
 };
 
-/** Écran d'arrivée de chaque entrée. Non connecté, « Profil » mène à la connexion. */
+/**
+ * Écran d'arrivée de chaque entrée. Non connecté, « Profil » mène à la
+ * connexion ; connecté (invité compris), à la page de profil.
+ */
 export function navHref(tab: NavTab, signedIn: boolean): NavHref {
   switch (tab) {
     case 'home':
@@ -28,13 +31,23 @@ export function navHref(tab: NavTab, signedIn: boolean): NavHref {
 }
 
 /**
- * Entrée active pour l'écran affiché : le profil couvre aussi l'éditeur
- * d'avatar ; les autres écrans de la barre (jouer en ligne, réglage d'une
- * partie contre l'IA) partent de l'accueil.
+ * Écrans rattachés au profil : l'éditeur d'avatar, la connexion, l'inscription
+ * et la création de compte d'un invité. Tous gardent la barre de navigation.
+ */
+const PROFILE_PATHS: readonly string[] = ['/profile', '/avatar', '/sign-in', '/sign-up', '/upgrade'];
+
+function normalize(pathname: string): string {
+  return pathname.replace(/\/+$/, '') || '/';
+}
+
+/**
+ * Entrée active pour l'écran affiché : le profil couvre aussi ses sous-écrans
+ * (voir PROFILE_PATHS) ; les autres écrans de la barre (jouer en ligne,
+ * réglage d'une partie contre l'IA ou entre amis) partent de l'accueil.
  */
 export function activeTab(pathname: string): NavTab {
-  const path = pathname.replace(/\/+$/, '') || '/';
-  if (path === '/profile' || path === '/avatar') return 'profile';
+  const path = normalize(pathname);
+  if (PROFILE_PATHS.includes(path)) return 'profile';
   if (path === '/leaderboard') return 'leaderboard';
   return 'home';
 }
@@ -43,17 +56,18 @@ export function activeTab(pathname: string): NavTab {
  * Déplacement à faire quand on touche une entrée :
  * - `none` : on y est déjà ;
  * - `dismissTo` : revenir en arrière jusqu'à l'écran (l'accueil est toujours
- *   au fond de la pile ; le profil y est quand on édite son avatar) ;
- * - `push` : depuis l'accueil, ou vers la connexion (écran sans barre) ;
+ *   au fond de la pile ; le profil y est souvent sous ses sous-écrans, sinon
+ *   `dismissTo` remplace l'écran affiché) ;
+ * - `push` : depuis l'accueil ;
  * - `replace` : d'une entrée à l'autre, sans empiler les écrans de la barre.
  */
 export type NavAction = { type: 'none' } | { type: 'dismissTo' | 'push' | 'replace'; href: NavHref };
 
 export function navAction(pathname: string, href: NavHref): NavAction {
-  const path = pathname.replace(/\/+$/, '') || '/';
+  const path = normalize(pathname);
   if (path === href) return { type: 'none' };
   if (href === '/') return { type: 'dismissTo', href };
-  if (href === '/sign-in' || path === '/') return { type: 'push', href };
-  if (href === '/profile' && path === '/avatar') return { type: 'dismissTo', href };
+  if (path === '/') return { type: 'push', href };
+  if (href === '/profile' && PROFILE_PATHS.includes(path)) return { type: 'dismissTo', href };
   return { type: 'replace', href };
 }

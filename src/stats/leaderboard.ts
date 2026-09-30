@@ -16,21 +16,21 @@ export interface BoardInfo {
 }
 
 export const BOARD_INFO: Record<Board, BoardInfo> = {
-  wins: { title: 'Victoires', tab: 'Victoires', description: 'Toutes les victoires en ligne.' },
+  wins: { title: 'Victoires', tab: 'Victoires', description: 'Toutes les victoires.' },
   wins_easy: {
     title: 'Hall des débutants',
     tab: 'Débutants',
-    description: 'Victoires en ligne dont l’IA la plus forte était de niveau facile.',
+    description: 'Victoires dont l’IA la plus forte était de niveau facile.',
   },
   wins_medium: {
     title: 'Hall des confirmés',
     tab: 'Confirmés',
-    description: 'Victoires en ligne dont l’IA la plus forte était de niveau moyen.',
+    description: 'Victoires dont l’IA la plus forte était de niveau moyen.',
   },
   wins_hard: {
     title: 'Hall des pros',
     tab: 'Pros',
-    description: 'Victoires en ligne contre au moins une IA difficile.',
+    description: 'Victoires contre au moins une IA difficile.',
   },
   best_streak: {
     title: 'Série de connexion',
@@ -38,6 +38,38 @@ export const BOARD_INFO: Record<Board, BoardInfo> = {
     description: 'La plus longue série de jours de connexion consécutifs.',
   },
 };
+
+/** Phrase d'accroche de l'écran des classements. */
+export const LEADERBOARD_TAGLINE = 'Seules les légendes apparaissent ici.';
+
+/**
+ * Qui peut voir les classements : un compte e-mail. Un invité (connexion
+ * anonyme) n'y figure pas et ne peut pas les consulter : l'écran l'invite à
+ * créer son compte sans rien demander au serveur. Sans session : connexion.
+ */
+export type LeaderboardAccess = 'allowed' | 'guest' | 'signed_out';
+
+export function leaderboardAccess(session: { isGuest: boolean } | null): LeaderboardAccess {
+  if (!session) return 'signed_out';
+  return session.isGuest ? 'guest' : 'allowed';
+}
+
+/** Codes d'erreur courts renvoyés par `get_leaderboards`, et leur traduction. */
+export const LEADERBOARD_ERROR_MESSAGES = {
+  guest_not_ranked: 'Connecte-toi à ton compte pour apparaître dans les classements et les consulter.',
+  not_authenticated: 'Connecte-toi pour consulter les classements.',
+} as const;
+
+const DEFAULT_LEADERBOARD_ERROR = 'Impossible de lire les classements. Vérifie ta connexion.';
+
+/** Message à afficher pour une erreur de lecture des classements. */
+export function describeLeaderboardError(error: unknown): string {
+  const message = (error as { message?: unknown } | null)?.message;
+  if (typeof message === 'string' && Object.prototype.hasOwnProperty.call(LEADERBOARD_ERROR_MESSAGES, message)) {
+    return LEADERBOARD_ERROR_MESSAGES[message as keyof typeof LEADERBOARD_ERROR_MESSAGES];
+  }
+  return DEFAULT_LEADERBOARD_ERROR;
+}
 
 /** Ligne telle que renvoyée par `get_leaderboards`. */
 export interface LeaderboardRow {

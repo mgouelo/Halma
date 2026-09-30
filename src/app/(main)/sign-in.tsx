@@ -38,14 +38,14 @@ export default function SignInScreen() {
   };
 
   return (
-    <AuthScreen title="Connexion" subtitle="Retrouve ton pseudo et tes parties.">
+    <AuthScreen title="Connexion" subtitle="Retrouve ta progression et tes parties.">
       {!configured ? (
         <NotConfiguredCard />
       ) : (
         <>
           {isGuest && (
             <Notice tone="info">
-              Tu joues en invité : te connecter à un autre compte fera perdre ce compte invité. Pour le garder,{' '}
+              Tu joues en invité : te connecter à un autre compte fera perdre ce compte invité. Pour conserver ta progression,{' '}
               <Link href="/upgrade" style={authStyles.inlineLink}>crée plutôt ton compte</Link>.
             </Notice>
           )}

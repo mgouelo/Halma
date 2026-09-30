@@ -43,8 +43,8 @@ export default function SignUpScreen() {
         <>
           {isGuest && (
             <Notice tone="info">
-              Tu joues en invité. Pour garder ce compte et ton historique, crée plutôt ton compte depuis le compte
-              invité : <Link href="/upgrade" style={authStyles.inlineLink}>garder mon compte invité</Link>.
+              Tu joues en invité. Pour conserver ta progression, crée plutôt ton compte depuis le compte invité :{' '}
+              <Link href="/upgrade" style={authStyles.inlineLink}>créer mon compte</Link>.
             </Notice>
           )}
           <AccountForm submitLabel="Créer mon compte" pendingLabel="Création…" pending={pending} error={error} onSubmit={submit} />
