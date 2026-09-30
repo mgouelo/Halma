@@ -57,10 +57,9 @@ Pour une compilation EAS, définir les mêmes variables dans l'environnement EAS
   « Se connecter ».
 - Table `profiles` (`id`, `pseudo`, `avatar`, `created_at`), remplie automatiquement à l'inscription par un
   trigger : le pseudo vient du formulaire, ou `invite-xxxxxx` pour un invité.
-- Pseudos : 3 à 20 caractères, lettres (accents compris, tous alphabets), chiffres, « _ » et « - ».
-  Uniques sans tenir compte de la casse, accents compris (`Élodie` et `éLODIE` sont le même pseudo, `Elodie`
-  en est un autre). Ils sont enregistrés normalisés en Unicode NFC, et la base compare avec la collation
-  ICU `und-x-icu` : avec la collation `C`, `lower('É')` resterait `É`.
+- Pseudos : 3 à 20 caractères parmi les lettres sans accent, les chiffres, « _ », « - » et « . »
+  (par exemple `Jean.Dupont-2`). Uniques sans tenir compte de la casse : `Jean.Dupont` et `jean.dupont`
+  sont le même pseudo. La même règle est vérifiée par l'application et imposée par la base.
 - Row Level Security : les joueurs connectés (invités compris) lisent les profils ; chacun ne modifie que
   son pseudo et son avatar ; personne ne crée ni ne supprime de profil directement (la suppression suit
   celle du compte). La fonction `is_pseudo_available` permet de tester un pseudo avant l'inscription.
@@ -85,8 +84,8 @@ Le lien de confirmation renvoie vers la *Site URL* du projet.
 ### Vérifier les migrations sans Supabase
 
 `scripts/check-db.sh` applique les migrations sur un Postgres local (avec une imitation minimale du
-schéma `auth` de Supabase) et vérifie le trigger, l'unicité des pseudos (accents et casse compris), la
-normalisation NFC et la RLS. La base temporaire utilise la locale `C`, le cas le plus défavorable :
+schéma `auth` de Supabase) et vérifie le trigger, le format et l'unicité des pseudos et la RLS. La base
+temporaire utilise la locale `C`, la plus stricte :
 
 ```bash
 DATABASE_URL=postgres://postgres@localhost:5432/postgres scripts/check-db.sh
