@@ -45,7 +45,7 @@ export function AccountForm({ submitLabel, pendingLabel, pending, error, onSubmi
         value={pseudo}
         onChangeText={edit('pseudo', setPseudo)}
         error={errors.pseudo}
-        hint="3 à 20 caractères : lettres sans accent, chiffres, « _ », « - » ou « . »."
+        hint="3 à 20 caractères, dont au moins 3 lettres : lettres sans accent, chiffres, « _ », « - » ou « . »."
         autoCapitalize="none"
         autoComplete="username-new"
         textContentType="username"
