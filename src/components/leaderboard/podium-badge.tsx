@@ -1,6 +1,6 @@
-import Svg, { Circle, Rect, Text as SvgText } from "react-native-svg";
+import Svg, { Circle, Rect, Text as SvgText } from 'react-native-svg';
 
-import { Colors, playerColor, Stroke, Typography } from "@/constants/theme";
+import { Colors, playerColor, Stroke, Typography } from '@/constants/theme';
 
 /** Marches du podium, de gauche à droite : 2e, 1er, 3e (boîte 42 × 36). */
 const STEPS = [
@@ -9,28 +9,19 @@ const STEPS = [
   { place: 3, x: 28, width: 13, height: 10 },
 ] as const;
 const GROUND = 34;
-/** Couleur du pion posé sur la marche du joueur. */
-const PION_COLORS = {
-  1: playerColor(3).piece,
-  2: playerColor(1).piece,
-  3: playerColor(5).piece,
-} as const;
+/** Joueur (couleur pastel) de chaque place : citron, bleu, pêche. */
+const PLACE_PLAYER = { 1: 3, 2: 1, 3: 5 } as const;
 
 /**
  * Podium dessiné pour les trois premiers : la marche du joueur est teintée,
  * porte son numéro et un pion. La place se lit donc à la forme (hauteur et
  * position de la marche) et au chiffre, pas seulement à la couleur.
  */
-export function PodiumBadge({
-  place,
-  size = 42,
-}: {
-  place: 1 | 2 | 3;
-  size?: number;
-}) {
+export function PodiumBadge({ place, size = 42 }: { place: 1 | 2 | 3; size?: number }) {
   const step = STEPS.find((s) => s.place === place)!;
   const top = GROUND - step.height;
   const cx = step.x + step.width / 2;
+  const color = playerColor(PLACE_PLAYER[place]);
   return (
     <Svg width={size} height={(size * 36) / 42} viewBox="0 0 42 36">
       {STEPS.map((s) => (
@@ -40,11 +31,7 @@ export function PodiumBadge({
           y={GROUND - s.height}
           width={s.width}
           height={s.height}
-          fill={
-            s.place === place
-              ? playerColor(s.place === 1 ? 3 : s.place === 2 ? 1 : 5).tint
-              : Colors.paper
-          }
+          fill={s.place === place ? color.tint : Colors.paper}
           stroke={Colors.ink}
           strokeWidth={s.place === place ? Stroke.bold * 0.8 : Stroke.thin}
         />
@@ -56,19 +43,11 @@ export function PodiumBadge({
         fontWeight="900"
         fontFamily={Typography.heading.fontFamily}
         fill={Colors.ink}
-        textAnchor="middle"
-      >
+        textAnchor="middle">
         {place}
       </SvgText>
       <Circle cx={cx + 0.8} cy={top - 4.2} r={3.6} fill={Colors.ink} />
-      <Circle
-        cx={cx}
-        cy={top - 5}
-        r={3.6}
-        fill={PION_COLORS[place]}
-        stroke={Colors.ink}
-        strokeWidth={Stroke.thin}
-      />
+      <Circle cx={cx} cy={top - 5} r={3.6} fill={color.piece} stroke={Colors.ink} strokeWidth={Stroke.thin} />
     </Svg>
   );
 }

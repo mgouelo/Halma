@@ -271,7 +271,10 @@ begin
   -- Pas encore de score : ligne sans rang, score 0.
   assert (select (rank is null and score = 0 and is_me) from public.get_leaderboards() where board = 'wins_easy' and is_me),
     'Jules sans victoire contre une IA facile';
-  assert (select count(distinct board) from public.get_leaderboards()) = 6, 'six classements';
+  assert (select array_agg(distinct board order by board) from public.get_leaderboards())
+    = array['best_streak', 'wins', 'wins_easy', 'wins_hard', 'wins_medium'], 'cinq classements';
+  assert not exists (select 1 from public.get_leaderboards() where board = 'games_started'),
+    'plus de classement des parties lancées';
   -- Avatar par défaut : l'identifiant sert de graine.
   assert (select avatar from public.get_leaderboards() where board = 'wins' and pseudo = 'Hugo')
     = 'a2000000-0000-0000-0000-000000000001', 'graine de l’avatar par défaut';
@@ -285,29 +288,51 @@ begin
 end $$;
 reset role;
 
--- Top 50 : 60 joueurs avec plus de parties lancées que Jules (les autres en ont moins).
+-- Top 50 : 60 joueurs avec une meilleure série que Jules (les autres en ont moins).
 insert into auth.users (id, email, raw_user_meta_data)
   select gen_random_uuid(), format('p%s@example.com', i), jsonb_build_object('pseudo', format('Joueur%s', i))
   from generate_series(1, 60) as i;
-insert into public.player_stats (user_id, games_started, games_started_at)
-  select p.id, 10 + substr(p.pseudo, 7)::int, now()
+insert into public.player_stats (user_id, best_streak, best_streak_at, games_started, games_started_at)
+  select p.id, 10 + substr(p.pseudo, 7)::int, now(), 100, now()
   from public.profiles p where p.pseudo like 'Joueur%'
-  on conflict (user_id) do update set games_started = excluded.games_started;
-update public.player_stats set games_started = 2 where user_id = 'c2000000-0000-0000-0000-000000000003';
+  on conflict (user_id) do update set best_streak = excluded.best_streak;
+update public.player_stats set best_streak = 8, current_streak = 1 where user_id = 'c2000000-0000-0000-0000-000000000003';
 set role authenticated;
 set request.jwt.claim.sub = 'c2000000-0000-0000-0000-000000000003';
 do $$
 begin
-  assert (select count(*) from public.get_leaderboards() where board = 'games_started' and rank <= 50) = 50,
+  assert (select count(*) from public.get_leaderboards() where board = 'best_streak' and rank <= 50) = 50,
     'les 50 premiers';
-  assert (select max(rank) from public.get_leaderboards() where board = 'games_started' and not is_me) = 50,
+  assert (select max(rank) from public.get_leaderboards() where board = 'best_streak' and not is_me) = 50,
     'personne d’autre après le 50e';
-  assert (select rank = 61 and score = 2 from public.get_leaderboards() where board = 'games_started' and is_me),
+  assert (select rank = 61 and score = 8 from public.get_leaderboards() where board = 'best_streak' and is_me),
     'Jules voit son rang hors du top 50';
-  assert (select pseudo from public.get_leaderboards() where board = 'games_started' and rank = 1) = 'Joueur60',
+  assert (select pseudo from public.get_leaderboards() where board = 'best_streak' and rank = 1) = 'Joueur60',
     'le meilleur en tête';
+  -- Beaucoup de parties lancées ne classent nulle part…
+  assert not exists (select 1 from public.get_leaderboards() where board = 'games_started'),
+    'aucune ligne « parties lancées »';
+  -- … mais chacun lit toujours son propre compteur (profil).
+  assert (select games_started from public.player_stats) = 0, 'Jules lit ses parties lancées (aucune encore)';
 end $$;
 reset role;
+
+-- Les parties lancées sont toujours comptées au lancement (begin_game).
+set role authenticated;
+set request.jwt.claim.sub = 'c2000000-0000-0000-0000-000000000003';
+insert into ids select 'room2', public.create_room();
+select public.add_ai((select id from ids where name = 'room2'), 'easy');
+reset role;
+set role service_role;
+select public.begin_game(
+  (select id from ids where name = 'room2'), 'c2000000-0000-0000-0000-000000000003', '{"players": [{}, {}]}');
+reset role;
+do $$
+declare s public.player_stats := pg_temp.stats('c2000000-0000-0000-0000-000000000003');
+begin
+  assert s.games_started = 1, 'games_started s’incrémente toujours au lancement';
+  assert s.games_started_at > now() - interval '1 minute', 'et sa date avec';
+end $$;
 
 -- Nettoyage : supprimer les comptes supprime leurs statistiques.
 delete from auth.users where email like 'p%@example.com'

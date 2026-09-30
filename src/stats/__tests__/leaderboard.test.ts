@@ -22,13 +22,12 @@ const row = (board: string, rank: number | null, pseudo: string, score: number, 
 });
 
 describe('classements', () => {
-  it('a six classements, dans l’ordre demandé', () => {
+  it('a cinq classements, dans l’ordre demandé (plus de « Parties lancées »)', () => {
     expect(BOARDS.map((b) => BOARD_INFO[b].title)).toEqual([
       'Victoires',
       'Hall des débutants',
       'Hall des confirmés',
       'Hall des pros',
-      'Parties lancées',
       'Série de connexion',
     ]);
   });
@@ -47,10 +46,10 @@ describe('classements', () => {
   });
 
   it('met à part la ligne du joueur hors du top 50', () => {
-    const top = Array.from({ length: 50 }, (_, i) => row('games_started', i + 1, `J${i + 1}`, 100 - i));
-    const views = groupLeaderboards([...top, row('games_started', 73, 'Moi', 4, true)]);
-    expect(views.games_started.top).toHaveLength(50);
-    expect(views.games_started.me).toMatchObject({ rank: 73, pseudo: 'Moi', score: 4, isMe: true });
+    const top = Array.from({ length: 50 }, (_, i) => row('best_streak', i + 1, `J${i + 1}`, 100 - i));
+    const views = groupLeaderboards([...top, row('best_streak', 73, 'Moi', 4, true)]);
+    expect(views.best_streak.top).toHaveLength(50);
+    expect(views.best_streak.me).toMatchObject({ rank: 73, pseudo: 'Moi', score: 4, isMe: true });
   });
 
   it('garde la ligne du joueur pas encore classé (rang null, score 0)', () => {
@@ -63,12 +62,17 @@ describe('classements', () => {
     expect(() => groupLeaderboards([row('triche', 1, 'X', 1000)])).not.toThrow();
   });
 
+  it('ignore les « parties lancées » d’un serveur pas encore migré', () => {
+    const views = groupLeaderboards([row('games_started', 1, 'Alice', 40), row('wins', 1, 'Alice', 2)]);
+    expect(Object.keys(views)).toEqual(['wins', 'wins_easy', 'wins_medium', 'wins_hard', 'best_streak']);
+    expect(views.wins.top).toHaveLength(1);
+  });
+
   it('écrit les scores avec leur unité, au singulier et au pluriel', () => {
     expect(formatUnit('wins_easy', 3)).toBe('victoires');
     expect(formatScore('wins', 0)).toBe('0 victoire');
     expect(formatScore('wins_hard', 1)).toBe('1 victoire');
     expect(formatScore('wins', 12)).toBe('12 victoires');
-    expect(formatScore('games_started', 2)).toBe('2 parties');
     expect(formatScore('best_streak', 1)).toBe('1 jour');
     expect(formatScore('best_streak', 30)).toBe('30 jours');
   });

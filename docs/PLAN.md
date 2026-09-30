@@ -124,7 +124,11 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
   connexion : groupe de routes `(main)` avec un layout personnalisé.
 - Table `player_stats` écrite uniquement côté serveur : parties lancées (`begin_game`), victoires
   (`record_game_win`, appelée par l'Edge Function `game-action`), série de connexion (`record_daily_login`).
-- Six classements (`get_leaderboards`), écran `/leaderboard`, statistiques sur le profil.
+- Cinq classements (`get_leaderboards`) : victoires, halls des débutants, des confirmés et des pros, série de
+  connexion. Les parties lancées restent comptées et affichées sur le profil, sans classement.
+- Écran `/leaderboard`, statistiques sur le profil.
+- Pas de garde-fou contre les scripts ou les comptes qui s'entraident (ni nombre minimal de coups, ni plafond
+  journalier) : choix assumé pour cette version.
 - Les parties locales ne comptent pas (non vérifiables par le serveur).
 
 ## Plus tard : amis

@@ -1,7 +1,8 @@
-// Classements : les six tableaux, et la mise en forme des lignes renvoyées par
+// Classements : les cinq tableaux, et la mise en forme des lignes renvoyées par
 // la fonction SQL `get_leaderboards` (migration player_stats). Logique pure.
 
-export const BOARDS = ['wins', 'wins_easy', 'wins_medium', 'wins_hard', 'games_started', 'best_streak'] as const;
+// Les parties lancées sont comptées (profil) mais ne font pas l'objet d'un classement.
+export const BOARDS = ['wins', 'wins_easy', 'wins_medium', 'wins_hard', 'best_streak'] as const;
 
 export type Board = (typeof BOARDS)[number];
 
@@ -31,7 +32,6 @@ export const BOARD_INFO: Record<Board, BoardInfo> = {
     tab: 'Pros',
     description: 'Victoires en ligne contre au moins une IA difficile.',
   },
-  games_started: { title: 'Parties lancées', tab: 'Parties', description: 'Parties en ligne lancées avec les autres joueurs.' },
   best_streak: {
     title: 'Série de connexion',
     tab: 'Série',
@@ -88,12 +88,10 @@ export function groupLeaderboards(rows: readonly LeaderboardRow[]): Record<Board
   return views;
 }
 
-/** Unité d'un score, accordée : « victoire », « parties », « jours »… */
+/** Unité d'un score, accordée : « victoire », « victoires », « jours »… */
 export function formatUnit(board: Board, score: number): string {
   const plural = score > 1 ? 's' : '';
   switch (board) {
-    case 'games_started':
-      return `partie${plural}`;
     case 'best_streak':
       return `jour${plural}`;
     default:
@@ -101,7 +99,7 @@ export function formatUnit(board: Board, score: number): string {
   }
 }
 
-/** Score avec son unité : « 1 victoire », « 12 parties », « 3 jours ». */
+/** Score avec son unité : « 1 victoire », « 12 victoires », « 3 jours ». */
 export function formatScore(board: Board, score: number): string {
   return `${score} ${formatUnit(board, score)}`;
 }

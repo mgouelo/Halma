@@ -46,7 +46,7 @@ type Load =
   | { status: 'error' }
   | { status: 'ready'; views: Record<Board, BoardView> };
 
-/** Six classements, choisis par onglets ; lus en un seul appel au serveur. */
+/** Cinq classements, choisis par onglets ; lus en un seul appel au serveur. */
 export default function LeaderboardScreen() {
   const edges = useScreenEdges();
   const { configured, loading, session } = useAuth();
@@ -78,6 +78,7 @@ export default function LeaderboardScreen() {
             Classements
           </Text>
           <Text style={Typography.caption}>{ONLINE_ONLY}</Text>
+          <Text style={Typography.caption}>Tes parties lancées sont comptées sur ton profil.</Text>
         </View>
         {body}
       </ScrollView>
@@ -236,16 +237,16 @@ const styles = StyleSheet.create({
   boardTitles: {
     gap: Spacing.one,
   },
-  // Deux rangées de trois onglets de même largeur.
   tabs: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
     rowGap: Spacing.two,
     columnGap: Spacing.one,
   },
+  // Même largeur pour tous : trois onglets puis deux, centrés.
   tabWrapper: {
-    flexBasis: '31%',
-    flexGrow: 1,
+    flexBasis: '32%',
     paddingRight: Shadow.offset,
     paddingBottom: Shadow.offset,
   },

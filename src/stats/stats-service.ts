@@ -43,7 +43,7 @@ export async function fetchMyStats(client: SupabaseClient, userId: string): Prom
   };
 }
 
-/** Les six classements (50 premiers de chacun, plus la ligne du joueur). */
+/** Les cinq classements (50 premiers de chacun, plus la ligne du joueur). */
 export async function fetchLeaderboards(client: SupabaseClient): Promise<LeaderboardRow[]> {
   const { data, error } = await client.rpc('get_leaderboards');
   if (error) throw error;
