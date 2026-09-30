@@ -1,3 +1,4 @@
+import { CONTACT_EMAIL } from './contact';
 import type { LegalDocument } from './document';
 
 // BROUILLON À FAIRE RELIRE (par une personne compétente en droit des données
@@ -13,7 +14,7 @@ export const PRIVACY: LegalDocument = {
       title: 'Qui est responsable de vos données',
       paragraphs: [
         'Halma est édité par [À COMPLÉTER : nom ou raison sociale de l’éditeur], [À COMPLÉTER : adresse postale].',
-        'Pour toute question sur vos données : [À COMPLÉTER : adresse e-mail de contact].',
+        `Pour toute question sur vos données : ${CONTACT_EMAIL}.`,
       ],
     },
     {
@@ -70,7 +71,7 @@ export const PRIVACY: LegalDocument = {
       bullets: [
         'Modifier votre pseudo et votre avatar : depuis votre profil.',
         'Supprimer votre compte et vos données : depuis votre profil, bouton « Supprimer mon compte ». C’est immédiat et définitif.',
-        'Accès, rectification, opposition, portabilité : écrivez à [À COMPLÉTER : adresse e-mail de contact].',
+        `Accès, rectification, opposition, portabilité : écrivez à ${CONTACT_EMAIL}.`,
         'Réclamation : auprès de la CNIL (cnil.fr) ou de l’autorité de votre pays.',
       ],
     },

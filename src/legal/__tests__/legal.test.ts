@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
+import { CONTACT_EMAIL } from '../contact';
 import { missingFields } from '../document';
 import { PRIVACY } from '../privacy';
 import { TERMS } from '../terms';
@@ -11,14 +12,15 @@ describe('pages légales', () => {
   it('sont marquées comme brouillons, avec les champs à compléter visibles', () => {
     for (const doc of [PRIVACY, TERMS]) {
       expect(doc.draft).toBe(true);
-      expect(missingFields(doc)).toContain('[À COMPLÉTER : adresse e-mail de contact]');
+      expect(missingFields(doc)).toContain('[À COMPLÉTER : nom ou raison sociale de l’éditeur]');
     }
   });
 
-  it('n’inventent aucune coordonnée (ni e-mail, ni téléphone, ni adresse web de contact)', () => {
+  it('donnent l’adresse de contact, sans inventer d’autre coordonnée (e-mail, téléphone)', () => {
     for (const doc of [PRIVACY, TERMS]) {
       const body = text(doc).replace(/\[À COMPLÉTER[^\]]*\]/g, '');
-      expect(body).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
+      expect(body).toContain(CONTACT_EMAIL);
+      expect(body.split(CONTACT_EMAIL).join('')).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
       expect(body).not.toMatch(/\+?\d[\d .]{8,}\d/);
     }
   });

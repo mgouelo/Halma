@@ -1,3 +1,4 @@
+import { CONTACT_EMAIL } from './contact';
 import type { LegalDocument } from './document';
 
 // BROUILLON À FAIRE RELIRE avant toute publication. Les champs
@@ -61,7 +62,7 @@ export const TERMS: LegalDocument = {
       title: 'Droit applicable et contact',
       paragraphs: [
         'Droit applicable : [À COMPLÉTER : droit applicable et tribunaux compétents].',
-        'Contact : [À COMPLÉTER : adresse e-mail de contact].',
+        `Contact : ${CONTACT_EMAIL}.`,
       ],
     },
   ],
