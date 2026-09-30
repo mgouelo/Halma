@@ -3,6 +3,7 @@ import { AuthApiError, AuthRetryableFetchError, type SupabaseClient } from '@sup
 
 import {
   fetchProfile,
+  updateAvatar,
   refreshAccount,
   signInAsGuest,
   signInWithEmail,
@@ -162,6 +163,22 @@ describe('fetchProfile', () => {
   it('signale un profil manquant', async () => {
     const { asSupabase } = fakeClient({ maybeSingle: ok(null) });
     await expect(fetchProfile(asSupabase, 'u1')).rejects.toBeInstanceOf(AuthFailure);
+  });
+});
+
+describe('updateAvatar', () => {
+  it('enregistre l’avatar dans le profil du joueur', async () => {
+    const { client, query, asSupabase } = fakeClient();
+    await updateAvatar(asSupabase, 'u1', '{"v":1}');
+    expect(client.from).toHaveBeenCalledWith('profiles');
+    expect(query.update).toHaveBeenCalledWith({ avatar: '{"v":1}' });
+    expect(query.eq).toHaveBeenCalledWith('id', 'u1');
+  });
+
+  it('remonte l’erreur de la base', async () => {
+    const error = { code: '23514', message: 'check violation' };
+    const { asSupabase } = fakeClient({ update: { data: null, error } });
+    await expect(updateAvatar(asSupabase, 'u1', 'x')).rejects.toBe(error);
   });
 });
 

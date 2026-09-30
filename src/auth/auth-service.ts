@@ -99,3 +99,9 @@ export async function fetchProfile(client: SupabaseClient, userId: string): Prom
   if (!data) throw new AuthFailure('profile_missing', 'Profil introuvable.');
   return data as Profile;
 }
+
+/** Enregistre l'avatar du joueur (configuration JSON, ou null pour revenir à l'avatar par défaut). */
+export async function updateAvatar(client: SupabaseClient, userId: string, avatar: string | null): Promise<void> {
+  const { error } = await client.from('profiles').update({ avatar }).eq('id', userId);
+  if (error) throw error;
+}

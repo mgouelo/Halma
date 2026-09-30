@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "dependencies": {
     "@expo/ui": "~57.0.21",
+    "@humation/assets-humation-1": "1.0.3",
+    "@humation/core": "1.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@supabase/supabase-js": "^2.117.2",
     "expo": "~57.0.26",
@@ -48,6 +50,14 @@
   },
   "private": true,
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "transformIgnorePatterns": [
+      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|standard-navigation|@humation))",
+      "/node_modules/react-native-reanimated/plugin/"
+    ],
+    "moduleNameMapper": {
+      "^@humation/core$": "<rootDir>/node_modules/@humation/core/dist/index.js",
+      "^@humation/assets-humation-1$": "<rootDir>/node_modules/@humation/assets-humation-1/dist/index.js"
+    }
   }
 }
