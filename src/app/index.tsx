@@ -40,18 +40,29 @@ export default function HomeScreen() {
 
         <View style={styles.modes}>
           <DrawnCard contentStyle={styles.card}>
-            <Text style={Typography.heading}>Contre l’IA</Text>
-            <Text style={Typography.caption}>De 1 à 5 adversaires, trois niveaux.</Text>
+            <Text style={Typography.heading}>En ligne</Text>
+            <Text style={Typography.caption}>Crée une room ou rejoins tes amis avec un code, IA en renfort.</Text>
             <DrawnButton
-              label="Jouer contre l’IA"
-              onPress={() => router.push('/ai-setup')}
-              color={playerColor(0).piece}
+              label="Jouer en ligne"
+              onPress={() => router.push('/online')}
+              color={playerColor(1).piece}
             />
           </DrawnCard>
           <DrawnCard contentStyle={styles.card}>
-            <Text style={Typography.heading}>Partie locale</Text>
-            <Text style={Typography.caption}>À deux sur le même appareil, chacun son tour.</Text>
-            <DrawnButton label="Jouer à deux" onPress={() => router.push('/game')} />
+            <Text style={Typography.heading}>Hors ligne</Text>
+            <Text style={Typography.caption}>
+              Contre 1 à 5 IA (trois niveaux), ou à deux sur le même appareil.
+            </Text>
+            <View style={styles.buttonRow}>
+              <DrawnButton
+                label="Contre l’IA"
+                onPress={() => router.push('/ai-setup')}
+                color={playerColor(0).piece}
+                size="small"
+                style={styles.flexButton}
+              />
+              <DrawnButton label="À deux" onPress={() => router.push('/game')} size="small" style={styles.flexButton} />
+            </View>
           </DrawnCard>
         </View>
       </View>
@@ -91,5 +102,12 @@ const styles = StyleSheet.create({
   card: {
     padding: Spacing.three,
     gap: Spacing.two,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  flexButton: {
+    flex: 1,
   },
 });

@@ -16,6 +16,8 @@ export default function RootLayout() {
         <Stack.Screen name="index" options={{ title: 'Halma' }} />
         <Stack.Screen name="ai-setup" options={{ title: 'Jouer contre l’IA' }} />
         <Stack.Screen name="game" options={{ title: 'Partie' }} />
+        <Stack.Screen name="online" options={{ title: 'Jouer en ligne' }} />
+        <Stack.Screen name="room/[id]" options={{ title: 'Room' }} />
         <Stack.Screen name="sign-in" options={{ title: 'Connexion' }} />
         <Stack.Screen name="sign-up" options={{ title: 'Inscription' }} />
         <Stack.Screen name="upgrade" options={{ title: 'Garder ton compte' }} />
