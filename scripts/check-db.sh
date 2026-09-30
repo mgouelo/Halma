@@ -8,8 +8,8 @@ cd "$(dirname "$0")/.."
 : "${DATABASE_URL:?Définis DATABASE_URL (un Postgres local, jamais la base Supabase)}"
 
 db="halma_check_$$"
-# Locale « C » pure (le cas le plus défavorable pour les accents) : la migration
-# ne doit pas dépendre de la locale de la base, d'où la collation ICU explicite.
+# Locale « C » pure, la plus stricte : la migration ne doit pas dépendre de la
+# locale de la base.
 psql "$DATABASE_URL" -qc "create database $db template template0 encoding 'UTF8' locale_provider libc lc_collate 'C' lc_ctype 'C'"
 trap 'psql "$DATABASE_URL" -qc "drop database if exists $db"' EXIT
 url="${DATABASE_URL%/*}/$db"

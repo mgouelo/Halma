@@ -63,12 +63,6 @@ describe('signUpWithEmail', () => {
     });
   });
 
-  it('envoie le pseudo normalisé en NFC', async () => {
-    const { client, asSupabase } = fakeClient();
-    await signUpWithEmail(asSupabase, { ...fields, pseudo: 'Zoe\u0308' });
-    expect(client.rpc).toHaveBeenCalledWith('is_pseudo_available', { candidate: 'Zoë' });
-  });
-
   it('signale quand l’e-mail doit être confirmé (pas de session)', async () => {
     const { asSupabase } = fakeClient({ signUp: ok({ session: null, user: { id: 'u1' } }) });
     await expect(signUpWithEmail(asSupabase, fields)).resolves.toEqual({ needsEmailConfirmation: true });
@@ -114,21 +108,21 @@ describe('connexion, invité, déconnexion', () => {
 });
 
 describe('upgradeGuest', () => {
-  const fields = { pseudo: ' Élodie ', email: ' elodie@example.com ', password: 'motdepasse' };
+  const fields = { pseudo: ' Jean.Dupont ', email: ' jean@example.com ', password: 'motdepasse' };
 
   it('change le pseudo du profil, puis ajoute e-mail et mot de passe au même compte', async () => {
     const { client, query, asSupabase } = fakeClient();
     await expect(upgradeGuest(asSupabase, 'u1', fields)).resolves.toEqual({ needsEmailConfirmation: false });
     expect(client.from).toHaveBeenCalledWith('profiles');
-    expect(query.update).toHaveBeenCalledWith({ pseudo: 'Élodie' });
+    expect(query.update).toHaveBeenCalledWith({ pseudo: 'Jean.Dupont' });
     expect(query.eq).toHaveBeenCalledWith('id', 'u1');
-    expect(client.auth.updateUser).toHaveBeenCalledWith({ email: 'elodie@example.com', password: 'motdepasse' });
+    expect(client.auth.updateUser).toHaveBeenCalledWith({ email: 'jean@example.com', password: 'motdepasse' });
     expect(client.rpc).not.toHaveBeenCalled(); // l'index unique tranche, pas de vérification préalable
   });
 
   it('signale une confirmation d’e-mail en attente (compte encore invité)', async () => {
     const { asSupabase } = fakeClient({
-      updateUser: ok({ user: { id: 'u1', is_anonymous: true, email: '', new_email: 'elodie@example.com' } }),
+      updateUser: ok({ user: { id: 'u1', is_anonymous: true, email: '', new_email: 'jean@example.com' } }),
     });
     await expect(upgradeGuest(asSupabase, 'u1', fields)).resolves.toEqual({ needsEmailConfirmation: true });
   });

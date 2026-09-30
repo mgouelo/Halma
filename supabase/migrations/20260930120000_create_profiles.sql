@@ -3,12 +3,10 @@
 -- - Le profil est créé automatiquement à l'inscription (trigger sur auth.users) :
 --   le pseudo vient des métadonnées d'inscription (`options.data.pseudo`), ou
 --   « invite-xxxxxx » pour une connexion invité.
--- - Pseudo unique sans tenir compte de la casse, 3 à 20 caractères parmi
---   lettres (accents compris, tous alphabets), chiffres, « _ » et « - ».
---   Les comparaisons utilisent la collation ICU « und-x-icu » : avec la
---   collation « C » par défaut, lower('É') reste 'É' et [[:alpha:]] refuse 'é'.
---   Le pseudo est stocké normalisé en NFC, pour qu'un « é » précomposé et un
---   « e » suivi d'un accent combinant ne donnent pas deux pseudos identiques à l'œil.
+-- - Pseudo unique sans tenir compte de la casse, 3 à 20 caractères ASCII parmi
+--   lettres sans accent, chiffres, « _ », « - » et « . ». Rester en ASCII rend
+--   la règle indépendante de la locale de la base (lower() et classes de
+--   caractères se comportent pareil partout).
 -- - Row Level Security : tout utilisateur connecté (invités compris) peut lire
 --   les profils ; chacun ne peut modifier que son pseudo et son avatar.
 
@@ -18,13 +16,12 @@ create table public.profiles (
   -- Avatar Humation (identifiant ou configuration sérialisée), défini à l'étape 6.
   avatar text,
   created_at timestamptz not null default now(),
-  constraint profiles_pseudo_format check ((pseudo collate "und-x-icu") ~ '^[[:alpha:][:digit:]_-]{3,20}$'),
-  constraint profiles_pseudo_nfc check (pseudo is nfc normalized)
+  constraint profiles_pseudo_format check (pseudo ~ '^[A-Za-z0-9._-]{3,20}$')
 );
 
 comment on table public.profiles is 'Profil public de chaque joueur (pseudo, avatar).';
 
-create unique index profiles_pseudo_unique on public.profiles (lower(pseudo collate "und-x-icu"));
+create unique index profiles_pseudo_unique on public.profiles (lower(pseudo));
 
 -- Row Level Security ------------------------------------------------------
 
@@ -60,8 +57,7 @@ security definer
 set search_path = ''
 as $$
   select not exists (
-    select 1 from public.profiles
-    where lower(pseudo collate "und-x-icu") = lower(normalize(btrim(candidate), nfc) collate "und-x-icu")
+    select 1 from public.profiles where lower(pseudo) = lower(btrim(candidate))
   );
 $$;
 
@@ -77,7 +73,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  wanted text := normalize(btrim(new.raw_user_meta_data ->> 'pseudo'), nfc);
+  wanted text := btrim(new.raw_user_meta_data ->> 'pseudo');
   candidate text;
 begin
   if wanted is not null and wanted <> '' then

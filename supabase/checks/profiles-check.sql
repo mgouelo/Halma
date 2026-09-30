@@ -36,33 +36,31 @@ begin
 exception when check_violation then null;
 end $$;
 
--- Accents : acceptés, normalisés en NFC, et la casse est ignorée aussi pour les lettres accentuées.
+-- Points, tirets et soulignés acceptés ; casse ignorée.
 insert into auth.users (id, email, raw_user_meta_data) values
-  ('44444444-4444-4444-4444-444444444444', 'elodie@example.com', '{"pseudo": "Élodie"}'),
-  -- « Zoë » écrit avec un e suivi du tréma combinant (U+0308) : stocké en NFC.
-  ('55555555-5555-5555-5555-555555555555', 'zoe@example.com', jsonb_build_object('pseudo', 'Zoe' || U&'\0308'));
+  ('44444444-4444-4444-4444-444444444444', 'jean@example.com', '{"pseudo": "Jean.Dupont-2_b"}'),
+  ('55555555-5555-5555-5555-555555555555', 'dots@example.com', '{"pseudo": "..."}');
 
 do $$
 begin
-  assert (select pseudo from public.profiles where id = '44444444-4444-4444-4444-444444444444') = 'Élodie',
-    'un pseudo accentué est accepté';
-  assert (select pseudo from public.profiles where id = '55555555-5555-5555-5555-555555555555') = 'Zoë',
-    'le pseudo est normalisé en NFC à l''inscription';
+  assert (select pseudo from public.profiles where id = '44444444-4444-4444-4444-444444444444') = 'Jean.Dupont-2_b',
+    'points, tirets et soulignés sont acceptés';
 end $$;
 
 do $$
 begin
-  insert into auth.users (email, raw_user_meta_data) values ('e2@example.com', '{"pseudo": "éLODIE"}');
-  raise exception 'Élodie et éLODIE devraient être considérés comme le même pseudo';
+  insert into auth.users (email, raw_user_meta_data) values ('j2@example.com', '{"pseudo": "jean.DUPONT-2_B"}');
+  raise exception 'Jean.Dupont-2_b et jean.DUPONT-2_B devraient être le même pseudo';
 exception when unique_violation then null;
 end $$;
 
+-- Accents, espaces, émojis et autre ponctuation refusés.
 do $$
 declare bad text;
 begin
-  foreach bad in array array['emoji😀', 'deux mots', 'point.', 'ab'] loop
+  foreach bad in array array['Élodie', 'Zoë', 'emoji😀', 'deux mots', 'point!', 'a,b', 'ab', repeat('a', 21)] loop
     begin
-      insert into auth.users (email, raw_user_meta_data) values (bad || '@example.com', jsonb_build_object('pseudo', bad));
+      insert into auth.users (email, raw_user_meta_data) values (md5(bad) || '@example.com', jsonb_build_object('pseudo', bad));
       raise exception 'le pseudo « % » aurait dû être refusé', bad;
     exception when check_violation then null;
     end;
@@ -75,9 +73,8 @@ do $$
 begin
   assert public.is_pseudo_available('Charlie'), 'Charlie est libre';
   assert not public.is_pseudo_available('alice'), 'alice est pris (casse ignorée)';
-  assert not public.is_pseudo_available('ÉLODIE'), 'ÉLODIE est pris (casse ignorée, accents compris)';
-  assert not public.is_pseudo_available('Zoe' || U&'\0308'), 'Zoë est pris, quelle que soit sa forme Unicode';
-  assert public.is_pseudo_available('Elodie'), 'Elodie sans accent reste un autre pseudo';
+  assert not public.is_pseudo_available(' JEAN.dupont-2_B '), 'Jean.Dupont-2_b est pris (casse et espaces ignorés)';
+  assert public.is_pseudo_available('Jean.Dupont'), 'Jean.Dupont est un autre pseudo';
 end $$;
 
 -- anon ne lit pas la table.
@@ -129,8 +126,8 @@ end $$;
 
 do $$
 begin
-  update public.profiles set pseudo = 'Ali' || U&'\0301' || 'ce' where id = '11111111-1111-1111-1111-111111111111';
-  raise exception 'un pseudo non normalisé (NFD) ne devrait pas être accepté';
+  update public.profiles set pseudo = 'Alïce' where id = '11111111-1111-1111-1111-111111111111';
+  raise exception 'un pseudo accentué ne devrait pas être accepté en modification non plus';
 exception when check_violation then null;
 end $$;
 

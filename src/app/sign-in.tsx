@@ -20,6 +20,12 @@ export default function SignInScreen() {
   const [errors, setErrors] = useState<Record<string, FieldError>>({});
   const { pending, error, run } = useAuthAction();
 
+  // Corriger un champ efface son erreur.
+  const edit = (field: 'email' | 'password', set: (value: string) => void) => (value: string) => {
+    set(value);
+    setErrors((prev) => (prev[field] ? { ...prev, [field]: null } : prev));
+  };
+
   const submit = async () => {
     const fieldErrors = validateSignIn({ email, password });
     setErrors(fieldErrors);
@@ -47,7 +53,7 @@ export default function SignInScreen() {
             <DrawnTextInput
               label="E-mail"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={edit('email', setEmail)}
               error={errors.email}
               autoCapitalize="none"
               autoComplete="email"
@@ -58,7 +64,7 @@ export default function SignInScreen() {
             <DrawnTextInput
               label="Mot de passe"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={edit('password', setPassword)}
               error={errors.password}
               secureTextEntry
               autoComplete="current-password"

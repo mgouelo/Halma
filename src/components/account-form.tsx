@@ -24,6 +24,12 @@ export function AccountForm({ submitLabel, pendingLabel, pending, error, onSubmi
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, FieldError>>({});
 
+  // Corriger un champ efface son erreur ; les autres restent jusqu'au prochain envoi.
+  const edit = (field: keyof SignUpFields, set: (value: string) => void) => (value: string) => {
+    set(value);
+    setErrors((prev) => (prev[field] ? { ...prev, [field]: null } : prev));
+  };
+
   const submit = () => {
     if (pending) return;
     const fields = { pseudo, email, password };
@@ -37,18 +43,18 @@ export function AccountForm({ submitLabel, pendingLabel, pending, error, onSubmi
       <DrawnTextInput
         label="Pseudo"
         value={pseudo}
-        onChangeText={setPseudo}
+        onChangeText={edit('pseudo', setPseudo)}
         error={errors.pseudo}
-        hint="3 à 20 caractères : lettres (accents compris), chiffres, « _ » ou « - »."
+        hint="3 à 20 caractères : lettres sans accent, chiffres, « _ », « - » ou « . »."
         autoCapitalize="none"
         autoComplete="username-new"
         textContentType="username"
-        maxLength={40}
+        maxLength={20}
       />
       <DrawnTextInput
         label="E-mail"
         value={email}
-        onChangeText={setEmail}
+        onChangeText={edit('email', setEmail)}
         error={errors.email}
         autoCapitalize="none"
         autoComplete="email"
@@ -59,7 +65,7 @@ export function AccountForm({ submitLabel, pendingLabel, pending, error, onSubmi
       <DrawnTextInput
         label="Mot de passe"
         value={password}
-        onChangeText={setPassword}
+        onChangeText={edit('password', setPassword)}
         error={errors.password}
         hint={`Au moins ${PASSWORD_MIN_LENGTH} caractères.`}
         secureTextEntry
