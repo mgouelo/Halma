@@ -3,6 +3,8 @@
 
 /** Lettres sans accent, chiffres, « _ », « - » et « . » : même règle que la base. */
 export const PSEUDO_PATTERN = /^[A-Za-z0-9._-]{3,20}$/;
+/** Nombre minimal de lettres (A-Z, a-z) dans un pseudo, où qu'elles soient. */
+export const PSEUDO_MIN_LETTERS = 3;
 export const PASSWORD_MIN_LENGTH = 8;
 /** Préfixe réservé aux pseudos générés pour les invités. */
 export const GUEST_PSEUDO_PREFIX = 'invite-';
@@ -36,6 +38,9 @@ export function validatePseudo(pseudo: string): FieldError {
   if (value.length < 3 || value.length > 20) return 'Le pseudo doit faire entre 3 et 20 caractères.';
   if (!PSEUDO_PATTERN.test(value)) {
     return 'Lettres sans accent, chiffres, « _ », « - » et « . » seulement.';
+  }
+  if ((value.match(/[A-Za-z]/g) ?? []).length < PSEUDO_MIN_LETTERS) {
+    return `Le pseudo doit contenir au moins ${PSEUDO_MIN_LETTERS} lettres.`;
   }
   if (value.toLowerCase().startsWith(GUEST_PSEUDO_PREFIX)) return 'Ce début de pseudo est réservé aux invités.';
   return null;

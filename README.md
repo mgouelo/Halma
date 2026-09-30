@@ -57,9 +57,10 @@ Pour une compilation EAS, définir les mêmes variables dans l'environnement EAS
   « Se connecter ».
 - Table `profiles` (`id`, `pseudo`, `avatar`, `created_at`), remplie automatiquement à l'inscription par un
   trigger : le pseudo vient du formulaire, ou `invite-xxxxxx` pour un invité.
-- Pseudos : 3 à 20 caractères parmi les lettres sans accent, les chiffres, « _ », « - » et « . »
-  (par exemple `Jean.Dupont-2`). Uniques sans tenir compte de la casse : `Jean.Dupont` et `jean.dupont`
-  sont le même pseudo. La même règle est vérifiée par l'application et imposée par la base.
+- Pseudos : 3 à 20 caractères parmi les lettres sans accent, les chiffres, « _ », « - » et « . », dont
+  au moins 3 lettres (par exemple `Jean.Dupont-2` ; `...` ou `12345` sont refusés). Uniques sans tenir
+  compte de la casse : `Jean.Dupont` et `jean.dupont` sont le même pseudo. La même règle est vérifiée par
+  l'application et imposée par la base.
 - Row Level Security : les joueurs connectés (invités compris) lisent les profils ; chacun ne modifie que
   son pseudo et son avatar ; personne ne crée ni ne supprime de profil directement (la suppression suit
   celle du compte). La fonction `is_pseudo_available` permet de tester un pseudo avant l'inscription.

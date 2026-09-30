@@ -24,7 +24,7 @@ describe('validation', () => {
     expect(validatePassword('12345678')).toBeNull();
   });
 
-  it.each(['Alice', 'bob_42', 'x-y-z', 'abc', 'a'.repeat(20), 'jean.dupont', 'J.D-2_b', ' Alice '])(
+  it.each(['Alice', 'bob_42', 'x-y-z', 'abc', 'a'.repeat(20), 'jean.dupont', 'J.D-2_b', ' Alice ', 'a1-b2.c3', '007bond'])(
     'accepte le pseudo « %s »',
     (pseudo) => {
       expect(validatePseudo(pseudo)).toBeNull();
@@ -37,6 +37,10 @@ describe('validation', () => {
       expect(validatePseudo(pseudo)).not.toBeNull();
     },
   );
+
+  it.each(['...', '---', '12345', 'a1b2', 'x.y.1', '__a_b__'])('exige au moins 3 lettres : refuse « %s »', (pseudo) => {
+    expect(validatePseudo(pseudo)).toBe('Le pseudo doit contenir au moins 3 lettres.');
+  });
 
   it('valide tout un formulaire', () => {
     expect(hasErrors(validateSignUp({ pseudo: 'Alice', email: 'a@b.fr', password: '12345678' }))).toBe(false);

@@ -39,7 +39,8 @@ end $$;
 -- Points, tirets et soulignés acceptés ; casse ignorée.
 insert into auth.users (id, email, raw_user_meta_data) values
   ('44444444-4444-4444-4444-444444444444', 'jean@example.com', '{"pseudo": "Jean.Dupont-2_b"}'),
-  ('55555555-5555-5555-5555-555555555555', 'dots@example.com', '{"pseudo": "..."}');
+  -- Exactement 3 lettres, dispersées : accepté.
+  ('55555555-5555-5555-5555-555555555555', 'abc@example.com', '{"pseudo": "a1-b2.c3"}');
 
 do $$
 begin
@@ -52,6 +53,19 @@ begin
   insert into auth.users (email, raw_user_meta_data) values ('j2@example.com', '{"pseudo": "jean.DUPONT-2_B"}');
   raise exception 'Jean.Dupont-2_b et jean.DUPONT-2_B devraient être le même pseudo';
 exception when unique_violation then null;
+end $$;
+
+-- Moins de 3 lettres refusé.
+do $$
+declare bad text;
+begin
+  foreach bad in array array['...', '---', '12345', 'a1b2', 'x.y.1', '__a_b__'] loop
+    begin
+      insert into auth.users (email, raw_user_meta_data) values (md5(bad) || '@example.com', jsonb_build_object('pseudo', bad));
+      raise exception 'le pseudo « % » (moins de 3 lettres) aurait dû être refusé', bad;
+    exception when check_violation then null;
+    end;
+  end loop;
 end $$;
 
 -- Accents, espaces, émojis et autre ponctuation refusés.
