@@ -17,6 +17,8 @@ export interface AuthState {
   isGuest: boolean;
   /** Invité qui a demandé à devenir un compte e-mail : adresse en attente de confirmation. */
   pendingEmail: string | null;
+  /** Vrai si la dernière lecture du profil a échoué (réseau, serveur) : `refreshProfile` réessaie. */
+  profileError: boolean;
   /** Relit le profil (après un changement de pseudo, par exemple). */
   refreshProfile: () => void;
 }
@@ -28,6 +30,7 @@ const AuthContext = createContext<AuthState>({
   profile: null,
   isGuest: false,
   pendingEmail: null,
+  profileError: false,
   refreshProfile: () => {},
 });
 
@@ -37,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileVersion, setProfileVersion] = useState(0);
+  const [profileError, setProfileError] = useState(false);
 
   // Session : lecture initiale puis suivi des changements (connexion, déconnexion, rafraîchissement).
   useEffect(() => {
@@ -87,10 +91,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let active = true;
     fetchProfile(getSupabase(), userId)
       .then((p) => {
-        if (active) setProfile(p);
+        if (!active) return;
+        setProfile(p);
+        setProfileError(false);
       })
       .catch(() => {
-        if (active) setProfile(null);
+        if (!active) return;
+        setProfile(null);
+        setProfileError(true);
       });
     return () => {
       active = false;
@@ -105,7 +113,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profile: profile && profile.id === userId ? profile : null,
     isGuest: session?.user.is_anonymous ?? false,
     pendingEmail,
-    refreshProfile: () => setProfileVersion((v) => v + 1),
+    profileError: profileError && Boolean(userId),
+    refreshProfile: () => {
+      // Réessayer efface l'erreur : l'écran repasse en chargement.
+      setProfileError(false);
+      setProfileVersion((v) => v + 1);
+    },
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

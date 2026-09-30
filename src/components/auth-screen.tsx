@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors, MaxContentWidth, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
@@ -33,9 +34,12 @@ export function AuthScreen({ title, subtitle, children }: { title: string; subti
 /** Bandeau d'erreur ou d'information au trait. */
 export function Notice({ children, tone = 'error' }: { children: ReactNode; tone?: 'error' | 'info' }) {
   return (
-    <View style={[styles.notice, tone === 'error' && styles.noticeError]} accessibilityLiveRegion="polite">
+    <Animated.View
+      entering={FadeIn.duration(180)}
+      style={[styles.notice, tone === 'error' && styles.noticeError]}
+      accessibilityLiveRegion="polite">
       <Text style={Typography.body}>{children}</Text>
-    </View>
+    </Animated.View>
   );
 }
 

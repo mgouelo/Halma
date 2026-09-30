@@ -11,6 +11,7 @@ import { playerColor, Spacing, Typography } from '@/constants/theme';
 import { getSupabase } from '@/lib/supabase';
 import {
   createRoom,
+  describeOnlineError,
   fetchActiveRooms,
   isValidRoomCode,
   joinRoom,
@@ -19,6 +20,7 @@ import {
   type ActiveRoom,
 } from '@/rooms/room-service';
 import { useOnlineAction } from '@/rooms/use-online-action';
+import { ErrorState, LoadingState } from '@/components/state-view';
 
 function openRoom(id: string) {
   router.push({ pathname: '/room/[id]', params: { id } });
@@ -32,7 +34,7 @@ export default function OnlineScreen() {
       {!configured ? (
         <NotConfiguredCard />
       ) : loading ? (
-        <Text style={Typography.caption}>Chargement…</Text>
+        <LoadingState />
       ) : !session ? (
         <DrawnCard contentStyle={authStyles.card}>
           <Text style={Typography.heading}>Connecte-toi d’abord</Text>
@@ -51,24 +53,28 @@ export default function OnlineScreen() {
 function OnlineMenu({ userId }: { userId: string }) {
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState<string | null>(null);
-  const [rooms, setRooms] = useState<ActiveRoom[]>([]);
+  const [rooms, setRooms] = useState<ActiveRoom[] | null>(null);
+  const [roomsError, setRoomsError] = useState<string | null>(null);
   const create = useOnlineAction();
   const join = useOnlineAction();
 
-  // Parties en cours, relues à chaque retour sur l'écran.
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-      fetchActiveRooms(getSupabase(), userId)
-        .then((list) => {
-          if (active) setRooms(list);
-        })
-        .catch(() => {});
-      return () => {
-        active = false;
-      };
-    }, [userId]),
-  );
+  // Parties en cours, relues à chaque retour sur l'écran (et sur « Réessayer »).
+  const loadRooms = useCallback(() => {
+    let active = true;
+    fetchActiveRooms(getSupabase(), userId)
+      .then((list) => {
+        if (!active) return;
+        setRooms(list);
+        setRoomsError(null);
+      })
+      .catch((e: unknown) => {
+        if (active) setRoomsError(describeOnlineError(e));
+      });
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+  useFocusEffect(loadRooms);
 
   const createAndOpen = () =>
     create.run(async () => {
@@ -89,7 +95,10 @@ function OnlineMenu({ userId }: { userId: string }) {
 
   return (
     <>
-      {rooms.length > 0 && (
+      {roomsError && !rooms && (
+        <ErrorState title="Parties en cours indisponibles" message={roomsError} onRetry={loadRooms} />
+      )}
+      {rooms && rooms.length > 0 && (
         <DrawnCard contentStyle={authStyles.card}>
           <Text style={Typography.heading}>Tes parties en cours</Text>
           {rooms.map((room) => (
@@ -119,6 +128,7 @@ function OnlineMenu({ userId }: { userId: string }) {
         {create.error && <Notice>{create.error}</Notice>}
         <DrawnButton
           label={create.pending ? 'Création…' : 'Créer une room'}
+          busy={create.pending}
           onPress={createAndOpen}
           color={playerColor(0).piece}
         />
@@ -142,7 +152,7 @@ function OnlineMenu({ userId }: { userId: string }) {
           style={styles.code}
         />
         {join.error && <Notice>{join.error}</Notice>}
-        <DrawnButton label={join.pending ? 'Connexion…' : 'Rejoindre'} onPress={joinAndOpen} />
+        <DrawnButton label={join.pending ? 'Connexion…' : 'Rejoindre'} onPress={joinAndOpen} busy={join.pending} />
       </DrawnCard>
     </>
   );

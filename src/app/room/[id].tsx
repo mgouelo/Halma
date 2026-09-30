@@ -1,14 +1,14 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/auth/auth-context';
-import { AuthScreen, authStyles, Notice, NotConfiguredCard } from '@/components/auth-screen';
+import { AuthScreen, NotConfiguredCard } from '@/components/auth-screen';
 import { DrawnButton } from '@/components/drawn-button';
-import { DrawnCard } from '@/components/drawn-card';
 import { Lobby } from '@/components/online/lobby';
 import { OnlineGameView } from '@/components/online/online-game-view';
-import { Colors, Spacing, Typography } from '@/constants/theme';
+import { ErrorState, LoadingState } from '@/components/state-view';
+import { Colors } from '@/constants/theme';
 import { useIsClient } from '@/hooks/use-is-client';
 import { useNow, useRoom } from '@/rooms/use-room';
 
@@ -55,11 +55,8 @@ function RoomView({ roomId, userId }: { roomId: string; userId: string }) {
   }
   if (!snapshot) {
     return (
-      <AuthScreen title="Room" subtitle="Impossible de charger la room.">
-        <DrawnCard contentStyle={authStyles.card}>
-          {error && <Notice>{error}</Notice>}
-          <DrawnButton label="Réessayer" onPress={refresh} />
-        </DrawnCard>
+      <AuthScreen title="Room" subtitle="La room n’a pas pu être chargée.">
+        <ErrorState message={error ?? 'Une erreur est survenue.'} onRetry={refresh} />
       </AuthScreen>
     );
   }
@@ -71,9 +68,7 @@ function RoomView({ roomId, userId }: { roomId: string; userId: string }) {
 function Message({ text }: { text: string }) {
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.center}>
-        <Text style={Typography.caption}>{text}</Text>
-      </View>
+      <LoadingState label={text} />
     </SafeAreaView>
   );
 }
@@ -82,11 +77,5 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: Colors.paper,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.four,
   },
 });

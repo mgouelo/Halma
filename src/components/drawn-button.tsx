@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { Colors, Radius, Shadow, Spacing, Stroke, Typography } from '@/constants/theme';
+import { Colors, Radius, Shadow, Spacing, Stroke, TouchTarget, Typography } from '@/constants/theme';
 
 interface DrawnButtonProps {
   label: string;
@@ -12,9 +12,16 @@ interface DrawnButtonProps {
   size?: 'regular' | 'small';
   style?: StyleProp<ViewStyle>;
   accessibilityHint?: string;
+  /** Bouton inactif : trait en pointillés, sans ombre, et ne réagit pas. */
+  disabled?: boolean;
+  /** Action en cours : roue d'attente, et le bouton ne réagit plus (pas de double envoi). */
+  busy?: boolean;
 }
 
-/** Bouton au trait noir : il « s'enfonce » dans son ombre quand on appuie. */
+/**
+ * Bouton au trait noir : il « s'enfonce » dans son ombre quand on appuie, et
+ * se soulève un peu au survol de la souris (web).
+ */
 export function DrawnButton({
   label,
   onPress,
@@ -23,27 +30,39 @@ export function DrawnButton({
   size = 'regular',
   style,
   accessibilityHint,
+  disabled = false,
+  busy = false,
 }: DrawnButtonProps) {
+  const [hovered, setHovered] = useState(false);
   const small = size === 'small';
+  const inactive = disabled || busy;
   return (
     <Pressable
       onPress={onPress}
+      disabled={inactive}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled, busy }}
       style={[styles.wrapper, style]}>
       {({ pressed }) => (
         <>
-          <View style={styles.shadow} />
+          {!disabled && <View style={styles.shadow} />}
           <View
             style={[
               styles.face,
               small && styles.faceSmall,
-              { backgroundColor: color },
-              pressed && styles.facePressed,
+              { backgroundColor: disabled ? Colors.paper : color },
+              disabled && styles.faceDisabled,
+              hovered && !inactive && !pressed && styles.faceHovered,
+              pressed && !inactive && styles.facePressed,
             ]}>
-            {icon}
-            <Text style={[Typography.button, small && styles.labelSmall]}>{label}</Text>
+            {busy ? <ActivityIndicator size="small" color={Colors.ink} /> : icon}
+            <Text style={[Typography.button, small && styles.labelSmall, disabled && styles.labelDisabled]}>
+              {label}
+            </Text>
           </View>
         </>
       )}
@@ -75,13 +94,23 @@ const styles = StyleSheet.create({
     borderColor: Colors.ink,
   },
   faceSmall: {
-    minHeight: 40,
+    minHeight: TouchTarget,
     paddingHorizontal: Spacing.three,
+  },
+  faceDisabled: {
+    borderStyle: 'dashed',
+    borderColor: Colors.inkSoft,
+  },
+  faceHovered: {
+    transform: [{ translateX: -1 }, { translateY: -1 }],
   },
   facePressed: {
     transform: [{ translateX: Shadow.offset }, { translateY: Shadow.offset }],
   },
   labelSmall: {
     fontSize: 15,
+  },
+  labelDisabled: {
+    color: Colors.inkSoft,
   },
 });
