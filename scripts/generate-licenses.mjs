@@ -132,7 +132,8 @@ const data = {
 
 const json = `${JSON.stringify(data, null, 2)}\n`;
 if (process.argv.includes('--check')) {
-  const current = existsSync(output) ? readFileSync(output, 'utf8') : '';
+  // Sous Windows, git peut extraire le fichier avec des fins de ligne CRLF : on les ignore.
+  const current = existsSync(output) ? readFileSync(output, 'utf8').replace(/\r\n/g, '\n') : '';
   if (current !== json) {
     console.error('src/credits/licenses.json n’est plus à jour : lance npm run licenses.');
     process.exit(1);
