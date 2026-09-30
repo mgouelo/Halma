@@ -237,6 +237,84 @@ Les illustrations ajoutent environ 0,8 Mo au bundle Hermes.
 Tests : `src/avatar/__tests__/` vérifie la relecture de l'avatar, le rendu des couleurs, et fait lire chacun
 des 86 morceaux par le parseur XML de `react-native-svg`, celui qu'utilise `SvgXml` sur mobile.
 
+## Interface : conventions
+
+- **DA** : noir et blanc, trait noir épais, ombres franches décalées ; seuls les pions (et les avatars) sont
+  en couleurs pastel. Toutes les couleurs, tailles et durées viennent de `src/constants/theme.ts`.
+- **Boutons** (`DrawnButton`) : `busy` pendant une action (roue d'attente, pas de double envoi) et
+  `disabled` (trait en pointillés, texte gris lisible : jamais de transparence qui ferait chuter le
+  contraste). Au survol de la souris, le bouton se soulève un peu.
+- **Chargement et erreurs** : `LoadingState` (trois pions qui sautent) et `ErrorState` (message et
+  « Réessayer ») dans `src/components/state-view.tsx`, utilisés par les écrans qui lisent le serveur
+  (profil, avatar, jeu en ligne, room). Un profil illisible (réseau) se réessaie depuis l'accueil.
+- **Animations** (Reanimated) : fondu et zoom de l'écran de fin, fondu des messages, arrivée et départ des
+  joueurs dans la salle d'attente, changement de tour, pion animé le long de son chemin. Toutes suivent le
+  réglage « Réduire les animations » du système (le pion arrive alors directement).
+- **Accessibilité** :
+  - zones touchables d'au moins 44 points (`TouchTarget`) : boutons, choix de niveau, onglets et couleurs de l'éditeur d'avatar ;
+  - contrastes vérifiés par un test (`src/constants/__tests__/theme.test.ts`) : texte noir sur blanc et sur tous
+    les pastels (≥ 7:1), texte gris sur blanc et sur les teintes pâles (≥ 4,5:1) ;
+  - libellés et rôles pour les lecteurs d'écran (boutons, onglets, choix, joueurs de la partie, chargement) ;
+  - web : `lang="fr"`, anneau de focus noir bien visible au clavier (`src/app/+html.tsx`).
+  - Limite connue : le plateau lui-même n'est pas jouable au lecteur d'écran (121 cases sans libellé).
+- **Grand écran** (à partir de 900 points de large : tablette, ordinateur) : l'accueil passe en deux colonnes
+  (plateau à gauche), les parties affichent un panneau latéral (tour, joueurs, actions) à côté d'un grand
+  plateau (`src/components/game-layout.tsx`), l'éditeur d'avatar garde l'aperçu à gauche. Les formulaires
+  restent sur une colonne centrée.
+
+## Publication (EAS Build)
+
+La compilation se fait dans le cloud avec [EAS Build](https://docs.expo.dev/build/introduction/) : ni Xcode
+ni Android Studio en local.
+
+### Profils (`eas.json`)
+
+| Profil | Pour quoi | Sortie |
+| ------ | --------- | ------ |
+| `development` | développement avec le client de développement (`expo-dev-client`) | simulateur iOS, APK Android |
+| `development-device` | idem, sur un iPhone réel | build iOS interne (appareil enregistré) |
+| `preview` | faire tester l'application (distribution interne) | APK Android, build iOS interne |
+| `production` | publication sur l'App Store et Google Play | AAB Android, build iOS de l'App Store |
+
+Le numéro de build est géré par EAS (`appVersionSource: remote`) et augmenté à chaque build de production.
+
+### Première fois
+
+```bash
+npx eas-cli@latest login
+npx eas-cli@latest init            # crée le projet EAS et ajoute son identifiant dans app.json
+```
+
+Les identifiants de l'application sont `com.mgouelo.halma` (iOS `bundleIdentifier`, Android `package`,
+dans `app.json`). **Les changer avant la première publication** si besoin : ils sont définitifs sur les stores.
+
+Les variables Supabase sont lues au moment de la compilation. Les définir pour chaque environnement EAS
+(`development`, `preview`, `production`), avec la visibilité « plaintext » puisqu'elles sont publiques :
+
+```bash
+npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_SUPABASE_URL --value https://….supabase.co --visibility plaintext
+npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value … --visibility plaintext
+```
+
+### Compiler et publier
+
+```bash
+npx eas-cli@latest build --profile development --platform all   # client de développement
+npx eas-cli@latest build --profile preview --platform android    # APK à partager
+npx eas-cli@latest build --profile production --platform all     # versions des stores
+npx eas-cli@latest submit --profile production --platform all    # envoi aux stores
+```
+
+Pour l'envoi, EAS demande les accès (compte Apple Developer, clé de service Google Play) à la première
+utilisation ; rien n'est stocké dans le dépôt.
+
+### Icônes
+
+Icône, icône adaptative Android (premier plan, fond blanc, version monochrome pour les icônes à thème),
+écran de démarrage et favicon sont dans `assets/images/`. Leurs sources SVG sont dans `assets/icon-source/` :
+l'étoile au trait noir avec trois pions pastel dans chaque branche, dessinée plus simplement que le plateau
+pour rester lisible à 48 pixels.
+
 ## Scripts utiles
 
 ```bash
@@ -251,7 +329,7 @@ Toujours installer les paquets Expo avec `npx expo install <paquet>` pour obteni
 ## Organisation
 
 - `src/app/` : routes Expo Router : `index.tsx` (accueil), `ai-setup.tsx` (réglage d'une partie contre l'IA), `game.tsx` (la partie ; `/game` à deux sur le même appareil, `/game?ai=medium,hard` contre des IA), `online.tsx` (créer, rejoindre, reprendre) et `room/[id].tsx` (salle d'attente puis partie en ligne).
-- `src/components/` : composants d'affichage, dont `board/` (plateau SVG, pion animé, calcul de mise en page).
+- `src/components/` : composants d'affichage, dont `board/` (plateau SVG, pion animé, calcul de mise en page), `game-layout.tsx` (mise en page des parties, téléphone et grand écran) et `state-view.tsx` (chargement, erreurs).
 - `src/hooks/` : état d'interface de la partie (sélection, animation, tour des IA), qui délègue règles et IA à `src/game/`.
 - `src/constants/theme.ts` : couleurs, couleurs pastel des joueurs, typographie, traits, espacements.
 - `src/auth/` et `src/lib/supabase.ts` : comptes (voir « Comptes (Supabase) »).
@@ -344,7 +422,8 @@ minimax classique.
 2. ~~Plateau en SVG, partie locale à deux sur le même téléphone.~~ Fait.
 3. ~~IA hors ligne à trois niveaux, de 1 à 5 adversaires.~~ Fait.
 4. ~~Comptes et parties en ligne avec Supabase.~~ Fait.
-5. Notifications « c'est ton tour », classement, publication sur les stores.
+5. ~~Finitions de l'interface, EAS Build.~~ Fait.
+6. Notifications « c'est ton tour », classement, publication sur les stores.
 
 ## Inspiration
 

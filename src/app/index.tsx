@@ -8,64 +8,80 @@ import { Board } from '@/components/board/board';
 import { computeBoardLayout } from '@/components/board/layout';
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
-import { Colors, MaxContentWidth, playerColor, Spacing, Typography } from '@/constants/theme';
+import { Colors, MaxContentWidth, MaxWideContentWidth, playerColor, Spacing, Typography } from '@/constants/theme';
 import { createGame } from '@/game';
 import { useMeasuredSize } from '@/hooks/use-measured-size';
+import { useWideLayout } from '@/hooks/use-wide-layout';
 
 export default function HomeScreen() {
   const area = useMeasuredSize();
-  const [preview] = useState(() => createGame(2));
+  const wide = useWideLayout();
+  // Plateau décoratif à six joueurs : toutes les couleurs pastel des pions.
+  const [preview] = useState(() => createGame(6));
   const layout = useMemo(() => computeBoardLayout(area.width, area.height), [area.width, area.height]);
+
+  const header = (
+    <View style={styles.header}>
+      <View style={styles.titles}>
+        <Text style={Typography.display} accessibilityRole="header">
+          Halma
+        </Text>
+        <Text style={Typography.caption}>Dames chinoises</Text>
+      </View>
+      <AccountBar />
+    </View>
+  );
+  const board = (
+    <View
+      style={styles.preview}
+      onLayout={area.onLayout}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants">
+      {layout.width > 0 && <Board game={preview} layout={layout} />}
+    </View>
+  );
+  const modes = (
+    <View style={styles.modes}>
+      <DrawnCard contentStyle={styles.card}>
+        <Text style={Typography.heading}>En ligne</Text>
+        <Text style={Typography.caption}>Crée une room ou rejoins tes amis avec un code, IA en renfort.</Text>
+        <DrawnButton label="Jouer en ligne" onPress={() => router.push('/online')} color={playerColor(1).piece} />
+      </DrawnCard>
+      <DrawnCard contentStyle={styles.card}>
+        <Text style={Typography.heading}>Hors ligne</Text>
+        <Text style={Typography.caption}>Contre 1 à 5 IA (trois niveaux), ou à deux sur le même appareil.</Text>
+        <View style={styles.buttonRow}>
+          <DrawnButton
+            label="Contre l’IA"
+            onPress={() => router.push('/ai-setup')}
+            color={playerColor(0).piece}
+            size="small"
+            style={styles.flexButton}
+          />
+          <DrawnButton label="À deux" onPress={() => router.push('/game')} size="small" style={styles.flexButton} />
+        </View>
+      </DrawnCard>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.titles}>
-            <Text style={Typography.display} accessibilityRole="header">
-              Halma
-            </Text>
-            <Text style={Typography.caption}>Dames chinoises</Text>
+      {wide ? (
+        // Grand écran : plateau à gauche, titre et modes de jeu à droite.
+        <View style={[styles.content, styles.wideContent]}>
+          {board}
+          <View style={styles.wideColumn}>
+            {header}
+            {modes}
           </View>
-          <AccountBar />
         </View>
-
-        <View
-          style={styles.preview}
-          onLayout={area.onLayout}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants">
-          {layout.width > 0 && <Board game={preview} layout={layout} />}
+      ) : (
+        <View style={styles.content}>
+          {header}
+          {board}
+          {modes}
         </View>
-
-        <View style={styles.modes}>
-          <DrawnCard contentStyle={styles.card}>
-            <Text style={Typography.heading}>En ligne</Text>
-            <Text style={Typography.caption}>Crée une room ou rejoins tes amis avec un code, IA en renfort.</Text>
-            <DrawnButton
-              label="Jouer en ligne"
-              onPress={() => router.push('/online')}
-              color={playerColor(1).piece}
-            />
-          </DrawnCard>
-          <DrawnCard contentStyle={styles.card}>
-            <Text style={Typography.heading}>Hors ligne</Text>
-            <Text style={Typography.caption}>
-              Contre 1 à 5 IA (trois niveaux), ou à deux sur le même appareil.
-            </Text>
-            <View style={styles.buttonRow}>
-              <DrawnButton
-                label="Contre l’IA"
-                onPress={() => router.push('/ai-setup')}
-                color={playerColor(0).piece}
-                size="small"
-                style={styles.flexButton}
-              />
-              <DrawnButton label="À deux" onPress={() => router.push('/game')} size="small" style={styles.flexButton} />
-            </View>
-          </DrawnCard>
-        </View>
-      </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -85,6 +101,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Spacing.four,
   },
+  wideContent: {
+    maxWidth: MaxWideContentWidth,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.six,
+    paddingHorizontal: Spacing.five,
+  },
+  wideColumn: {
+    width: 440,
+    gap: Spacing.five,
+  },
   header: {
     gap: Spacing.three,
   },
@@ -93,6 +120,7 @@ const styles = StyleSheet.create({
   },
   preview: {
     flex: 1,
+    alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Notice } from '@/components/auth-screen';
@@ -122,7 +123,8 @@ export function Lobby({ snapshot, userId, now, onGame, refresh }: LobbyProps) {
         {isHost ? (
           count >= MIN_PARTICIPANTS ? (
             <DrawnButton
-              label={pending ? '…' : `Lancer la partie à ${count}`}
+              label={`Lancer la partie à ${count}`}
+              busy={pending}
               onPress={start}
               color={playerColor(0).piece}
             />
@@ -160,7 +162,12 @@ function ParticipantRow({ player, index, userId, hostId, online, editable, onLev
   ].filter(Boolean);
   const name = participantName(player, userId);
   return (
-    <View style={styles.participant}>
+    // Arrivées et départs animés : on voit qui rejoint la room.
+    <Animated.View
+      entering={FadeInDown.duration(220)}
+      exiting={FadeOut.duration(150)}
+      layout={LinearTransition}
+      style={styles.participant}>
       <View style={styles.participantLine}>
         <View style={styles.flex}>
           <PlayerChip
@@ -186,7 +193,7 @@ function ParticipantRow({ player, index, userId, hostId, online, editable, onLev
         ) : (
           <Text style={Typography.caption}>Niveau {AI_LEVEL_LABELS[player.aiLevel].toLowerCase()}</Text>
         ))}
-    </View>
+    </Animated.View>
   );
 }
 

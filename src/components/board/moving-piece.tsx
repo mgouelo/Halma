@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent, useState } from 'react';
 import { Animated, Easing, Platform, StyleSheet } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 
 import { Colors, MoveHopDuration, Stroke } from '@/constants/theme';
 
@@ -23,8 +24,14 @@ export function MovingPiece({ points, radius, color, onDone }: MovingPieceProps)
   const [position] = useState(() => new Animated.ValueXY(points[0]));
   const [scale] = useState(() => new Animated.Value(1));
   const finish = useEffectEvent(onDone);
+  // « Réduire les animations » (réglage du système) : le pion arrive directement.
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reduceMotion) {
+      finish();
+      return;
+    }
     const hops = points.slice(1).map((to) =>
       Animated.parallel([
         Animated.timing(position, {
@@ -44,7 +51,7 @@ export function MovingPiece({ points, radius, color, onDone }: MovingPieceProps)
       if (finished) finish();
     });
     return () => animation.stop();
-  }, [points, position, scale]);
+  }, [points, position, scale, reduceMotion]);
 
   return (
     <Animated.View

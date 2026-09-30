@@ -24,7 +24,20 @@ import { Avatar } from '@/components/avatar';
 import { AuthScreen, Notice, NotConfiguredCard } from '@/components/auth-screen';
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
-import { AvatarPalettes, Colors, MaxContentWidth, playerColor, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
+import { ErrorState, LoadingState } from '@/components/state-view';
+import {
+  AvatarPalettes,
+  Colors,
+  MaxContentWidth,
+  MaxWideContentWidth,
+  playerColor,
+  Radius,
+  Spacing,
+  Stroke,
+  TouchTarget,
+  Typography,
+} from '@/constants/theme';
+import { useWideLayout } from '@/hooks/use-wide-layout';
 import { getSupabase } from '@/lib/supabase';
 
 type Tab = (typeof EDITABLE_SLOTS)[number] | 'colors';
@@ -36,7 +49,7 @@ const THUMB = 72;
 
 /** Création de l'avatar : morceaux, couleurs, puis enregistrement dans le profil. */
 export default function AvatarScreen() {
-  const { configured, loading, session, profile } = useAuth();
+  const { configured, loading, session, profile, profileError, refreshProfile } = useAuth();
   if (!configured) {
     return (
       <AuthScreen title="Ton avatar" subtitle="Avatars indisponibles.">
@@ -44,10 +57,17 @@ export default function AvatarScreen() {
       </AuthScreen>
     );
   }
+  if (session && !profile && profileError) {
+    return (
+      <AuthScreen title="Ton avatar" subtitle="Profil indisponible.">
+        <ErrorState message="Impossible de lire ton profil. Vérifie ta connexion." onRetry={refreshProfile} />
+      </AuthScreen>
+    );
+  }
   if (loading || (session && !profile)) {
     return (
-      <AuthScreen title="Ton avatar" subtitle="Chargement…">
-        <View />
+      <AuthScreen title="Ton avatar" subtitle="Crée le personnage que verront les autres joueurs.">
+        <LoadingState />
       </AuthScreen>
     );
   }
@@ -65,6 +85,7 @@ function AvatarEditor({ userId, saved }: { userId: string; saved: string | null 
   const { refreshProfile } = useAuth();
   const [avatar, setAvatar] = useState<AvatarConfig>(() => parseAvatar(saved, userId));
   const [tab, setTab] = useState<Tab>('head');
+  const wide = useWideLayout();
   const { pending, error, run } = useAuthAction();
 
   const choosePart = (slot: AvatarSlot, id: string) =>
@@ -85,88 +106,105 @@ function AvatarEditor({ userId, saved }: { userId: string; saved: string | null 
 
   return (
     <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, wide && styles.wideContent]}>
         <View style={styles.header}>
-          <DrawnButton label="‹ Retour" size="small" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
+          <DrawnButton
+            label="‹ Retour"
+            size="small"
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+          />
         </View>
         <Text style={Typography.title} accessibilityRole="header">
           Ton avatar
         </Text>
 
-        <View style={styles.preview}>
-          <Avatar value={avatar} seed={userId} size={168} accessibilityLabel="Aperçu de ton avatar" />
-          <View style={styles.previewActions}>
-            <DrawnButton label="Au hasard" size="small" onPress={() => setAvatar(randomAvatar(AvatarPalettes))} />
-            <DrawnButton label="Par défaut" size="small" onPress={() => setAvatar(seededAvatar(userId))} />
+        <View style={[styles.body, wide && styles.wideBody]}>
+          <View style={[styles.previewColumn, wide && styles.widePreviewColumn]}>
+            <View style={styles.preview}>
+              <Avatar value={avatar} seed={userId} size={168} accessibilityLabel="Aperçu de ton avatar" />
+              <View style={styles.previewActions}>
+                <DrawnButton label="Au hasard" size="small" onPress={() => setAvatar(randomAvatar(AvatarPalettes))} />
+                <DrawnButton label="Par défaut" size="small" onPress={() => setAvatar(seededAvatar(userId))} />
+              </View>
+            </View>
+          </View>
+          <View style={styles.optionsColumn}>
+            <View style={styles.tabs} accessibilityRole="tablist">
+              {TABS.map((t) => (
+                <Pressable
+                  key={t}
+                  onPress={() => setTab(t)}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: t === tab }}
+                  style={[styles.tab, t === tab && styles.tabSelected]}>
+                  <Text style={[Typography.caption, styles.tabLabel, t === tab && styles.tabLabelSelected]}>
+                    {TAB_LABELS[t]}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <DrawnCard contentStyle={styles.card}>
+              {tab === 'colors' ? (
+                COLOR_ROWS.map((slot) => {
+                  const current = slot === 'background' ? avatar.background : avatar.colors[slot];
+                  return (
+                    <View key={slot} style={styles.colorRow}>
+                      <Text style={Typography.heading}>{COLOR_LABELS[slot]}</Text>
+                      <View
+                        style={styles.swatches}
+                        accessibilityRole="radiogroup"
+                        accessibilityLabel={COLOR_LABELS[slot]}>
+                        {AvatarPalettes[slot].map((color) => (
+                          <Pressable
+                            key={color}
+                            onPress={() => chooseColor(slot, color)}
+                            accessibilityRole="radio"
+                            accessibilityState={{ selected: color === current }}
+                            accessibilityLabel={`${COLOR_LABELS[slot]} #${color}`}
+                            style={[
+                              styles.swatch,
+                              { backgroundColor: `#${color}` },
+                              color === current && styles.swatchSelected,
+                            ]}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  );
+                })
+              ) : (
+                <View style={styles.grid} accessibilityRole="radiogroup" accessibilityLabel={SLOT_LABELS[tab]}>
+                  {partsForSlot(tab).map((part) => {
+                    const selected = avatar.selections[tab] === part.id;
+                    const label = partLabel(tab, part.id);
+                    return (
+                      <Pressable
+                        key={part.id}
+                        onPress={() => choosePart(tab, part.id)}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected }}
+                        accessibilityLabel={label}
+                        style={[styles.thumb, selected && styles.thumbSelected]}>
+                        <SvgXml xml={renderOptionSvg(avatar, tab, part.id)} width={THUMB - 8} height={THUMB - 8} />
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </DrawnCard>
+            {error && <Notice>{error}</Notice>}
           </View>
         </View>
-
-        <View style={styles.tabs} accessibilityRole="tablist">
-          {TABS.map((t) => (
-            <Pressable
-              key={t}
-              onPress={() => setTab(t)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: t === tab }}
-              style={[styles.tab, t === tab && styles.tabSelected]}>
-              <Text style={[Typography.caption, styles.tabLabel, t === tab && styles.tabLabelSelected]}>
-                {TAB_LABELS[t]}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <DrawnCard contentStyle={styles.card}>
-          {tab === 'colors' ? (
-            COLOR_ROWS.map((slot) => {
-              const current = slot === 'background' ? avatar.background : avatar.colors[slot];
-              return (
-                <View key={slot} style={styles.colorRow}>
-                  <Text style={Typography.heading}>{COLOR_LABELS[slot]}</Text>
-                  <View style={styles.swatches} accessibilityRole="radiogroup" accessibilityLabel={COLOR_LABELS[slot]}>
-                    {AvatarPalettes[slot].map((color) => (
-                      <Pressable
-                        key={color}
-                        onPress={() => chooseColor(slot, color)}
-                        accessibilityRole="radio"
-                        accessibilityState={{ selected: color === current }}
-                        accessibilityLabel={`${COLOR_LABELS[slot]} #${color}`}
-                        style={[
-                          styles.swatch,
-                          { backgroundColor: `#${color}` },
-                          color === current && styles.swatchSelected,
-                        ]}
-                      />
-                    ))}
-                  </View>
-                </View>
-              );
-            })
-          ) : (
-            <View style={styles.grid} accessibilityRole="radiogroup" accessibilityLabel={SLOT_LABELS[tab]}>
-              {partsForSlot(tab).map((part) => {
-                const selected = avatar.selections[tab] === part.id;
-                const label = partLabel(tab, part.id);
-                return (
-                  <Pressable
-                    key={part.id}
-                    onPress={() => choosePart(tab, part.id)}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected }}
-                    accessibilityLabel={label}
-                    style={[styles.thumb, selected && styles.thumbSelected]}>
-                    <SvgXml xml={renderOptionSvg(avatar, tab, part.id)} width={THUMB - 8} height={THUMB - 8} />
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
-        </DrawnCard>
-        {error && <Notice>{error}</Notice>}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <DrawnButton label={pending ? 'Enregistrement…' : 'Enregistrer'} onPress={save} color={playerColor(0).piece} />
+      <View style={[styles.footer, wide && styles.wideFooter]}>
+        <DrawnButton
+          label={pending ? 'Enregistrement…' : 'Enregistrer'}
+          onPress={save}
+          color={playerColor(0).piece}
+          busy={pending}
+        />
       </View>
     </SafeAreaView>
   );
@@ -187,6 +225,33 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
   },
+  body: {
+    gap: Spacing.four,
+  },
+  wideBody: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.five,
+  },
+  previewColumn: {
+    gap: Spacing.four,
+  },
+  // Grand écran : l'aperçu reste à gauche, les options défilent à droite.
+  widePreviewColumn: {
+    width: 280,
+    paddingTop: Spacing.four,
+  },
+  optionsColumn: {
+    flex: 1,
+    gap: Spacing.four,
+  },
+  wideContent: {
+    maxWidth: MaxWideContentWidth,
+  },
+  wideFooter: {
+    maxWidth: MaxWideContentWidth,
+    alignItems: 'flex-end',
+  },
   preview: {
     alignItems: 'center',
     gap: Spacing.three,
@@ -201,7 +266,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   tab: {
-    minHeight: 36,
+    minHeight: TouchTarget,
     paddingHorizontal: Spacing.three,
     justifyContent: 'center',
     borderWidth: Stroke.regular,
@@ -252,17 +317,18 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: Spacing.two,
   },
+  // Le contour noir distingue aussi les pastilles claires (blanc, crème) du fond.
   swatch: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: Stroke.regular,
-    borderColor: Colors.line,
-  },
-  swatchSelected: {
-    borderWidth: Stroke.bold + 1,
+    width: TouchTarget,
+    height: TouchTarget,
+    borderRadius: TouchTarget / 2,
+    borderWidth: Stroke.thin,
     borderColor: Colors.ink,
   },
+  swatchSelected: {
+    borderWidth: Stroke.bold + 2,
+  },
+
   footer: {
     width: '100%',
     maxWidth: MaxContentWidth,
