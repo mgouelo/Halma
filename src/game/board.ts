@@ -7,7 +7,7 @@
 // Leur intersection est l'hexagone central de rayon 4 (61 cases),
 // d'où 91 + 91 - 61 = 121 cases. Chaque branche compte 10 cases.
 
-import type { Cell, CellKey, Corner } from './types';
+import type { Cell, CellKey, Corner } from './types.ts';
 
 /** Taille d'une branche (nombre de rangées), 4 pour le plateau standard. */
 export const CORNER_SIZE = 4;

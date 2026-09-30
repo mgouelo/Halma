@@ -10,7 +10,7 @@ import {
   oppositeCorner,
   parseCellKey,
   sameCell,
-} from './board';
+} from './board.ts';
 import type {
   Cell,
   CellKey,
@@ -22,7 +22,7 @@ import type {
   Player,
   PlayerCount,
   PlayerId,
-} from './types';
+} from './types.ts';
 
 /**
  * Branches de départ selon le nombre de joueurs, dans l'ordre du tour
