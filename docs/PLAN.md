@@ -118,7 +118,16 @@ pions pastel), animations, états de chargement et d'erreur, accessibilité
 Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
 ```
 
-## Plus tard : amis et classement
+## Étape 8 : barre de navigation, statistiques et classements (fait)
+
+- Barre de navigation du bas (profil, accueil, classements), masquée pendant les parties et sur les écrans de
+  connexion : groupe de routes `(main)` avec un layout personnalisé.
+- Table `player_stats` écrite uniquement côté serveur : parties lancées (`begin_game`), victoires
+  (`record_game_win`, appelée par l'Edge Function `game-action`), série de connexion (`record_daily_login`).
+- Six classements (`get_leaderboards`), écran `/leaderboard`, statistiques sur le profil.
+- Les parties locales ne comptent pas (non vérifiables par le serveur).
+
+## Plus tard : amis
 
 - Table `friendships` (demande, acceptation), liste d'amis, invitation directe dans une room.
-- Statistiques par joueur (victoires, parties jouées) mises à jour côté serveur en fin de partie, et écran de classement.
+- Classement entre amis.

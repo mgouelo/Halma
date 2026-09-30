@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
+import { useScreenEdges } from '@/components/nav-bar/screen-edges';
 import { PlayerChip } from '@/components/player-chip';
 import { SegmentedPicker } from '@/components/segmented-picker';
 import { Stepper } from '@/components/stepper';
@@ -14,6 +15,7 @@ import { AI_LEVEL_LABELS, MAX_AI_COUNT, MIN_AI_COUNT, serializeAiLevels } from '
 
 export default function AiSetupScreen() {
   const [count, setCount] = useState(1);
+  const edges = useScreenEdges();
   // On garde les niveaux des 5 places : réduire puis augmenter le nombre d'IA ne perd pas les choix.
   const [levels, setLevels] = useState<AiLevel[]>(() => Array(MAX_AI_COUNT).fill('medium'));
 
@@ -24,7 +26,7 @@ export default function AiSetupScreen() {
     router.push({ pathname: '/game', params: { ai: serializeAiLevels(levels.slice(0, count)) } });
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={edges}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <DrawnButton label="‹ Accueil" size="small" onPress={() => router.back()} />

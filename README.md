@@ -66,6 +66,8 @@ Pour une compilation EAS, définir les mêmes variables dans l'environnement EAS
    les nouvelles clés de signature JWT, on peut la déployer avec `--no-verify-jwt`.
 6. La migration `rooms` ajoute les tables `rooms`, `room_players` et `games` à la publication
    `supabase_realtime` : rien à activer dans le tableau de bord.
+7. Après une nouvelle migration qui touche au jeu en ligne (par exemple `player_stats`), **redéployer
+   `game-action`** avec la même commande : la fonction et la base doivent aller ensemble.
 
 ### Ce qui est en place
 
@@ -111,7 +113,10 @@ DATABASE_URL=postgres://postgres@localhost:5432/postgres scripts/check-db.sh
 
 Le script crée une base temporaire et la supprime à la fin. Ne jamais le lancer sur la base Supabase.
 Il vérifie aussi la migration `rooms` (`supabase/checks/rooms-check.sql`) : lecture réservée aux joueurs
-de la room, aucune écriture directe, salle d'attente, lancement, fin de partie.
+de la room, aucune écriture directe, salle d'attente, lancement, fin de partie ; et la migration
+`player_stats` (`supabase/checks/stats-check.sql`) : aucune écriture par les clients, parties lancées,
+victoires (niveau de l'IA la plus forte, idempotence, forfaits et abandons exclus), séries de connexion,
+classements (départage, top 50, ligne du joueur).
 
 ## Jeu en ligne
 
@@ -181,6 +186,8 @@ double grâce au verrou de version.
 
 ### Tests
 
+- `src/online/__tests__/stats.test.ts` : victoires comptées (IA la plus forte, forfaits, idempotence, panne des
+  statistiques rattrapée).
 - `src/online/__tests__/` : validation côté serveur. `server.test.ts` passe par `handleGameRequest` (le
   code de l'Edge Function) avec une base en mémoire : demandes mal formées, coups hors tour, pion adverse,
   sauts invalides, chemins de sauts non minimaux acceptés, coup rejoué, écritures concurrentes, victoire,
@@ -190,6 +197,81 @@ double grâce au verrou de version.
   choix du joueur qui demande le coup de l'IA, appels à Supabase).
 - `scripts/check-db.sh` : RLS et fonctions SQL (voir plus haut).
 - La fonction se vérifie avec Deno : `deno check supabase/functions/game-action/index.ts`.
+
+## Statistiques et classements
+
+### Ce qui est compté
+
+| Statistique | Quand | Par qui |
+| ----------- | ----- | ------- |
+| Parties lancées | +1 pour chaque joueur humain de la room quand l'hôte lance une partie en ligne | `begin_game` (appelée par l'Edge Function), dans la transaction du lancement |
+| Victoires (toutes confondues) | un humain gagne une partie en ligne en remplissant sa branche (`end_reason = 'win'`) | `record_game_win` (appelée par l'Edge Function après l'écriture de la partie) |
+| Victoires contre une IA facile, moyenne, difficile | même victoire, si la partie contenait au moins une IA : rangée au niveau de l'**IA la plus forte** présente (et comptée aussi dans « toutes victoires ») | idem |
+| Série de connexion, meilleure série | à l'ouverture de l'application (et au retour au premier plan), une fois par jour | `record_daily_login`, appelée par l'application |
+
+- **Ne comptent pas** : une victoire par forfait ou abandon des autres joueurs (`end_reason = 'forfeit'`), une partie
+  arrêtée faute d'humains (`abandoned`), une victoire d'IA, et **les parties locales hors ligne**. Ces dernières se
+  jouent entièrement sur l'appareil : le serveur n'en voit ni les coups ni le résultat, n'importe qui pourrait donc
+  en déclarer autant qu'il veut. Seules les parties en ligne, dont chaque coup est validé par le moteur dans
+  l'Edge Function, entrent dans un classement public. L'écran de classement le rappelle en une phrase.
+- **Une victoire par partie** : `record_game_win` relit la partie dans la base (statut, raison de fin, vainqueur,
+  participants) et note la partie dans `stats_wins` (clé primaire) ; un deuxième appel ne change rien. L'Edge
+  Function l'appelle juste après avoir enregistré un coup gagnant ; si cet appel échoue, la prochaine demande sur
+  la partie (par exemple un `tick`) le refait. La même règle existe en TypeScript (`src/online/stats.ts`, testée
+  avec Jest) pour décider s'il faut appeler la base.
+- **Série de connexion** : le jour est le jour calendaire de **Paris** (`Europe/Paris`), donné par l'horloge du
+  serveur ; aucun paramètre n'est accepté du client. Même jour : rien ; jour suivant : série + 1 ; au moins un
+  jour manqué : retour à 1. La meilleure série suit. Les invités ont aussi leur série. L'appel se fait en
+  arrière-plan depuis le contexte d'authentification : il ne bloque pas l'affichage et un échec (hors ligne) est
+  simplement réessayé au prochain retour dans l'application.
+
+### Intégrité
+
+- Table `player_stats` (une ligne par joueur, supprimée avec le compte) : les clients n'ont **aucun** droit
+  `insert`, `update` ni `delete`, et ne lisent que leur propre ligne (profil). `stats_wins` leur est invisible.
+- `record_game_win` et `advance_login_streak` ne sont pas appelables par les clients (seulement la clé
+  `service_role` de l'Edge Function pour la première, rien pour la seconde).
+- `get_leaderboards()` (joueurs connectés, invités compris) renvoie, pour chacun des 6 classements, les
+  50 premiers et la ligne du joueur lui-même, même plus loin : **pseudo, avatar, score, rang** et `is_me`, rien
+  d'autre. L'avatar est `profiles.avatar`, ou à défaut l'identifiant du joueur, qui sert de graine à son avatar
+  par défaut (les profils sont de toute façon lisibles par les joueurs connectés). Seuls les scores positifs
+  sont classés ; à score égal, le premier à l'avoir atteint passe devant, puis l'ordre alphabétique du pseudo.
+
+### Écrans
+
+- **Classements** (`/leaderboard`) : six onglets (Victoires, Hall des débutants, Hall des confirmés, Hall des pros,
+  Parties lancées, Série de connexion), chargés en un seul appel et relus à chaque retour sur l'écran. Chaque ligne :
+  rang (podium dessiné pour les trois premiers : marche de la bonne hauteur, numéro et pion), avatar, pseudo,
+  score. Sa propre ligne est teintée, marquée d'un trait épais et de « C'est toi », et répétée en bas quand on est
+  hors du top 50 (ou pas encore classé). États de chargement, d'erreur (« Réessayer ») et de classement vide ;
+  invitation à se connecter ; message clair sans configuration Supabase.
+- **Profil** : victoires, parties lancées, série actuelle et meilleure série.
+
+Code : `supabase/migrations/20261003120000_player_stats.sql`, `src/stats/` (appels à Supabase, mise en forme
+des classements, jour de Paris et séries, connexion du jour), `src/app/(main)/leaderboard.tsx`,
+`src/components/profile-stats.tsx`.
+
+## Barre de navigation
+
+Une barre dessinée en bas de l'écran, dans la DA (trait noir épais, ombre franche) :
+
+- à gauche **Profil** : l'avatar du joueur, ou une silhouette dessinée s'il n'est pas connecté (l'entrée mène alors
+  à la connexion) ;
+- au milieu **Accueil** : le logo (l'étoile de `assets/icon-source/icon.svg`, redessinée en SVG avec un pion pastel
+  par branche), un peu plus grand et qui dépasse de la barre ;
+- à droite **Classements** : une montagne au trait noir, un pion pastel sur chaque sommet.
+
+L'entrée active a son icône entourée d'un trait et son libellé en gras souligné : elle se repère sans la couleur.
+Zones touchables d'au moins 44 points, libellés « Profil », « Accueil », « Classements » (rôle « onglet » et état
+« sélectionné »), zone sûre du bas prise en compte (la barre la gère, les écrans au-dessus ne la comptent pas). Sur
+grand écran, la barre reste en bas, centrée, 440 points au plus. Sur Android, elle se cache clavier ouvert.
+
+**Routes** : les écrans avec la barre sont dans le groupe `src/app/(main)/` (accueil, jouer en ligne, contre l'IA,
+profil, avatar, classements), dont le layout empile une pile Expo Router au-dessus de la barre. Les parties
+(`/game`), les rooms (`/room/[id]`), la connexion, l'inscription et `/upgrade` restent dans la pile principale,
+**par-dessus** le groupe : la barre y est masquée sans condition à maintenir. Toucher une entrée revient à
+l'accueil (`dismissTo`), empile depuis l'accueil, ou remplace l'écran courant d'une entrée à l'autre
+(`src/navigation/nav-bar.ts`, testé).
 
 ## Avatars (Humation)
 
@@ -218,7 +300,8 @@ Les illustrations ajoutent environ 0,8 Mo au bundle Hermes.
 
 ### Ce qui est en place
 
-- **Profil** (`/profile`, en touchant son avatar sur l'accueil) : avatar, pseudo, type de compte.
+- **Profil** (`/profile`, depuis la barre de navigation ou en touchant son avatar sur l'accueil) : avatar,
+  pseudo, type de compte et statistiques.
 - **Éditeur** (`/avatar`) : coiffure, haut, accessoire, lunettes (chaque vignette montre l'option sur
   son propre avatar), couleurs de la peau, des cheveux, du haut et du fond, boutons « Au hasard » et
   « Par défaut ». Le bas (pantalons, jupes) existe dans Humation mais se trouve sous le cadrage « buste »
@@ -328,7 +411,9 @@ Toujours installer les paquets Expo avec `npx expo install <paquet>` pour obteni
 
 ## Organisation
 
-- `src/app/` : routes Expo Router : `index.tsx` (accueil), `ai-setup.tsx` (réglage d'une partie contre l'IA), `game.tsx` (la partie ; `/game` à deux sur le même appareil, `/game?ai=medium,hard` contre des IA), `online.tsx` (créer, rejoindre, reprendre) et `room/[id].tsx` (salle d'attente puis partie en ligne).
+- `src/app/` : routes Expo Router. Avec la barre de navigation, dans `(main)/` : `index.tsx` (accueil), `ai-setup.tsx` (réglage d'une partie contre l'IA), `online.tsx` (créer, rejoindre, reprendre), `profile.tsx`, `avatar.tsx` et `leaderboard.tsx` (classements). Sans la barre : `game.tsx` (la partie ; `/game` à deux sur le même appareil, `/game?ai=medium,hard` contre des IA), `room/[id].tsx` (salle d'attente puis partie en ligne), `sign-in.tsx`, `sign-up.tsx`, `upgrade.tsx`.
+- `src/navigation/` : logique de la barre de navigation ; `src/components/nav-bar/` : la barre et ses icônes.
+- `src/stats/` : statistiques, classements et séries de connexion (voir « Statistiques et classements »).
 - `src/components/` : composants d'affichage, dont `board/` (plateau SVG, pion animé, calcul de mise en page), `game-layout.tsx` (mise en page des parties, téléphone et grand écran) et `state-view.tsx` (chargement, erreurs).
 - `src/hooks/` : état d'interface de la partie (sélection, animation, tour des IA), qui délègue règles et IA à `src/game/`.
 - `src/constants/theme.ts` : couleurs, couleurs pastel des joueurs, typographie, traits, espacements.
@@ -423,7 +508,8 @@ minimax classique.
 3. ~~IA hors ligne à trois niveaux, de 1 à 5 adversaires.~~ Fait.
 4. ~~Comptes et parties en ligne avec Supabase.~~ Fait.
 5. ~~Finitions de l'interface, EAS Build.~~ Fait.
-6. Notifications « c'est ton tour », classement, publication sur les stores.
+6. ~~Barre de navigation, statistiques et classements (comptés côté serveur).~~ Fait.
+7. Notifications « c'est ton tour », amis, publication sur les stores.
 
 ## Inspiration
 

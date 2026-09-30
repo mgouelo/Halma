@@ -13,16 +13,14 @@ export default function RootLayout() {
           headerShown: false,
           contentStyle: { backgroundColor: Colors.paper },
         }}>
-        <Stack.Screen name="index" options={{ title: 'Halma' }} />
-        <Stack.Screen name="ai-setup" options={{ title: 'Jouer contre l’IA' }} />
+        {/* Accueil, profil, classements… avec la barre de navigation du bas. */}
+        <Stack.Screen name="(main)" options={{ title: 'Halma' }} />
+        {/* Par-dessus, sans la barre : parties, rooms, connexion et inscription. */}
         <Stack.Screen name="game" options={{ title: 'Partie' }} />
-        <Stack.Screen name="online" options={{ title: 'Jouer en ligne' }} />
         <Stack.Screen name="room/[id]" options={{ title: 'Room' }} />
         <Stack.Screen name="sign-in" options={{ title: 'Connexion' }} />
         <Stack.Screen name="sign-up" options={{ title: 'Inscription' }} />
         <Stack.Screen name="upgrade" options={{ title: 'Garder ton compte' }} />
-        <Stack.Screen name="profile" options={{ title: 'Profil' }} />
-        <Stack.Screen name="avatar" options={{ title: 'Ton avatar' }} />
       </Stack>
     </AuthProvider>
   );

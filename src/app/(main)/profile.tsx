@@ -6,10 +6,11 @@ import { Avatar } from '@/components/avatar';
 import { AuthScreen, authStyles, NotConfiguredCard } from '@/components/auth-screen';
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
+import { ProfileStats } from '@/components/profile-stats';
 import { ErrorState, LoadingState } from '@/components/state-view';
 import { playerColor, Typography } from '@/constants/theme';
 
-/** Profil du joueur connecté : avatar, pseudo, type de compte. */
+/** Profil du joueur connecté : avatar, pseudo, type de compte, statistiques. */
 export default function ProfileScreen() {
   const { configured, loading, session, profile, isGuest, profileError, refreshProfile } = useAuth();
 
@@ -53,6 +54,7 @@ export default function ProfileScreen() {
       ) : (
         <LoadingState label="Chargement du profil…" />
       )}
+      {session && <ProfileStats userId={session.user.id} />}
       {isGuest && (
         <DrawnButton
           label="Créer mon compte"

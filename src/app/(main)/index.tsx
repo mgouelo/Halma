@@ -8,6 +8,7 @@ import { Board } from '@/components/board/board';
 import { computeBoardLayout } from '@/components/board/layout';
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
+import { useScreenEdges } from '@/components/nav-bar/screen-edges';
 import { Colors, MaxContentWidth, MaxWideContentWidth, playerColor, Spacing, Typography } from '@/constants/theme';
 import { createGame } from '@/game';
 import { useMeasuredSize } from '@/hooks/use-measured-size';
@@ -16,6 +17,7 @@ import { useWideLayout } from '@/hooks/use-wide-layout';
 export default function HomeScreen() {
   const area = useMeasuredSize();
   const wide = useWideLayout();
+  const edges = useScreenEdges();
   // Plateau décoratif à six joueurs : toutes les couleurs pastel des pions.
   const [preview] = useState(() => createGame(6));
   const layout = useMemo(() => computeBoardLayout(area.width, area.height), [area.width, area.height]);
@@ -65,7 +67,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={edges}>
       {wide ? (
         // Grand écran : plateau à gauche, titre et modes de jeu à droite.
         <View style={[styles.content, styles.wideContent]}>

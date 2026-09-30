@@ -57,5 +57,12 @@ export function createSupabaseStore(admin: SupabaseClient): GameStore {
       if (error) throw error;
       return data ? storedGameFromRow(data) : null;
     },
+
+    async recordWin(gameId) {
+      // La fonction SQL relit la partie et ne la compte qu'une fois.
+      const { data, error } = await admin.rpc('record_game_win', { p_game: gameId });
+      if (error) throw error;
+      return data === true;
+    },
   };
 }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   FadeIn,
@@ -11,7 +11,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Colors, playerColor, Spacing, Stroke, Typography } from '@/constants/theme';
+import { Colors, playerColor, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
 
 import { DrawnButton } from './drawn-button';
 import { DrawnCard } from './drawn-card';
@@ -89,7 +89,46 @@ export function ErrorState({
   );
 }
 
+/** Liste vide (rien à afficher pour l'instant), avec une action facultative. */
+export function EmptyState({
+  title,
+  message,
+  icon,
+  action,
+}: {
+  title: string;
+  message: string;
+  /** Dessin décoratif au-dessus du titre. */
+  icon?: ReactNode;
+  action?: { label: string; onPress: () => void };
+}) {
+  return (
+    <Animated.View entering={FadeIn}>
+      <View style={styles.empty}>
+        {icon}
+        <Text style={[Typography.heading, styles.emptyText]} accessibilityRole="header">
+          {title}
+        </Text>
+        <Text style={[Typography.body, styles.emptyText]}>{message}</Text>
+        {action && <DrawnButton label={action.label} size="small" onPress={action.onPress} />}
+      </View>
+    </Animated.View>
+  );
+}
+
 const styles = StyleSheet.create({
+  empty: {
+    alignItems: 'center',
+    gap: Spacing.three,
+    padding: Spacing.four,
+    borderWidth: Stroke.regular,
+    borderColor: Colors.ink,
+    borderStyle: 'dashed',
+    borderRadius: Radius.large,
+  },
+  emptyText: {
+    textAlign: 'center',
+  },
   center: {
     flexGrow: 1,
     alignItems: 'center',
