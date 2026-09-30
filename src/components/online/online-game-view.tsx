@@ -1,25 +1,18 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Notice } from '@/components/auth-screen';
-import { Board } from '@/components/board/board';
-import { computeBoardLayout } from '@/components/board/layout';
 import { DrawnButton } from '@/components/drawn-button';
-import { DrawnCard } from '@/components/drawn-card';
+import { GameLayout, TurnStatus } from '@/components/game-layout';
 import { PlayerChip } from '@/components/player-chip';
 import { VictoryOverlay } from '@/components/victory-overlay';
-import { Colors, MaxContentWidth, Radius, Shadow, Spacing, Stroke, Typography } from '@/constants/theme';
-import { useMeasuredSize } from '@/hooks/use-measured-size';
+import { Colors, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
 import { participantOfPlayer, type StoredGame } from '@/online';
 import { participantAvatar, participantName } from '@/rooms/names';
 import { secondsBeforeForfeit } from '@/rooms/presence';
 import { describeOnlineError, type RoomSnapshot } from '@/rooms/room-service';
 import { useOnlineGame } from '@/rooms/use-online-game';
-
-/** Place prise par le cadre de la carte autour du plateau (bords, marge, ombre). */
-const CARD_INSET = (Stroke.bold + Spacing.two) * 2 + Shadow.offset;
 
 interface OnlineGameViewProps {
   snapshot: RoomSnapshot & { game: StoredGame };
@@ -31,23 +24,20 @@ interface OnlineGameViewProps {
 /** Partie en ligne : plateau, tour, joueurs (connectés ou non), abandon et fin de partie. */
 export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameViewProps) {
   const { room, players } = snapshot;
-  const area = useMeasuredSize();
   const { game, server, me, selected, moves, animating, pending, error, tap, animationEnd, dismissError, resign } =
     useOnlineGame({ roomId: room.id, server: snapshot.game, players, userId, now, onGame });
   const [confirmResign, setConfirmResign] = useState(false);
   const [resignError, setResignError] = useState<string | null>(null);
-
-  const layout = useMemo(
-    () => computeBoardLayout(area.width - CARD_INSET, area.height - CARD_INSET),
-    [area.width, area.height],
-  );
+  const [resigning, setResigning] = useState(false);
 
   const goHome = () => router.dismissTo('/');
   const playerAt = (index: number) => participantOfPlayer(players, index);
   const nameOf = (index: number) => participantName(playerAt(index), userId);
   const avatarOf = (index: number) => {
     const participant = playerAt(index);
-    return participant ? { value: participantAvatar(participant), seed: participant.userId ?? participant.id } : undefined;
+    return participant
+      ? { value: participantAvatar(participant), seed: participant.userId ?? participant.id }
+      : undefined;
   };
   const iLeft = me !== null && server.forfeited.includes(me);
   const finished = game.status === 'finished';
@@ -75,11 +65,14 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
                 : 'En attente de son coup…';
 
   const doResign = async () => {
-    setConfirmResign(false);
+    setResigning(true);
     try {
       await resign();
+      setConfirmResign(false);
     } catch (e) {
       setResignError(describeOnlineError(e));
+    } finally {
+      setResigning(false);
     }
   };
 
@@ -94,28 +87,37 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
         ? `${nameOf(winner)} gagne : les autres joueurs ont quitté la partie.`
         : undefined;
 
+  const thinking = !finished && !animating && !pending && Boolean(current?.aiLevel);
+  const dismissNotice = () => {
+    dismissError();
+    setResignError(null);
+  };
+
   return (
-    <SafeAreaView style={styles.screen}>
-      <View style={styles.content}>
+    <GameLayout
+      header={
         <View style={styles.header}>
           <DrawnButton label="‹ Accueil" size="small" onPress={goHome} />
           <Text style={Typography.caption}>
             Room {room.code} · Coup {game.turn + 1}
           </Text>
         </View>
-
-        <View style={styles.players}>
+      }
+      players={
+        <View style={styles.players} accessibilityRole="list" accessibilityLabel="Joueurs">
           {game.players.map((player) => {
             const participant = playerAt(player.id);
             // Son propre signe de vie peut paraître ancien juste après une reprise : on est là, par définition.
             const away = participant && participant.userId !== userId ? secondsBeforeForfeit(participant, now) : null;
             const status = server.forfeited.includes(player.id) ? 'parti' : away !== null ? 'déconnecté' : null;
+            const isCurrent = player.id === game.currentPlayer && !finished;
             return (
               <View
                 key={player.id}
+                accessibilityLabel={`${nameOf(player.id)}${status ? `, ${status}` : ''}${isCurrent ? ', à son tour' : ''}`}
                 style={[
                   styles.playerTag,
-                  player.id === game.currentPlayer && !finished && styles.playerTagCurrent,
+                  isCurrent && styles.playerTagCurrent,
                   status === 'parti' && styles.playerTagGone,
                 ]}>
                 <PlayerChip
@@ -129,91 +131,71 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
             );
           })}
         </View>
-
-        <View style={styles.turn} accessibilityLiveRegion="polite">
-          {!finished && (
-            <>
-              <Text style={Typography.caption}>Au tour de</Text>
+      }
+      status={
+        <TurnStatus
+          turnKey={game.turn}
+          thinking={thinking}
+          hint={hint}
+          player={
+            finished ? null : (
               <PlayerChip
                 player={game.currentPlayer}
                 size={40}
                 label={nameOf(game.currentPlayer)}
                 avatar={avatarOf(game.currentPlayer)}
               />
-            </>
-          )}
-          <Text style={[Typography.caption, styles.center]}>{hint}</Text>
-        </View>
-
-        {(error || resignError) && (
-          <Pressable
-            onPress={() => {
-              dismissError();
-              setResignError(null);
-            }}
-            accessibilityHint="Touche pour fermer">
+            )
+          }
+        />
+      }
+      notice={
+        (error || resignError) && (
+          <Pressable onPress={dismissNotice} accessibilityRole="button" accessibilityHint="Touche pour fermer">
             <Notice>{error ?? resignError}</Notice>
           </Pressable>
-        )}
-
-        <View style={styles.boardArea} onLayout={area.onLayout}>
-          {layout.width > 0 && (
-            <DrawnCard contentStyle={styles.boardFace}>
-              <Board
-                game={game}
-                layout={layout}
-                selected={selected}
-                moves={moves}
-                animating={animating}
-                onCellPress={tap}
-                onAnimationEnd={animationEnd}
-              />
-            </DrawnCard>
-          )}
-        </View>
-
-        {!finished && !iLeft && me !== null && (
+        )
+      }
+      board={{ game, selected, moves, animating, onCellPress: tap, onAnimationEnd: animationEnd }}
+      footer={
+        !finished &&
+        !iLeft &&
+        me !== null && (
           <View style={styles.footer}>
             {confirmResign ? (
               <>
-                <DrawnButton label="Oui, abandonner" size="small" onPress={doResign} />
-                <DrawnButton label="Continuer" size="small" onPress={() => setConfirmResign(false)} />
+                <DrawnButton label="Oui, abandonner" size="small" onPress={doResign} busy={resigning} />
+                <DrawnButton
+                  label="Continuer"
+                  size="small"
+                  onPress={() => setConfirmResign(false)}
+                  disabled={resigning}
+                />
               </>
             ) : (
               <DrawnButton label="Abandonner" size="small" onPress={() => setConfirmResign(true)} />
             )}
           </View>
-        )}
-      </View>
-
-      {showEnd && (
-        <VictoryOverlay
-          winner={winner}
-          title={endTitle}
-          winnerDetail={winner === null ? undefined : nameOf(winner)}
-          moveCount={winnerMoves}
-          message={endMessage}
-          onHome={goHome}
-        />
-      )}
-    </SafeAreaView>
+        )
+      }
+      overlay={
+        showEnd && (
+          <VictoryOverlay
+            winner={winner}
+            title={endTitle}
+            winnerDetail={winner === null ? undefined : nameOf(winner)}
+            winnerAvatar={winner === null ? undefined : avatarOf(winner)}
+            moveCount={winnerMoves}
+            message={endMessage}
+            onHome={goHome}
+          />
+        )
+      }
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: Colors.paper,
-  },
-  content: {
-    flex: 1,
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-    gap: Spacing.three,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -237,23 +219,10 @@ const styles = StyleSheet.create({
     borderColor: Colors.ink,
     borderWidth: Stroke.regular,
   },
+  // Joueur parti : trait en pointillés plutôt que transparence, pour garder un texte lisible.
   playerTagGone: {
-    opacity: 0.45,
-  },
-  turn: {
-    alignItems: 'center',
-    gap: Spacing.one,
-  },
-  center: {
-    textAlign: 'center',
-  },
-  boardArea: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  boardFace: {
-    padding: Spacing.two,
+    borderStyle: 'dashed',
+    borderColor: Colors.inkSoft,
   },
   footer: {
     flexDirection: 'row',

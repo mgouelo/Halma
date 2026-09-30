@@ -1,7 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
+import type { AvatarConfig } from '@/avatar/avatar';
 import { Colors, playerColor, Spacing, Stroke, Typography } from '@/constants/theme';
 
+import { Avatar } from './avatar';
 import { DrawnButton } from './drawn-button';
 import { DrawnCard } from './drawn-card';
 
@@ -19,6 +22,8 @@ interface VictoryOverlayProps {
   /** Sans `onReplay`, pas de bouton « Rejouer ». */
   onReplay?: () => void;
   onHome: () => void;
+  /** Avatar du vainqueur, affiché à la place de la médaille. */
+  winnerAvatar?: { value: AvatarConfig | string | null; seed: string };
 }
 
 /** Écran de victoire, affiché par-dessus le plateau en fin de partie. */
@@ -30,25 +35,32 @@ export function VictoryOverlay({
   message,
   onReplay,
   onHome,
+  winnerAvatar,
 }: VictoryOverlayProps) {
   const color = winner === null ? null : playerColor(winner);
   return (
-    <View style={styles.scrim} accessibilityViewIsModal>
-      <DrawnCard style={styles.card} contentStyle={styles.content}>
-        <View style={[styles.medal, { backgroundColor: color?.piece ?? Colors.paper }]} />
-        <Text style={Typography.title} accessibilityRole="header">
-          {title}
-        </Text>
-        <Text style={[Typography.body, styles.center]}>
-          {message ??
-            `${color?.name ?? ''}${winnerDetail ? ` (${winnerDetail})` : ''} a rempli la branche d’en face en ${moveCount} coups.`}
-        </Text>
-        <View style={styles.actions}>
-          {onReplay && <DrawnButton label="Rejouer" onPress={onReplay} color={color?.piece} />}
-          <DrawnButton label="Accueil" onPress={onHome} />
-        </View>
-      </DrawnCard>
-    </View>
+    <Animated.View entering={FadeIn.duration(200)} style={styles.scrim} accessibilityViewIsModal>
+      <Animated.View entering={ZoomIn.delay(80).duration(260)} style={styles.card}>
+        <DrawnCard contentStyle={styles.content}>
+          {winnerAvatar && color ? (
+            <Avatar value={winnerAvatar.value} seed={winnerAvatar.seed} size={88} background={color.piece} />
+          ) : (
+            <View style={[styles.medal, { backgroundColor: color?.piece ?? Colors.paper }]} />
+          )}
+          <Text style={Typography.title} accessibilityRole="header">
+            {title}
+          </Text>
+          <Text style={[Typography.body, styles.center]}>
+            {message ??
+              `${color?.name ?? ''}${winnerDetail ? ` (${winnerDetail})` : ''} a rempli la branche d’en face en ${moveCount} coups.`}
+          </Text>
+          <View style={styles.actions}>
+            {onReplay && <DrawnButton label="Rejouer" onPress={onReplay} color={color?.piece} />}
+            <DrawnButton label="Accueil" onPress={onHome} />
+          </View>
+        </DrawnCard>
+      </Animated.View>
+    </Animated.View>
   );
 }
 
