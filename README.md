@@ -116,7 +116,7 @@ Il vérifie aussi la migration `rooms` (`supabase/checks/rooms-check.sql`) : lec
 de la room, aucune écriture directe, salle d'attente, lancement, fin de partie ; et la migration
 `player_stats` (`supabase/checks/stats-check.sql`) : aucune écriture par les clients, parties lancées,
 victoires (niveau de l'IA la plus forte, idempotence, forfaits et abandons exclus), séries de connexion,
-classements (départage, top 50, ligne du joueur).
+classements (cinq, sans les parties lancées ; départage, top 50, ligne du joueur).
 
 ## Jeu en ligne
 
@@ -204,7 +204,7 @@ double grâce au verrou de version.
 
 | Statistique | Quand | Par qui |
 | ----------- | ----- | ------- |
-| Parties lancées | +1 pour chaque joueur humain de la room quand l'hôte lance une partie en ligne | `begin_game` (appelée par l'Edge Function), dans la transaction du lancement |
+| Parties lancées (profil seulement, pas de classement) | +1 pour chaque joueur humain de la room quand l'hôte lance une partie en ligne | `begin_game` (appelée par l'Edge Function), dans la transaction du lancement |
 | Victoires (toutes confondues) | un humain gagne une partie en ligne en remplissant sa branche (`end_reason = 'win'`) | `record_game_win` (appelée par l'Edge Function après l'écriture de la partie) |
 | Victoires contre une IA facile, moyenne, difficile | même victoire, si la partie contenait au moins une IA : rangée au niveau de l'**IA la plus forte** présente (et comptée aussi dans « toutes victoires ») | idem |
 | Série de connexion, meilleure série | à l'ouverture de l'application (et au retour au premier plan), une fois par jour | `record_daily_login`, appelée par l'application |
@@ -224,6 +224,13 @@ double grâce au verrou de version.
   jour manqué : retour à 1. La meilleure série suit. Les invités ont aussi leur série. L'appel se fait en
   arrière-plan depuis le contexte d'authentification : il ne bloque pas l'affichage et un échec (hors ligne) est
   simplement réessayé au prochain retour dans l'application.
+- **Parties lancées** : toujours comptées et affichées sur le profil, mais sans classement (retiré par simplicité,
+  migration `20261004120000_leaderboards_without_games_started.sql`).
+- **Limite assumée** : les classements ne sont pas protégés contre les scripts (un joueur qui automatise des
+  parties en ligne contre des IA faciles) ni contre les comptes qui s'entraident (des amis, ou plusieurs comptes
+  d'une même personne, qui se laissent gagner à tour de rôle). Il n'y a ni nombre minimal de coups pour qu'une
+  victoire compte, ni plafond de victoires par jour. C'est un choix assumé pour cette version : le serveur garantit
+  seulement que chaque victoire comptée est une vraie partie en ligne, jouée coup par coup et validée par le moteur.
 
 ### Intégrité
 
@@ -231,7 +238,7 @@ double grâce au verrou de version.
   `insert`, `update` ni `delete`, et ne lisent que leur propre ligne (profil). `stats_wins` leur est invisible.
 - `record_game_win` et `advance_login_streak` ne sont pas appelables par les clients (seulement la clé
   `service_role` de l'Edge Function pour la première, rien pour la seconde).
-- `get_leaderboards()` (joueurs connectés, invités compris) renvoie, pour chacun des 6 classements, les
+- `get_leaderboards()` (joueurs connectés, invités compris) renvoie, pour chacun des 5 classements, les
   50 premiers et la ligne du joueur lui-même, même plus loin : **pseudo, avatar, score, rang** et `is_me`, rien
   d'autre. L'avatar est `profiles.avatar`, ou à défaut l'identifiant du joueur, qui sert de graine à son avatar
   par défaut (les profils sont de toute façon lisibles par les joueurs connectés). Seuls les scores positifs
@@ -239,15 +246,15 @@ double grâce au verrou de version.
 
 ### Écrans
 
-- **Classements** (`/leaderboard`) : six onglets (Victoires, Hall des débutants, Hall des confirmés, Hall des pros,
-  Parties lancées, Série de connexion), chargés en un seul appel et relus à chaque retour sur l'écran. Chaque ligne :
+- **Classements** (`/leaderboard`) : cinq onglets (Victoires, Hall des débutants, Hall des confirmés, Hall des pros,
+  Série de connexion, la plus haute série atteinte), chargés en un seul appel et relus à chaque retour sur l'écran. Chaque ligne :
   rang (podium dessiné pour les trois premiers : marche de la bonne hauteur, numéro et pion), avatar, pseudo,
   score. Sa propre ligne est teintée, marquée d'un trait épais et de « C'est toi », et répétée en bas quand on est
   hors du top 50 (ou pas encore classé). États de chargement, d'erreur (« Réessayer ») et de classement vide ;
   invitation à se connecter ; message clair sans configuration Supabase.
 - **Profil** : victoires, parties lancées, série actuelle et meilleure série.
 
-Code : `supabase/migrations/20261003120000_player_stats.sql`, `src/stats/` (appels à Supabase, mise en forme
+Code : `supabase/migrations/20261003120000_player_stats.sql` et `20261004120000_leaderboards_without_games_started.sql`, `src/stats/` (appels à Supabase, mise en forme
 des classements, jour de Paris et séries, connexion du jour), `src/app/(main)/leaderboard.tsx`,
 `src/components/profile-stats.tsx`.
 
@@ -508,7 +515,7 @@ minimax classique.
 3. ~~IA hors ligne à trois niveaux, de 1 à 5 adversaires.~~ Fait.
 4. ~~Comptes et parties en ligne avec Supabase.~~ Fait.
 5. ~~Finitions de l'interface, EAS Build.~~ Fait.
-6. ~~Barre de navigation, statistiques et classements (comptés côté serveur).~~ Fait.
+6. ~~Barre de navigation, statistiques et cinq classements (comptés côté serveur).~~ Fait.
 7. Notifications « c'est ton tour », amis, publication sur les stores.
 
 ## Inspiration
