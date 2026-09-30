@@ -1,7 +1,11 @@
 // Validation des formulaires d'inscription et de connexion (côté client).
 // Les mêmes règles de pseudo sont imposées par la base (voir la migration profiles).
 
-export const PSEUDO_PATTERN = /^[A-Za-z0-9_-]{3,20}$/;
+/**
+ * Lettres de tous alphabets (accents compris), chiffres décimaux, « _ » et « - » :
+ * mêmes classes que [[:alpha:]] et [[:digit:]] avec la collation ICU côté base.
+ */
+export const PSEUDO_PATTERN = /^[\p{L}\p{Nd}_-]{3,20}$/u;
 export const PASSWORD_MIN_LENGTH = 8;
 /** Préfixe réservé aux pseudos générés pour les invités. */
 export const GUEST_PSEUDO_PREFIX = 'invite-';
@@ -24,12 +28,21 @@ export function validatePassword(password: string): FieldError {
   return null;
 }
 
+/**
+ * Forme enregistrée d'un pseudo : sans espaces autour, normalisée en NFC (un « é »
+ * tapé comme « e » + accent combinant devient le caractère « é »), comme en base.
+ */
+export function normalizePseudo(pseudo: string): string {
+  return pseudo.trim().normalize('NFC');
+}
+
 export function validatePseudo(pseudo: string): FieldError {
-  const value = pseudo.trim();
+  const value = normalizePseudo(pseudo);
   if (!value) return 'Choisis un pseudo.';
-  if (value.length < 3 || value.length > 20) return 'Le pseudo doit faire entre 3 et 20 caractères.';
+  const length = [...value].length; // en caractères, pas en unités UTF-16
+  if (length < 3 || length > 20) return 'Le pseudo doit faire entre 3 et 20 caractères.';
   if (!PSEUDO_PATTERN.test(value)) {
-    return 'Lettres sans accent, chiffres, « _ » et « - » seulement.';
+    return 'Lettres (accents compris), chiffres, « _ » et « - » seulement.';
   }
   if (value.toLowerCase().startsWith(GUEST_PSEUDO_PREFIX)) return 'Ce début de pseudo est réservé aux invités.';
   return null;

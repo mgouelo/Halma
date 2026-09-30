@@ -52,23 +52,41 @@ Pour une compilation EAS, définir les mêmes variables dans l'environnement EAS
 
 ### Ce qui est en place
 
-- Écrans `/sign-in` (connexion, bouton « Jouer en invité ») et `/sign-up` (pseudo, e-mail, mot de passe).
-  L'accueil affiche le pseudo du joueur connecté, ou un bouton « Se connecter ».
-- Table `profiles` (`id`, `pseudo` unique sans tenir compte de la casse, `avatar`, `created_at`),
-  remplie automatiquement à l'inscription par un trigger : le pseudo vient du formulaire, ou
-  `invite-xxxxxx` pour un invité.
+- Écrans `/sign-in` (connexion, bouton « Jouer en invité »), `/sign-up` (pseudo, e-mail, mot de passe)
+  et `/upgrade` (un invité crée son compte). L'accueil affiche le pseudo du joueur connecté, ou un bouton
+  « Se connecter ».
+- Table `profiles` (`id`, `pseudo`, `avatar`, `created_at`), remplie automatiquement à l'inscription par un
+  trigger : le pseudo vient du formulaire, ou `invite-xxxxxx` pour un invité.
+- Pseudos : 3 à 20 caractères, lettres (accents compris, tous alphabets), chiffres, « _ » et « - ».
+  Uniques sans tenir compte de la casse, accents compris (`Élodie` et `éLODIE` sont le même pseudo, `Elodie`
+  en est un autre). Ils sont enregistrés normalisés en Unicode NFC, et la base compare avec la collation
+  ICU `und-x-icu` : avec la collation `C`, `lower('É')` resterait `É`.
 - Row Level Security : les joueurs connectés (invités compris) lisent les profils ; chacun ne modifie que
   son pseudo et son avatar ; personne ne crée ni ne supprime de profil directement (la suppression suit
   celle du compte). La fonction `is_pseudo_available` permet de tester un pseudo avant l'inscription.
 - Le code : `src/lib/supabase.ts` (client, session enregistrée avec AsyncStorage), `src/auth/`
   (validation, appels à Supabase, messages d'erreur en français, contexte `useAuth()`).
 
-Un compte invité est lié à l'appareil : après déconnexion, il ne peut pas être retrouvé.
+### Du compte invité au compte e-mail
+
+Un compte invité est lié à l'appareil : après déconnexion, il ne peut pas être retrouvé. Depuis l'accueil,
+« Créer mon compte » (écran `/upgrade`) le transforme en compte e-mail **sans changer d'identifiant** : le
+profil, et plus tard les parties, sont conservés.
+
+1. Le pseudo choisi remplace `invite-xxxxxx` (mise à jour du profil ; l'index unique refuse un pseudo pris).
+2. L'e-mail et le mot de passe sont ajoutés au compte (`supabase.auth.updateUser`).
+   - Si *Confirm email* est désactivé, le compte devient aussitôt un compte e-mail.
+   - Sinon, le mot de passe est enregistré mais le compte reste invité jusqu'au clic sur le lien reçu
+     (« Confirm email change »). L'accueil l'indique et propose « J'ai confirmé » ; sur mobile, le compte
+     est aussi relu au retour dans l'application. Ensuite, la connexion par e-mail et mot de passe fonctionne.
+
+Le lien de confirmation renvoie vers la *Site URL* du projet.
 
 ### Vérifier les migrations sans Supabase
 
 `scripts/check-db.sh` applique les migrations sur un Postgres local (avec une imitation minimale du
-schéma `auth` de Supabase) et vérifie le trigger, l'unicité des pseudos et la RLS :
+schéma `auth` de Supabase) et vérifie le trigger, l'unicité des pseudos (accents et casse compris), la
+normalisation NFC et la RLS. La base temporaire utilise la locale `C`, le cas le plus défavorable :
 
 ```bash
 DATABASE_URL=postgres://postgres@localhost:5432/postgres scripts/check-db.sh

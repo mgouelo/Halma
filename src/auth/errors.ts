@@ -5,7 +5,7 @@ import { isAuthError, isAuthRetryableFetchError } from '@supabase/supabase-js';
 /** Échec connu côté application (avant même d'appeler Supabase). */
 export class AuthFailure extends Error {
   constructor(
-    readonly code: 'pseudo_taken' | 'not_configured' | 'profile_missing',
+    readonly code: 'pseudo_taken' | 'not_configured' | 'profile_missing' | 'not_confirmed',
     message: string,
   ) {
     super(message);
