@@ -1,9 +1,9 @@
-import { useMemo, useRef } from 'react';
+import { memo, useMemo, useRef } from 'react';
 import { View, type GestureResponderEvent } from 'react-native';
 import Svg, { Circle, G, Polygon } from 'react-native-svg';
 
 import { Colors, playerColor, Shadow, Stroke } from '@/constants/theme';
-import { ALL_CELLS, cellKey, cornerOf, parseCellKey, type Cell, type GameState, type Move } from '@/game';
+import { ALL_CELLS, cellKey, cornerOf, parseCellKey, type Cell, type GameState, type Move, type Player } from '@/game';
 
 import { cellAt, type BoardLayout } from './layout';
 import { MovingPiece } from './moving-piece';
@@ -20,30 +20,23 @@ interface BoardProps {
   onAnimationEnd?: () => void;
 }
 
-/** Plateau en étoile dessiné en SVG. Affichage seulement : aucune règle ici. */
-export function Board({ game, layout, selected, moves = [], animating, onCellPress, onAnimationEnd }: BoardProps) {
-  const { width, height, spacing, toPoint, starPoints } = layout;
-  const holeRadius = spacing * 0.17;
-  const pieceRadius = spacing * 0.36;
+interface BoardBackgroundProps {
+  layout: BoardLayout;
+  players: readonly Player[];
+}
 
-  const homeTint = useMemo(() => {
-    const byCorner = new Map<number, string>();
-    for (const player of game.players) byCorner.set(player.home, playerColor(player.id).tint);
-    return byCorner;
-  }, [game.players]);
-
-  const selectedKey = selected ? cellKey(selected) : null;
-  const hiddenKey = animating ? cellKey(animating.move.path[animating.move.path.length - 1]) : null;
-  const targets = moves.map((move) => move.path[move.path.length - 1]);
-
-  const animationPoints = useMemo(
-    () => (animating ? [animating.move.from, ...animating.move.path].map(toPoint) : []),
-    [animating, toPoint],
-  );
-
-  return (
-    <View style={{ width, height }}>
-      <Svg width={width} height={height}>
+/**
+ * Fond du plateau : l'étoile, ses 121 trous et la teinte des branches de départ.
+ * Il ne change jamais pendant une partie : mémorisé, il n'est pas redessiné à chaque coup.
+ */
+const BoardBackground = memo(
+  function BoardBackground({ layout, players }: BoardBackgroundProps) {
+    const { spacing, toPoint, starPoints } = layout;
+    const holeRadius = spacing * 0.17;
+    const homeTint = new Map<number, string>();
+    for (const player of players) homeTint.set(player.home, playerColor(player.id).tint);
+    return (
+      <>
         <Polygon
           points={starPoints}
           fill={Colors.ink}
@@ -71,6 +64,35 @@ export function Board({ game, layout, selected, moves = [], animating, onCellPre
             </G>
           );
         })}
+      </>
+    );
+  },
+  // Même mise en page et mêmes branches de départ : rien à redessiner (l'état de la partie, lui, change à chaque coup).
+  (a, b) =>
+    a.layout === b.layout &&
+    a.players.length === b.players.length &&
+    a.players.every((player, i) => player.id === b.players[i].id && player.home === b.players[i].home),
+);
+
+/** Plateau en étoile dessiné en SVG. Affichage seulement : aucune règle ici. */
+export function Board({ game, layout, selected, moves = [], animating, onCellPress, onAnimationEnd }: BoardProps) {
+  const { width, height, spacing, toPoint } = layout;
+  const holeRadius = spacing * 0.17;
+  const pieceRadius = spacing * 0.36;
+
+  const selectedKey = selected ? cellKey(selected) : null;
+  const hiddenKey = animating ? cellKey(animating.move.path[animating.move.path.length - 1]) : null;
+  const targets = moves.map((move) => move.path[move.path.length - 1]);
+
+  const animationPoints = useMemo(
+    () => (animating ? [animating.move.from, ...animating.move.path].map(toPoint) : []),
+    [animating, toPoint],
+  );
+
+  return (
+    <View style={{ width, height }}>
+      <Svg width={width} height={height}>
+        <BoardBackground layout={layout} players={game.players} />
 
         {Object.entries(game.board).map(([key, player]) => {
           if (key === hiddenKey) return null;
