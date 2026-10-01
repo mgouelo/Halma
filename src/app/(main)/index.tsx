@@ -7,6 +7,7 @@ import { CreditsLink } from '@/components/about-links';
 import { AccountBar } from '@/components/account-bar';
 import { Board } from '@/components/board/board';
 import { computeBoardLayout } from '@/components/board/layout';
+import { FlashNoticeBanner } from '@/components/flash-notice-banner';
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
 import { useScreenEdges } from '@/components/nav-bar/screen-edges';
@@ -34,6 +35,7 @@ export default function HomeScreen() {
         </View>
         <CreditsLink />
       </View>
+      <FlashNoticeBanner />
       <AccountBar />
     </View>
   );

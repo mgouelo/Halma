@@ -2,10 +2,12 @@ import { router } from 'expo-router';
 import { StyleSheet, Text } from 'react-native';
 
 import { useAuth } from '@/auth/auth-context';
+import { useSignOut } from '@/auth/use-sign-out';
 import { AboutLinks } from '@/components/about-links';
 import { Avatar } from '@/components/avatar';
-import { AuthScreen, authStyles, NotConfiguredCard } from '@/components/auth-screen';
+import { AuthScreen, authStyles, Notice, NotConfiguredCard } from '@/components/auth-screen';
 import { DrawnButton } from '@/components/drawn-button';
+import { SignOutDialog } from '@/components/sign-out-dialog';
 import { DeleteAccount } from '@/components/delete-account';
 import { DrawnCard } from '@/components/drawn-card';
 import { ProfileStats } from '@/components/profile-stats';
@@ -19,10 +21,11 @@ import { playerColor, Typography } from '@/constants/theme';
  */
 export default function ProfileScreen() {
   const { configured, loading, session, profile, isGuest, pendingEmail, profileError, refreshProfile } = useAuth();
+  const signOut = useSignOut(isGuest);
 
   if (!configured) {
     return (
-      <AuthScreen title="Profil" subtitle="Comptes indisponibles.">
+      <AuthScreen header="none" title="Profil" subtitle="Comptes indisponibles.">
         <NotConfiguredCard />
         <AboutLinks />
       </AuthScreen>
@@ -30,14 +33,14 @@ export default function ProfileScreen() {
   }
   if (!loading && !session) {
     return (
-      <AuthScreen title="Profil" subtitle="Tu n’es pas connecté.">
+      <AuthScreen header="none" title="Profil" subtitle="Tu n’es pas connecté.">
         <DrawnButton label="Se connecter" onPress={() => router.push('/sign-in')} />
         <AboutLinks />
       </AuthScreen>
     );
   }
   return (
-    <AuthScreen title="Profil" subtitle={isGuest ? 'Compte invité' : 'Compte e-mail'}>
+    <AuthScreen header="none" title="Profil" subtitle={isGuest ? 'Compte invité' : 'Compte e-mail'}>
       {profile ? (
         <DrawnCard contentStyle={[authStyles.card, styles.card]}>
           <Avatar value={profile.avatar} seed={profile.id} size={144} accessibilityLabel={`Avatar de ${profile.pseudo}`} />
@@ -87,14 +90,22 @@ export default function ProfileScreen() {
         </DrawnCard>
       )}
       {session && <ProfileStats userId={session.user.id} />}
-      {profile && (
+      {session && (
         <DrawnCard contentStyle={authStyles.card}>
           <Text style={Typography.heading} accessibilityRole="header">
             Compte
           </Text>
-          <DeleteAccount pseudo={profile.pseudo} isGuest={isGuest} />
+          {signOut.error && <Notice>{signOut.error}</Notice>}
+          <DrawnButton
+            label={signOut.pending ? 'Déconnexion…' : 'Se déconnecter'}
+            busy={signOut.pending}
+            onPress={signOut.request}
+            accessibilityHint={isGuest ? 'Un compte invité ne peut pas être retrouvé après déconnexion.' : undefined}
+          />
+          {profile && <DeleteAccount pseudo={profile.pseudo} isGuest={isGuest} />}
         </DrawnCard>
       )}
+      <SignOutDialog controller={signOut} />
       <AboutLinks />
     </AuthScreen>
   );

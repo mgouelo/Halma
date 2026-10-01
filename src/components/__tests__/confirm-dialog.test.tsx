@@ -57,4 +57,28 @@ describe('fenêtre de confirmation', () => {
     renderDialog(false);
     expect(screen.queryByText('Quitter la partie ?')).toBeNull();
   });
+
+  it('propose un troisième choix facultatif', () => {
+    const onExtra = jest.fn();
+    render(
+      <ConfirmDialog
+        visible
+        title="Se déconnecter ?"
+        message="Message."
+        cancelLabel="Annuler"
+        extraLabel="Créer mon compte"
+        confirmLabel="Se déconnecter"
+        onCancel={jest.fn()}
+        onConfirm={jest.fn()}
+        onExtra={onExtra}
+      />,
+    );
+    fireEvent.press(screen.getByRole('button', { name: 'Créer mon compte' }));
+    expect(onExtra).toHaveBeenCalledTimes(1);
+  });
+
+  it('n’affiche pas de troisième bouton sans libellé', () => {
+    renderDialog();
+    expect(screen.getAllByRole('button')).toHaveLength(2);
+  });
 });

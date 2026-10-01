@@ -48,11 +48,12 @@ export interface RoomSnapshot {
   game: StoredGame | null;
 }
 
-/** Room en cours du joueur, pour la reprendre depuis l'accueil. */
+/** Room active du joueur, pour la reprendre ou la quitter depuis « Jouer en ligne ». */
 export interface ActiveRoom {
   id: string;
   code: string;
   status: RoomStatus;
+  hostId: string;
   createdAt: string;
 }
 
@@ -111,6 +112,11 @@ export async function joinRoom(client: SupabaseClient, input: string): Promise<s
   return roomId;
 }
 
+/**
+ * Quitte une room en attente. L'hôte la ferme : elle est supprimée avec ses
+ * participants et les autres joueurs en sont informés. Pendant la partie, on
+ * abandonne plutôt (`resignGame`).
+ */
 export function leaveRoom(client: SupabaseClient, roomId: string): Promise<void> {
   return rpc<void>(client, 'leave_room', { p_room: roomId });
 }
@@ -155,42 +161,17 @@ export async function fetchRoom(client: SupabaseClient, roomId: string): Promise
 }
 
 /**
- * Rooms en attente ou en cours du joueur, les plus récentes d'abord. Les parties
- * qu'il a quittées (forfait ou abandon) n'y figurent pas.
+ * Room active du joueur (salle d'attente, ou partie en cours dont il n'a pas
+ * abandonné), ou null. Une seule au plus : la règle est dans la base
+ * (`my_active_room`, qui sert aussi à refuser une deuxième room).
  */
-export async function fetchActiveRooms(client: SupabaseClient, userId: string): Promise<ActiveRoom[]> {
-  const seats = await client
-    .from('room_players')
-    .select('room_id, player_index')
-    .eq('user_id', userId)
-    .returns<{ room_id: string; player_index: number | null }[]>();
-  if (seats.error) throw seats.error;
-  const ids = (seats.data ?? []).map((s) => s.room_id);
-  if (ids.length === 0) return [];
-
-  const [rooms, games] = await Promise.all([
-    client
-      .from('rooms')
-      .select(ROOM_COLUMNS)
-      .in('id', ids)
-      .in('status', ['waiting', 'playing'])
-      .order('created_at', { ascending: false })
-      .returns<RoomRow[]>(),
-    client.from('games').select('room_id, forfeited').in('room_id', ids).returns<{ room_id: string; forfeited: number[] }[]>(),
-  ]);
-  if (rooms.error) throw rooms.error;
-  if (games.error) throw games.error;
-  const left = new Set(
-    (games.data ?? [])
-      .filter((g) => {
-        const seat = seats.data?.find((s) => s.room_id === g.room_id);
-        return seat?.player_index != null && g.forfeited.includes(seat.player_index);
-      })
-      .map((g) => g.room_id),
+export async function fetchActiveRoom(client: SupabaseClient): Promise<ActiveRoom | null> {
+  const rows = await rpc<{ id: string; code: string; status: RoomStatus; host_id: string; created_at: string }[] | null>(
+    client,
+    'my_active_room',
   );
-  return (rooms.data ?? [])
-    .filter((r) => !left.has(r.id))
-    .map((r) => ({ id: r.id, code: r.code, status: r.status, createdAt: r.created_at }));
+  const row = rows?.[0];
+  return row ? { id: row.id, code: row.code, status: row.status, hostId: row.host_id, createdAt: row.created_at } : null;
 }
 
 /** Envoie une demande à l'Edge Function `game-action` ; renvoie la partie à jour. */
@@ -223,6 +204,37 @@ export function tickGame(client: SupabaseClient, roomId: string) {
 
 export function resignGame(client: SupabaseClient, roomId: string) {
   return gameAction(client, { action: 'resign', roomId });
+}
+
+/** Message montré aux joueurs d'une salle d'attente que l'hôte vient de fermer. */
+export const HOST_CLOSED_NOTICE = 'L’hôte a fermé la room.';
+export const ROOM_CLOSED_NOTICE = 'Cette room a été fermée.';
+
+/**
+ * Message à montrer quand la room qu'on regardait disparaît (supprimée par
+ * l'hôte pendant qu'on attendait, ou nettoyée par le serveur).
+ */
+export function roomClosedNotice(snapshot: RoomSnapshot, userId: string): string {
+  const waiting = snapshot.room.status === 'waiting' && !snapshot.game;
+  return waiting && snapshot.room.hostId !== userId ? HOST_CLOSED_NOTICE : ROOM_CLOSED_NOTICE;
+}
+
+/**
+ * Confirmation à demander avant de quitter la salle d'attente : seulement pour
+ * l'hôte quand d'autres humains y sont (quitter ferme la room pour tous).
+ */
+export function leaveRoomPrompt(
+  snapshot: RoomSnapshot,
+  userId: string,
+): { title: string; message: string; confirmLabel: string } | null {
+  if (snapshot.room.hostId !== userId) return null;
+  const others = snapshot.players.filter((p) => p.userId !== null && p.userId !== userId);
+  if (others.length === 0) return null;
+  return {
+    title: 'Fermer la room ?',
+    message: 'Tu es l’hôte : si tu quittes, la room est supprimée et les autres joueurs sont renvoyés à l’accueil.',
+    confirmLabel: 'Fermer la room',
+  };
 }
 
 /** Message en français pour une erreur du jeu en ligne. */

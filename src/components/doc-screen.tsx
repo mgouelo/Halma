@@ -1,19 +1,12 @@
-import { router } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors, Fonts, MaxContentWidth, Radius, Spacing, Stroke, TouchTarget, Typography } from '@/constants/theme';
 
-import { DrawnButton } from './drawn-button';
+import { BackButton } from './back-button';
 import { DrawnCard } from './drawn-card';
 import { useScreenEdges } from './nav-bar/screen-edges';
-
-/** Retour à l'écran précédent, ou à l'accueil si on est arrivé directement (lien web). */
-export function goBack() {
-  if (router.canGoBack()) router.back();
-  else router.replace('/');
-}
 
 /** Page de texte (crédits, confidentialité, conditions) : titre, retour, défilement. */
 export function DocScreen({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
@@ -21,9 +14,7 @@ export function DocScreen({ title, subtitle, children }: { title: string; subtit
   return (
     <SafeAreaView style={styles.screen} edges={edges}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <DrawnButton label="‹ Retour" size="small" onPress={goBack} />
-        </View>
+        <BackButton />
         <View style={styles.titles}>
           <Text style={Typography.title} accessibilityRole="header">
             {title}
@@ -130,9 +121,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     padding: Spacing.four,
     gap: Spacing.four,
-  },
-  header: {
-    flexDirection: 'row',
   },
   titles: {
     gap: Spacing.one,

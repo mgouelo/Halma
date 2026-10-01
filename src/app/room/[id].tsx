@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef } from 'react';
 import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,6 +10,8 @@ import { Lobby } from '@/components/online/lobby';
 import { OnlineGameView } from '@/components/online/online-game-view';
 import { ErrorState, LoadingState } from '@/components/state-view';
 import { Colors } from '@/constants/theme';
+import { setFlashNotice } from '@/lib/flash-notice';
+import { roomClosedNotice } from '@/rooms/room-service';
 import { useIsClient } from '@/hooks/use-is-client';
 import { useNow, useRoom } from '@/rooms/use-room';
 
@@ -44,8 +47,18 @@ function RoomGate() {
 function RoomView({ roomId, userId }: { roomId: string; userId: string }) {
   const { snapshot, status, error, refresh, applyGame } = useRoom(roomId);
   const now = useNow();
+  const leaving = useRef(false);
+
+  // La room qu'on regardait disparaît (l'hôte l'a fermée) : retour à l'accueil avec un message.
+  const closed = status === 'missing' && snapshot !== null;
+  useEffect(() => {
+    if (!closed || !snapshot || leaving.current) return;
+    setFlashNotice(roomClosedNotice(snapshot, userId));
+    router.dismissTo('/');
+  }, [closed, snapshot, userId]);
 
   if (status === 'loading') return <Message text="Connexion à la room…" />;
+  if (closed) return <Message text="Retour à l’accueil…" />;
   if (status === 'missing') {
     return (
       <AuthScreen title="Room introuvable" subtitle="Elle a été fermée, ou tu n’en fais plus partie.">
@@ -62,7 +75,7 @@ function RoomView({ roomId, userId }: { roomId: string; userId: string }) {
   }
   const { game } = snapshot;
   if (game) return <OnlineGameView snapshot={{ ...snapshot, game }} userId={userId} now={now} onGame={applyGame} />;
-  return <Lobby snapshot={snapshot} userId={userId} now={now} onGame={applyGame} refresh={refresh} />;
+  return <Lobby snapshot={snapshot} userId={userId} now={now} onGame={applyGame} refresh={refresh} leavingRef={leaving} />;
 }
 
 function Message({ text }: { text: string }) {

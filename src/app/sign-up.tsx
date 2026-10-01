@@ -28,7 +28,7 @@ export default function SignUpScreen() {
   };
 
   return (
-    <AuthScreen title="Inscription" subtitle="Un pseudo pour jouer en ligne et retrouver tes parties.">
+    <AuthScreen header="back" title="Inscription" subtitle="Un pseudo pour jouer en ligne et retrouver tes parties.">
       {!configured ? (
         <NotConfiguredCard />
       ) : confirmationSentTo ? (
@@ -49,7 +49,7 @@ export default function SignUpScreen() {
           )}
           <AccountForm submitLabel="Créer mon compte" pendingLabel="Création…" pending={pending} error={error} onSubmit={submit} />
           <View style={authStyles.links}>
-            <Link href="/sign-in" style={authStyles.link}>
+            <Link href="/sign-in" replace style={authStyles.link}>
               Déjà un compte ? Connecte-toi
             </Link>
           </View>

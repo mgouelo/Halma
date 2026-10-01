@@ -3,18 +3,21 @@ import { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-context';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { AuthScreen, authStyles, Notice, NotConfiguredCard } from '@/components/auth-screen';
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
 import { DrawnTextInput } from '@/components/drawn-text-input';
 import { playerColor, Spacing, Typography } from '@/constants/theme';
 import { getSupabase } from '@/lib/supabase';
+import { OnlineError } from '@/online';
 import {
   createRoom,
   describeOnlineError,
-  fetchActiveRooms,
+  fetchActiveRoom,
   isValidRoomCode,
   joinRoom,
+  leaveRoom,
   normalizeRoomCode,
   ROOM_CODE_LENGTH,
   type ActiveRoom,
@@ -53,32 +56,45 @@ export default function OnlineScreen() {
 function OnlineMenu({ userId }: { userId: string }) {
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState<string | null>(null);
-  const [rooms, setRooms] = useState<ActiveRoom[] | null>(null);
-  const [roomsError, setRoomsError] = useState<string | null>(null);
+  // undefined : pas encore lu ; null : aucune room active.
+  const [active, setActive] = useState<ActiveRoom | null | undefined>(undefined);
+  const [activeError, setActiveError] = useState<string | null>(null);
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const create = useOnlineAction();
   const join = useOnlineAction();
+  const leave = useOnlineAction();
 
-  // Parties en cours, relues à chaque retour sur l'écran (et sur « Réessayer »).
-  const loadRooms = useCallback(() => {
-    let active = true;
-    fetchActiveRooms(getSupabase(), userId)
-      .then((list) => {
-        if (!active) return;
-        setRooms(list);
-        setRoomsError(null);
+  // Room active, relue à chaque retour sur l'écran (et sur « Réessayer »).
+  const loadActive = useCallback(() => {
+    let current = true;
+    fetchActiveRoom(getSupabase())
+      .then((room) => {
+        if (!current) return;
+        setActive(room);
+        setActiveError(null);
       })
       .catch((e: unknown) => {
-        if (active) setRoomsError(describeOnlineError(e));
+        if (current) setActiveError(describeOnlineError(e));
       });
     return () => {
-      active = false;
+      current = false;
     };
-  }, [userId]);
-  useFocusEffect(loadRooms);
+  }, []);
+  useFocusEffect(loadActive);
+
+  // Refus « déjà dans une room » (autre appareil, course) : on relit la room active pour l'afficher.
+  const reload = (e: unknown) => {
+    if (e instanceof OnlineError && e.code === 'already_in_room') loadActive();
+  };
 
   const createAndOpen = () =>
     create.run(async () => {
-      openRoom(await createRoom(getSupabase()));
+      try {
+        openRoom(await createRoom(getSupabase()));
+      } catch (e) {
+        reload(e);
+        throw e;
+      }
     });
 
   const joinAndOpen = () => {
@@ -88,38 +104,78 @@ function OnlineMenu({ userId }: { userId: string }) {
       return;
     }
     join.run(async () => {
-      openRoom(await joinRoom(getSupabase(), normalized));
-      setCode('');
+      try {
+        openRoom(await joinRoom(getSupabase(), normalized));
+        setCode('');
+      } catch (e) {
+        reload(e);
+        throw e;
+      }
     });
   };
 
+  const leaveActive = async (room: ActiveRoom) => {
+    setConfirmLeave(false);
+    const ok = await leave.run(async () => {
+      await leaveRoom(getSupabase(), room.id);
+    });
+    if (ok) setActive(null);
+  };
+
+  if (activeError && active === undefined) {
+    return <ErrorState title="Room indisponible" message={activeError} onRetry={loadActive} />;
+  }
+  if (active === undefined) return <LoadingState />;
+
+  // Une seule room à la fois : on la reprend ou on la quitte avant d'en créer ou rejoindre une autre.
+  if (active) {
+    const playing = active.status === 'playing';
+    const isHost = active.hostId === userId;
+    return (
+      <DrawnCard contentStyle={authStyles.card}>
+        <Text style={Typography.heading}>Ta room</Text>
+        <View style={styles.roomRow}>
+          <View style={styles.flex}>
+            <Text style={[Typography.heading, styles.code]}>{active.code}</Text>
+            <Text style={Typography.caption}>{playing ? 'Partie en cours' : 'Salle d’attente'}</Text>
+          </View>
+          <DrawnButton
+            label={playing ? 'Reprendre' : 'Ouvrir'}
+            size="small"
+            color={playerColor(2).piece}
+            onPress={() => openRoom(active.id)}
+          />
+        </View>
+        <Text style={Typography.caption}>
+          {playing
+            ? 'Tu ne peux être que dans une room à la fois. Pour quitter une partie en cours, abandonne-la depuis l’écran de jeu.'
+            : 'Tu ne peux être que dans une room à la fois : reprends-la, ou quitte-la pour en créer ou rejoindre une autre.'}
+        </Text>
+        {leave.error && <Notice>{leave.error}</Notice>}
+        {!playing && (
+          <DrawnButton
+            label={leave.pending ? 'Sortie…' : 'Quitter la room'}
+            size="small"
+            busy={leave.pending}
+            onPress={isHost ? () => setConfirmLeave(true) : () => leaveActive(active)}
+            accessibilityHint={isHost ? 'En tant qu’hôte, supprime la room.' : undefined}
+          />
+        )}
+        <ConfirmDialog
+          visible={confirmLeave}
+          title="Fermer la room ?"
+          message="Tu es l’hôte : si tu quittes, la room est supprimée et les autres joueurs sont renvoyés à l’accueil."
+          cancelLabel="Garder la room"
+          confirmLabel="Fermer la room"
+          onCancel={() => setConfirmLeave(false)}
+          onConfirm={() => leaveActive(active)}
+        />
+      </DrawnCard>
+    );
+  }
+
   return (
     <>
-      {roomsError && !rooms && (
-        <ErrorState title="Parties en cours indisponibles" message={roomsError} onRetry={loadRooms} />
-      )}
-      {rooms && rooms.length > 0 && (
-        <DrawnCard contentStyle={authStyles.card}>
-          <Text style={Typography.heading}>Tes parties en cours</Text>
-          {rooms.map((room) => (
-            <View key={room.id} style={styles.roomRow}>
-              <View style={styles.flex}>
-                <Text style={[Typography.heading, styles.code]}>{room.code}</Text>
-                <Text style={Typography.caption}>
-                  {room.status === 'playing' ? 'Partie en cours' : 'Salle d’attente'}
-                </Text>
-              </View>
-              <DrawnButton
-                label={room.status === 'playing' ? 'Reprendre' : 'Ouvrir'}
-                size="small"
-                color={playerColor(2).piece}
-                onPress={() => openRoom(room.id)}
-              />
-            </View>
-          ))}
-        </DrawnCard>
-      )}
-
       <DrawnCard contentStyle={authStyles.card}>
         <Text style={Typography.heading}>Créer une room</Text>
         <Text style={Typography.caption}>

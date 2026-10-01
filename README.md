@@ -81,8 +81,9 @@ Pour une compilation EAS, définir les mêmes variables dans l'environnement EAS
 ### Ce qui est en place
 
 - Écrans `/sign-in` (connexion, bouton « Jouer en invité »), `/sign-up` (pseudo, e-mail, mot de passe)
-  et `/upgrade` (« Créer mon compte » : un invité ajoute un e-mail à son compte), tous avec la barre de
-  navigation. L'accueil affiche le pseudo du joueur connecté, ou « Connecte-toi pour conserver ta progression »
+  et `/upgrade` (« Créer mon compte » : un invité ajoute un e-mail à son compte), **sans** barre de
+  navigation, avec un seul bouton « ‹ Retour » (voir « Barre de navigation »). Les champs de mot de passe ont
+  un œil pour afficher ou masquer la saisie (voir « Champ de mot de passe »). L'accueil affiche le pseudo du joueur connecté, ou « Connecte-toi pour conserver ta progression »
   et un bouton « Se connecter ».
 - **Profil d'un invité** (`/profile`, entrée « Profil » de la barre) : son pseudo `invite-xxxxxx`, son avatar, ses
   statistiques et une carte « Conserve ta progression » avec le bouton « Créer mon compte » (vers `/upgrade`).
@@ -126,13 +127,27 @@ DATABASE_URL=postgres://postgres@localhost:5432/postgres scripts/check-db.sh
 
 Le script crée une base temporaire et la supprime à la fin. Ne jamais le lancer sur la base Supabase.
 Il vérifie aussi la migration `rooms` (`supabase/checks/rooms-check.sql`) : lecture réservée aux joueurs
-de la room, aucune écriture directe, salle d'attente, lancement, fin de partie ; et la migration
+de la room, aucune écriture directe, salle d'attente, lancement, fin de partie, et la règle « une seule room
+active » (deuxième création et deuxième jointure refusées, rejoindre sa propre room permis, l'hôte qui quitte
+supprime la room avec ses participants, un simple joueur la quitte et elle reste ouverte, abandon puis nouvelle
+room permise, rooms finies ignorées) ; et la migration
 `player_stats` (`supabase/checks/stats-check.sql`) : aucune écriture par les clients, parties lancées,
 victoires (niveau de l'IA la plus forte, idempotence, forfaits et abandons exclus), séries de connexion,
 classements (cinq, sans les parties lancées ; départage, top 50, ligne du joueur ; invités exclus et refusés,
 invité devenu compte e-mail classé avec ses scores d'invité) ; enfin
 `supabase/checks/account-check.sql` : suppression de compte (hôte en pleine partie, salles d'attente,
-statistiques et classements), limites d'essais de codes et de rooms, nettoyage des rooms abandonnées.
+statistiques et classements), limite d'essais de codes, nettoyage des rooms abandonnées.
+
+## Plateau : une seule zone tactile
+
+Les 121 cases ne portent plus chacune un `onPress` : sur le web, `react-native-svg` transmettait les
+gestionnaires de touche des cercles tels quels au DOM, d'où l'avertissement React « Unknown event handler
+property `onResponderTerminate` ». Une seule zone tactile (`View` à gestionnaires de réponse, avec le libellé
+« Plateau de jeu ») est posée au-dessus du dessin ; elle retrouve la case touchée avec `cellAt`
+(`src/components/board/layout.ts`, l'inverse de `toPoint` : arrondi à l'hexagone le plus proche, `null` hors des
+cases). Un doigt qui a glissé de plus de 10 points n'est pas une touche. Le même code marche sur iOS, Android et
+le web ; le plateau de l'accueil, en lecture seule, n'a pas de zone tactile. Testé par `layout.test.ts` (les 121
+cases, à plusieurs tailles, sur toute la surface du cercle, hors plateau) et `board.test.tsx`.
 
 ## Parties hors ligne
 
@@ -181,15 +196,48 @@ classements »).
 
 ### Parcours
 
-- **Accueil → Jouer en ligne** (`/online`) : il faut être connecté (un compte invité suffit). On y crée une
-  room, on en rejoint une avec son code, et on retrouve ses parties en cours (« Reprendre »).
+- **Accueil → Jouer en ligne** (`/online`) : il faut être connecté (un compte invité suffit). Sans room active,
+  on en crée une ou on en rejoint une avec son code. Avec une room active, l'écran la montre (« Ta room » :
+  « Ouvrir » ou « Reprendre », et « Quitter la room » dans une salle d'attente) et ne propose ni création ni
+  jointure : voir « Une seule room active ».
 - **Salle d'attente** (`/room/[id]`) : code à 6 caractères (sans I, L, O, 0 ni 1) à partager, liste des
   participants avec leur pseudo, l'hôte et les joueurs déconnectés. L'hôte ajoute ou retire des IA et règle
-  leur niveau, de 2 à 6 participants en tout, puis lance la partie. Si l'hôte quitte la salle, le joueur
-  suivant devient hôte ; une room sans humain est supprimée.
+  leur niveau, de 2 à 6 participants en tout, puis lance la partie. « Quitter la room » : un joueur quitte et
+  la room reste ouverte pour les autres ; l'**hôte** la **supprime** (avec ses participants), après une
+  confirmation s'il y a d'autres joueurs, et ceux-ci sont renvoyés à l'accueil avec « L'hôte a fermé la room. ».
+  « ‹ Retour » ou « Accueil » laissent la room existante : on la reprend depuis « Jouer en ligne ».
 - **Partie** (même écran une fois lancée) : l'ordre des places donne l'ordre du tour et les couleurs. Chaque
   joueur ne peut toucher que ses pions pendant son tour ; le coup s'affiche aussitôt puis est confirmé (ou
-  annulé) par le serveur. Les coups des autres arrivent par Realtime et sont animés. Bouton « Abandonner ».
+  annulé) par le serveur. Les coups des autres arrivent par Realtime et sont animés. Bouton « Abandonner » (en
+  partie, on ne « quitte » pas).
+
+### Une seule room active
+
+Un joueur ne peut être que dans **une** room à la fois (migration `20261008120000_single_active_room.sql`, qui
+remplace la limite de 5 salles d'attente). Sa room est **active** s'il a une place dans :
+
+- une salle d'attente, ou
+- une partie en cours qu'il n'a pas abandonnée (son identifiant de joueur n'est pas dans `games.forfeited` : un
+  abandon et un forfait par déconnexion libèrent donc le joueur).
+
+Les rooms finies ne comptent pas. Côté serveur :
+
+- `create_room` et `join_room` refusent avec le code `already_in_room` (« Tu es déjà dans une room… ») si le
+  joueur est dans une autre room active ; rejoindre la room dont on fait déjà partie reste permis (reprise de
+  partie). Un verrou par joueur (`pg_advisory_xact_lock`) empêche deux appels simultanés d'en créer deux ;
+- `leave_room` : hôte d'une salle d'attente → room supprimée (cascade sur `room_players` et `games`) ; autre
+  joueur → il quitte, la room reste ; pendant la partie → `room_started` (on abandonne) ; room finie → il la
+  quitte de sa liste. Le passage de l'hôte à un autre joueur n'existe plus qu'à la suppression d'un compte
+  (`prepare_account_deletion`, inchangé) ;
+- `my_active_room()` renvoie la room active de l'utilisateur connecté (écran « Jouer en ligne ») ;
+  `active_rooms_of(uuid)` est réservée au serveur ;
+- `cleanup_abandoned_rooms` ne change pas. Des joueurs qui avaient plusieurs rooms avant la migration les
+  gardent : `my_active_room()` montre la plus récente, et il faut les quitter une à une.
+
+Côté application : `describeOnlineError` traduit `already_in_room` ; quand la room disparaît pendant qu'on est
+dans la salle d'attente (événement Realtime de suppression, ou relecture qui ne la trouve plus), l'écran renvoie à
+l'accueil avec le message « L'hôte a fermé la room. » (`src/lib/flash-notice.ts`, `FlashNoticeBanner`), sans erreur
+ni écran blanc ; si l'on n'avait jamais vu la room (lien ou code périmé), l'écran « Room introuvable » reste.
 
 ### Qui écrit quoi
 
@@ -198,7 +246,7 @@ Les clients **ne peuvent rien écrire** dans `rooms`, `room_players` ni `games` 
 
 | Action | Passe par | Vérifications |
 | ------ | --------- | ------------- |
-| Créer, rejoindre, quitter une room ; ajouter, régler, retirer une IA ; signe de vie | fonctions SQL `create_room`, `join_room`, `leave_room`, `add_ai`, `set_ai_level`, `remove_ai`, `heartbeat` (`security definer`) | membre, hôte, room en attente, 6 places au plus |
+| Créer, rejoindre, quitter une room ; ajouter, régler, retirer une IA ; signe de vie | fonctions SQL `create_room`, `join_room`, `leave_room`, `add_ai`, `set_ai_level`, `remove_ai`, `heartbeat` (`security definer`) | membre, hôte, room en attente, 6 places au plus, une seule room active |
 | Lancer la partie, jouer un coup, faire jouer une IA, déclarer forfait, abandonner | Edge Function `game-action` (clé `service_role`) | voir ci-dessous |
 
 L'Edge Function (`supabase/functions/game-action/index.ts`) authentifie le jeton, puis passe la demande à
@@ -350,14 +398,43 @@ Zones touchables d'au moins 44 points, libellés « Profil », « Accueil », «
 « sélectionné »), zone sûre du bas prise en compte (la barre la gère, les écrans au-dessus ne la comptent pas). Sur
 grand écran, la barre reste en bas, centrée, 440 points au plus. Sur Android, elle se cache clavier ouvert.
 
-**Routes** : les écrans avec la barre sont dans le groupe `src/app/(main)/` (accueil, jouer en ligne, contre l'IA,
-entre amis, profil, avatar, classements, connexion, inscription et création de compte `/upgrade`), dont le layout
-empile une pile Expo Router au-dessus de la barre. Seules les parties (`/game`) et les rooms (`/room/[id]`) restent
-dans la pile principale, **par-dessus** le groupe : la barre y est masquée sans condition à maintenir. L'entrée
-« Profil » est active sur le profil et ses sous-écrans (avatar, connexion, inscription, création de compte). Toucher
-une entrée revient à l'accueil (`dismissTo`), revient au profil depuis ses sous-écrans, empile depuis l'accueil, ou
-remplace l'écran courant d'une entrée à l'autre (`src/navigation/nav-bar.ts`, testé, avec un test qui vérifie quels
-écrans sont dans `(main)`).
+**Routes** : les écrans avec la barre sont dans le groupe `src/app/(main)/` : accueil, jouer en ligne, contre l'IA,
+entre amis, profil et classements (le layout empile une pile Expo Router au-dessus de la barre). Tout le reste est
+dans la pile principale, **par-dessus** le groupe, donc sans barre (rien à maintenir pour la masquer) :
+
+- les parties (`/game`) et les rooms (`/room/[id]`), avec leurs propres boutons ;
+- les écrans de compte (`/sign-in`, `/sign-up`, `/upgrade`), l'éditeur d'avatar (`/avatar`) et les pages
+  d'information (`/credits`, `/privacy`, `/terms`) : **un seul bouton, « ‹ Retour »**
+  (`src/components/back-button.tsx`).
+
+Le bouton de retour revient à l'écran d'où l'on vient (historique de navigation). Sans historique (page rechargée,
+lien direct), `src/navigation/back.ts` utilise un écran de secours : le **profil** pour l'éditeur d'avatar, les
+écrans de compte et les pages d'information, l'accueil sinon. La page Profil, elle, garde la barre et n'a pas de
+bouton « Accueil » (l'accueil est dans la barre). L'entrée « Profil » n'est active que sur `/profile` ; toucher une
+entrée revient à l'accueil (`dismissTo`), empile depuis l'accueil, ou remplace l'écran courant d'une entrée à
+l'autre ; « Profil » d'un joueur non connecté ouvre `/sign-in` par-dessus (`push`), et son « ‹ Retour » ramène où
+il était. Un invité qui touche « Profil » voit son profil, avec la barre (`src/navigation/nav-bar.ts`, testé, avec
+des tests qui vérifient quels écrans sont dans `(main)`, lesquels sont par-dessus, et le retour de secours).
+
+### Se déconnecter
+
+Le profil a un bouton « Se déconnecter » (`DrawnButton`), l'accueil garde « Déconnexion » : les deux passent par
+le même hook, `useSignOut` (`src/auth/use-sign-out.ts`, testé). Après la déconnexion : retour à l'accueil, non
+connecté. Un compte **e-mail** se déconnecte aussitôt. Pour un compte **invité**, la déconnexion est définitive
+(on ne le retrouve pas) : une confirmation (`ConfirmDialog`, avec un troisième choix facultatif) l'explique et
+propose « Créer mon compte » pour garder la progression, « Rester connecté » ou « Se déconnecter quand même ».
+Une erreur (réseau…) donne un message en français ; le joueur reste connecté et l'écran n'est pas bloqué.
+
+### Champ de mot de passe
+
+`DrawnTextInput` a une option `revealable` (connexion, inscription et création de compte d'un invité, via
+`AccountForm`) : mot de passe masqué par défaut, avec à droite un œil (`src/components/eye-icon.tsx`, SVG au trait
+noir épais arrondi et pupille pastel, comme les icônes de la barre ; œil ouvert = « Afficher », barré =
+« Masquer »). C'est un vrai bouton : zone d'au moins 44 points, rôle bouton, libellé « Afficher le mot de passe » /
+« Masquer le mot de passe » qui suit l'état. Il ne valide pas le formulaire ; sur le web, `mousedown` est annulé
+pour que le champ garde le focus et le curseur, et sur mobile le focus et la sélection sont rétablis après le
+changement de mode. `autoComplete` et `textContentType` ne sont pas touchés (gestionnaires de mots de passe), et
+la correction automatique, la majuscule et le correcteur orthographique sont coupés.
 
 ## Avatars (Humation)
 
@@ -559,7 +636,8 @@ Ce que fait le code :
 
 - 10 codes de room inconnus au plus par joueur en 10 minutes (`join_room`, table `room_join_failures`),
   puis « Trop de codes essayés » ;
-- 5 salles d'attente au plus par joueur (`create_room`), puis « Tu as déjà trop de rooms en attente » ;
+- une seule room active par joueur (`create_room`, `join_room`), puis « Tu es déjà dans une room » (voir
+  « Une seule room active ») ;
 - toutes les écritures passent par des fonctions SQL ou des Edge Functions qui vérifient chaque demande.
 
 À régler dans le tableau de bord Supabase (rien dans le dépôt ; les noms de menus peuvent changer) :
@@ -602,11 +680,12 @@ Toujours installer les paquets Expo avec `npx expo install <paquet>` pour obteni
 
 ## Organisation
 
-- `src/app/` : routes Expo Router. Avec la barre de navigation, dans `(main)/` : `index.tsx` (accueil), `ai-setup.tsx` (réglage d'une partie contre l'IA), `local-setup.tsx` (réglage d'une partie entre amis), `online.tsx` (créer, rejoindre, reprendre), `profile.tsx`, `avatar.tsx`, `leaderboard.tsx` (classements), `credits.tsx`, `privacy.tsx`, `terms.tsx`, `sign-in.tsx`, `sign-up.tsx` et `upgrade.tsx`. Sans la barre : `game.tsx` (la partie ; `/game?players=4` pour 2 à 6 amis sur le même appareil, `/game?ai=medium,hard` contre des IA, `/game` seul à deux), `room/[id].tsx` (salle d'attente puis partie en ligne).
+- `src/app/` : routes Expo Router. Avec la barre de navigation, dans `(main)/` : `index.tsx` (accueil), `ai-setup.tsx` (réglage d'une partie contre l'IA), `local-setup.tsx` (réglage d'une partie entre amis), `online.tsx` (créer, rejoindre, reprendre ou quitter sa room), `profile.tsx` et `leaderboard.tsx` (classements). Sans la barre, par-dessus : `game.tsx` (la partie ; `/game?players=4` pour 2 à 6 amis sur le même appareil, `/game?ai=medium,hard` contre des IA, `/game` seul à deux), `room/[id].tsx` (salle d'attente puis partie en ligne), et avec un bouton « ‹ Retour » : `sign-in.tsx`, `sign-up.tsx`, `upgrade.tsx`, `avatar.tsx`, `credits.tsx`, `privacy.tsx`, `terms.tsx`.
 - `src/navigation/` : logique de la barre de navigation ; `src/components/nav-bar/` : la barre et ses icônes.
 - `src/stats/` : statistiques, classements et séries de connexion (voir « Statistiques et classements »).
 - `src/credits/` : données de la page Crédits (générées par `scripts/generate-licenses.mjs`) ; `src/legal/` : textes
   de la politique de confidentialité et des conditions d'utilisation (brouillons).
+- `src/lib/flash-notice.ts` : message à usage unique affiché sur l'écran suivant (room fermée par l'hôte).
 - `src/components/` : composants d'affichage, dont `board/` (plateau SVG, pion animé, calcul de mise en page), `game-layout.tsx` (mise en page des parties, téléphone et grand écran) et `state-view.tsx` (chargement, erreurs).
 - `src/hooks/` : état d'interface de la partie (sélection, animation, tour des IA), qui délègue règles et IA à `src/game/` ; paramètres de partie (`game-setup.ts`) ; confirmation avant de quitter ou recommencer une partie locale (`leave-guard.ts`, `use-leave-guard.ts`).
 - `src/constants/theme.ts` : couleurs, couleurs pastel des joueurs, police et typographie, traits, espacements ; `src/constants/fonts.ts` : fichiers de la police.
@@ -706,7 +785,10 @@ minimax classique.
    nettoyage des rooms, limites d'abus.~~ Fait.
 8. ~~Retouches : confirmations dans les parties locales, parties entre amis de 2 à 6, barre de navigation des
    invités, invités hors des classements.~~ Fait.
-9. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », amis.
+9. ~~Retouches après les tests du mode en ligne : plateau à une seule zone tactile, une seule room active par
+   joueur, écrans de compte sans barre avec « ‹ Retour », déconnexion depuis le profil, œil des mots de passe.~~
+   Fait.
+10. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », amis.
 
 ## Inspiration
 

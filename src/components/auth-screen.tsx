@@ -6,20 +6,36 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors, Fonts, MaxContentWidth, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
 
+import { BackButton } from './back-button';
 import { DrawnButton } from './drawn-button';
 import { DrawnCard } from './drawn-card';
 import { useScreenEdges } from './nav-bar/screen-edges';
 
-/** Cadre commun des écrans de connexion et d'inscription. */
-export function AuthScreen({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+interface AuthScreenProps {
+  title: string;
+  subtitle: string;
+  /**
+   * Bouton en haut à gauche : « ‹ Accueil » (par défaut), « ‹ Retour » vers
+   * l'écran précédent (écrans sans barre de navigation), ou aucun (profil :
+   * l'accueil est dans la barre).
+   */
+  header?: 'home' | 'back' | 'none';
+  children: ReactNode;
+}
+
+/** Cadre commun des écrans de compte (connexion, inscription, profil, jouer en ligne…). */
+export function AuthScreen({ title, subtitle, header = 'home', children }: AuthScreenProps) {
   const edges = useScreenEdges();
   return (
     <SafeAreaView style={styles.screen} edges={edges}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <View style={styles.header}>
-            <DrawnButton label="‹ Accueil" size="small" onPress={() => router.dismissTo('/')} />
-          </View>
+          {header === 'back' && <BackButton />}
+          {header === 'home' && (
+            <View style={styles.header}>
+              <DrawnButton label="‹ Accueil" size="small" onPress={() => router.dismissTo('/')} />
+            </View>
+          )}
           <View style={styles.titles}>
             <Text style={Typography.title} accessibilityRole="header">
               {title}

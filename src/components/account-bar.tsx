@@ -2,20 +2,23 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-context';
-import { refreshAccount, signOut } from '@/auth/auth-service';
+import { refreshAccount } from '@/auth/auth-service';
 import { AuthFailure } from '@/auth/errors';
 import { useAuthAction } from '@/auth/use-auth-action';
+import { useSignOut } from '@/auth/use-sign-out';
 import { playerColor, Spacing, Typography } from '@/constants/theme';
 import { getSupabase } from '@/lib/supabase';
 
 import { Avatar } from './avatar';
 import { DrawnButton } from './drawn-button';
+import { SignOutDialog } from './sign-out-dialog';
 import { ThinkingDots } from './state-view';
 
 /** Compte du joueur sur l'accueil : bouton de connexion, ou pseudo et actions du compte. */
 export function AccountBar() {
   const { configured, loading, session, profile, isGuest, pendingEmail, profileError, refreshProfile } = useAuth();
-  const { pending, error, run } = useAuthAction();
+  const { error, run } = useAuthAction();
+  const signOut = useSignOut(isGuest);
 
   if (!configured) return null;
   if (loading) {
@@ -61,9 +64,9 @@ export function AccountBar() {
         </Pressable>
         <DrawnButton
           label="Déconnexion"
-          busy={pending}
+          busy={signOut.pending}
           size="small"
-          onPress={() => run(() => signOut(getSupabase()))}
+          onPress={signOut.request}
           accessibilityHint={isGuest ? 'Un compte invité ne peut pas être retrouvé après déconnexion.' : undefined}
         />
       </View>
@@ -93,7 +96,8 @@ export function AccountBar() {
           <DrawnButton label="Réessayer" size="small" onPress={refreshProfile} />
         </View>
       )}
-      {error && <Text style={Typography.caption}>{error}</Text>}
+      {(error ?? signOut.error) && <Text style={Typography.caption}>{error ?? signOut.error}</Text>}
+      <SignOutDialog controller={signOut} />
     </View>
   );
 }

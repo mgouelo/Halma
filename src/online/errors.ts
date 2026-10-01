@@ -19,7 +19,7 @@ export const ONLINE_ERROR_MESSAGES: Record<OnlineErrorCode, string> = {
   illegal_move: 'Coup refusé.',
   conflict: 'La partie a changé en même temps. Réessaie.',
   too_many_attempts: 'Trop de codes essayés. Attends quelques minutes avant de réessayer.',
-  too_many_rooms: 'Tu as déjà trop de rooms en attente. Lance-les ou quitte-les avant d’en créer une autre.',
+  already_in_room: 'Tu es déjà dans une room. Reprends-la ou quitte-la depuis « Jouer en ligne » avant d’en rejoindre une autre.',
   server_error: 'Le serveur rencontre un problème. Réessaie dans un moment.',
 };
 
@@ -40,7 +40,7 @@ export const ONLINE_ERROR_STATUS: Record<OnlineErrorCode, number> = {
   illegal_move: 422,
   conflict: 409,
   too_many_attempts: 429,
-  too_many_rooms: 429,
+  already_in_room: 409,
   server_error: 500,
 };
 

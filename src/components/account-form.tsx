@@ -68,7 +68,7 @@ export function AccountForm({ submitLabel, pendingLabel, pending, error, onSubmi
         onChangeText={edit('password', setPassword)}
         error={errors.password}
         hint={`Au moins ${PASSWORD_MIN_LENGTH} caractères.`}
-        secureTextEntry
+        revealable
         autoComplete="new-password"
         textContentType="newPassword"
         onSubmitEditing={submit}
