@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Modal, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { Colors, playerColor, Spacing, Typography } from '@/constants/theme';
+import { useRetainedWhileHidden } from '@/hooks/use-retained-while-hidden';
 
 import { DrawnButton } from './drawn-button';
 import { DrawnCard } from './drawn-card';
@@ -29,16 +30,25 @@ export interface ConfirmDialogProps {
  */
 export function ConfirmDialog({
   visible,
-  title,
-  message,
-  cancelLabel,
-  confirmLabel,
+  title: titleProp,
+  message: messageProp,
+  cancelLabel: cancelLabelProp,
+  confirmLabel: confirmLabelProp,
   onCancel,
   onConfirm,
-  extraLabel,
+  extraLabel: extraLabelProp,
   onExtra,
 }: ConfirmDialogProps) {
   const cancelRef = useRef<View>(null);
+  // Pendant le fondu de fermeture, la fenêtre garde les textes qu'elle affichait :
+  // l'appelant les change dès qu'il la ferme (par exemple quand la demande repasse à null).
+  const { title, message, cancelLabel, confirmLabel, extraLabel } = useRetainedWhileHidden(visible, {
+    title: titleProp,
+    message: messageProp,
+    cancelLabel: cancelLabelProp,
+    confirmLabel: confirmLabelProp,
+    extraLabel: extraLabelProp,
+  });
 
   // Web : le focus clavier arrive directement sur le choix sans risque.
   useEffect(() => {
@@ -64,7 +74,7 @@ export function ConfirmDialog({
             <Text style={Typography.body}>{message}</Text>
             <View style={styles.actions}>
               <DrawnButton ref={cancelRef} label={cancelLabel} onPress={onCancel} color={playerColor(1).piece} />
-              {extraLabel && onExtra && <DrawnButton label={extraLabel} onPress={onExtra} />}
+              {extraLabel && <DrawnButton label={extraLabel} onPress={onExtra ?? onCancel} />}
               <DrawnButton label={confirmLabel} onPress={onConfirm} />
             </View>
           </DrawnCard>
