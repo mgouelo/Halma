@@ -8,7 +8,7 @@
     "scheme": "halma",
     "userInterfaceStyle": "light",
     "ios": {
-      "bundleIdentifier": "com.mgouelo.halma",
+      "bundleIdentifier": "com.matth.halma",
       "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -22,7 +22,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.mgouelo.halma",
+      "package": "com.matth.halma",
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",

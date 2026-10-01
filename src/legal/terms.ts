@@ -6,13 +6,13 @@ import type { LegalDocument } from './document';
 
 export const TERMS: LegalDocument = {
   title: 'Conditions d’utilisation',
-  version: '[À COMPLÉTER : date de la version]',
+  version: '1er octobre 2026',
   draft: true,
   sections: [
     {
       title: 'Le service',
       paragraphs: [
-        'Halma est un jeu de dames chinoises édité par [À COMPLÉTER : nom ou raison sociale de l’éditeur]. On peut y jouer hors ligne sans compte, ou en ligne avec un compte e-mail ou invité. Le jeu est gratuit.',
+        'Halma est un jeu de dames chinoises édité par Matth. On peut y jouer hors ligne sans compte, ou en ligne avec un compte e-mail ou invité. Le jeu est gratuit.',
         'En créant un compte, vous acceptez ces conditions.',
       ],
     },
@@ -29,7 +29,7 @@ export const TERMS: LegalDocument = {
       bullets: [
         'Choisissez un pseudo et un avatar respectueux : pas d’insulte, de propos haineux ni d’usurpation d’identité.',
         'Pas de tentative de perturber le service ou de contourner ses protections.',
-        'Nous pouvons supprimer un compte qui ne respecte pas ces règles : [À COMPLÉTER : procédure et moyen de contestation].',
+        `Nous pouvons supprimer un compte qui ne respecte pas ces règles. Vous pouvez contester cette décision en écrivant à ${CONTACT_EMAIL}.`,
       ],
     },
     {
@@ -56,12 +56,12 @@ export const TERMS: LegalDocument = {
     },
     {
       title: 'Modification des conditions',
-      paragraphs: ['[À COMPLÉTER : comment les utilisateurs sont prévenus d’un changement de ces conditions].'],
+      paragraphs: ['La date de version ci-dessus indique la dernière mise à jour de ces conditions. Nous vous invitons à consulter régulièrement cette page.'],
     },
     {
       title: 'Droit applicable et contact',
       paragraphs: [
-        'Droit applicable : [À COMPLÉTER : droit applicable et tribunaux compétents].',
+        'Droit applicable : droit français. En cas de litige, les tribunaux français sont compétents, sans préjudice des droits dont vous disposez en tant que consommateur.',
         `Contact : ${CONTACT_EMAIL}.`,
       ],
     },

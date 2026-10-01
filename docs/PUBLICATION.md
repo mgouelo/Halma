@@ -5,7 +5,7 @@
 
 ## 1. Identifiants de l'application (définitifs)
 
-- [ ] Relire `app.json` : `ios.bundleIdentifier` et `android.package` valent **`com.mgouelo.halma`**. Une fois
+- [ ] Relire `app.json` : `ios.bundleIdentifier` et `android.package` valent **`com.matth.halma`**. Une fois
       l'application publiée, ils ne peuvent **plus jamais** changer (changer d'identifiant = publier une autre
       application). Les modifier maintenant si besoin.
 - [ ] Nom affiché (`name` : « Halma »), `description`, `version` (`1.0.0`). Le numéro de build est géré par EAS
@@ -60,8 +60,8 @@ npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_SUPABA
 
 ## 5. Textes légaux
 
-- [ ] Faire relire `src/legal/privacy.ts` et `src/legal/terms.ts`, remplir tous les champs `[À COMPLÉTER : …]`
-      (éditeur, adresse, e-mail de contact, région Supabase, base légale, âge minimum, durée des journaux…),
+- [ ] Faire relire `src/legal/privacy.ts` et `src/legal/terms.ts`, relire les textes, tous complétés
+      (éditeur, contact, région Supabase eu-west-1 / Irlande, base légale, âge minimum de 15 ans, droit applicable),
       puis passer `draft` à `false` (le bandeau « Brouillon » disparaît).
 - [ ] Publier la politique de confidentialité à une **adresse web publique** (exigée par les deux stores) : par
       exemple la version web de l'application (`/privacy`), hébergée avec `npx expo export -p web`.

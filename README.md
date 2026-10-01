@@ -542,7 +542,7 @@ npx eas-cli@latest login
 npx eas-cli@latest init            # crée le projet EAS et ajoute son identifiant dans app.json
 ```
 
-Les identifiants de l'application sont `com.mgouelo.halma` (iOS `bundleIdentifier`, Android `package`,
+Les identifiants de l'application sont `com.matth.halma` (iOS `bundleIdentifier`, Android `package`,
 dans `app.json`). **Les changer avant la première publication** si besoin : ils sont définitifs sur les stores.
 
 Les variables Supabase sont lues au moment de la compilation. Les définir pour chaque environnement EAS
@@ -600,9 +600,9 @@ peut supprimer que son propre compte.
 ### Pages légales
 
 `/privacy` (politique de confidentialité) et `/terms` (conditions d'utilisation), accessibles depuis le profil
-(connecté ou non) et depuis la page des crédits (lien « Crédits » à côté du titre de l'accueil). **Ce sont des brouillons à faire relire** : un bandeau le signale, et les coordonnées de l'éditeur,
-la région Supabase, la base légale, l'âge minimum, etc. sont des champs `[À COMPLÉTER : …]`
-(`src/legal/privacy.ts`, `src/legal/terms.ts`). Un test vérifie qu'aucune coordonnée n'y est inventée.
+(connecté ou non) et depuis la page des crédits (lien « Crédits » à côté du titre de l'accueil). **Ce sont des brouillons à faire relire** : un bandeau le signale, et aucun champ `[À COMPLÉTER : …]` ne reste. L'éditeur est « Matth »,
+le contact est `src/legal/contact.ts`, l'âge minimum est de 15 ans, la région Supabase est eu-west-1 (Irlande). Un test vérifie qu'aucune autre coordonnée
+n'y est inventée.
 
 ### Crédits et licences
 
