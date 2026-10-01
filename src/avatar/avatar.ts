@@ -11,8 +11,6 @@
 import { humation1 } from '@humation/assets-humation-1';
 import { createAvatar, type PartOption } from '@humation/core';
 
-export const AVATAR_TEMPLATE = humation1.template.id;
-
 /** Emplacements de morceaux, dans l'ordre de l'éditeur. */
 export const AVATAR_SLOTS = ['head', 'body', 'bottom', 'item', 'glasses'] as const;
 export type AvatarSlot = (typeof AVATAR_SLOTS)[number];

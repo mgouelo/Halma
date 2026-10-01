@@ -62,8 +62,6 @@ export type GameRequest =
   /** Le joueur abandonne. */
   | { action: 'resign'; roomId: string };
 
-export type GameAction = GameRequest['action'];
-
 export type GameResponse =
   | { ok: true; game: StoredGame | null }
   | { ok: false; code: OnlineErrorCode; message: string };
