@@ -1,9 +1,11 @@
 // Géométrie d'affichage du plateau : passage des coordonnées axiales du
 // moteur à des pixels. Aucune règle de jeu ici.
 
-import type { Cell } from '@/game';
+import { ALL_CELLS, cellKey, type Cell } from '@/game';
 
 const SQRT3 = Math.sqrt(3);
+
+const BOARD_KEYS: ReadonlySet<string> = new Set(ALL_CELLS.map(cellKey));
 
 /** Marge autour des cases extrêmes, en multiples de l'écart entre deux cases. */
 const PADDING_IN_CELLS = 1.15;
@@ -70,6 +72,31 @@ export function computeBoardLayout(maxWidth: number, maxHeight = Infinity): Boar
   }).join(' ');
 
   return { width, height, spacing, toPoint, starPoints };
+}
+
+/**
+ * Case du plateau sous le point (x, y), en pixels dans le repère du plateau
+ * (origine en haut à gauche) : l'inverse de `layout.toPoint`. Chaque case
+ * occupe son hexagone, sans trou entre deux cases ; renvoie null hors des
+ * cases du plateau (marge, creux entre les branches de l'étoile).
+ */
+export function cellAt(layout: Pick<BoardLayout, 'width' | 'height' | 'spacing'>, x: number, y: number): Cell | null {
+  const size = layout.spacing / SQRT3;
+  if (!(size > 0) || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+  // Coordonnées axiales fractionnaires, puis arrondi à l'hexagone le plus proche (via les coordonnées cubiques).
+  const fr = (y - layout.height / 2) / (1.5 * size);
+  const fq = (x - layout.width / 2) / (SQRT3 * size) - fr / 2;
+  const fs = -fq - fr;
+  let q = Math.round(fq);
+  let r = Math.round(fr);
+  const s = Math.round(fs);
+  const dq = Math.abs(q - fq);
+  const dr = Math.abs(r - fr);
+  const ds = Math.abs(s - fs);
+  if (dq > dr && dq > ds) q = -r - s;
+  else if (dr > ds) r = -q - s;
+  const cell = { q: q + 0, r: r + 0 };
+  return BOARD_KEYS.has(cellKey(cell)) ? cell : null;
 }
 
 function round(n: number): number {

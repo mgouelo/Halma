@@ -16,6 +16,9 @@ export interface ConfirmDialogProps {
   confirmLabel: string;
   onCancel: () => void;
   onConfirm: () => void;
+  /** Troisième choix facultatif, entre les deux autres (par exemple « Créer mon compte »). */
+  extraLabel?: string;
+  onExtra?: () => void;
 }
 
 /**
@@ -32,6 +35,8 @@ export function ConfirmDialog({
   confirmLabel,
   onCancel,
   onConfirm,
+  extraLabel,
+  onExtra,
 }: ConfirmDialogProps) {
   const cancelRef = useRef<View>(null);
 
@@ -59,6 +64,7 @@ export function ConfirmDialog({
             <Text style={Typography.body}>{message}</Text>
             <View style={styles.actions}>
               <DrawnButton ref={cancelRef} label={cancelLabel} onPress={onCancel} color={playerColor(1).piece} />
+              {extraLabel && onExtra && <DrawnButton label={extraLabel} onPress={onExtra} />}
               <DrawnButton label={confirmLabel} onPress={onConfirm} />
             </View>
           </DrawnCard>

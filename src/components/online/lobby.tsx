@@ -1,9 +1,11 @@
 import { router } from 'expo-router';
+import { useState, type MutableRefObject } from 'react';
 import { ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Notice } from '@/components/auth-screen';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
 import { PlayerChip } from '@/components/player-chip';
@@ -18,6 +20,7 @@ import { isOnline } from '@/rooms/presence';
 import {
   addAi,
   leaveRoom,
+  leaveRoomPrompt,
   removeAi,
   setAiLevel,
   startGame,
@@ -33,10 +36,12 @@ interface LobbyProps {
   onGame: (game: StoredGame | null) => void;
   /** Relit la room (après un changement que Realtime n'aurait pas encore signalé). */
   refresh: () => void;
+  /** Passe à vrai quand le joueur quitte lui-même : la room qui disparaît n'est alors pas une fermeture par l'hôte. */
+  leavingRef: MutableRefObject<boolean>;
 }
 
 /** Salle d'attente : code à partager, participants, IA (pour l'hôte), lancement. */
-export function Lobby({ snapshot, userId, now, onGame, refresh }: LobbyProps) {
+export function Lobby({ snapshot, userId, now, onGame, refresh, leavingRef }: LobbyProps) {
   const { room, players } = snapshot;
   const isHost = room.hostId === userId;
   const count = players.length;
@@ -58,11 +63,18 @@ export function Lobby({ snapshot, userId, now, onGame, refresh }: LobbyProps) {
       onGame(await startGame(client, room.id));
       refresh();
     });
-  const leave = () =>
-    run(async () => {
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const prompt = leaveRoomPrompt(snapshot, userId);
+  // L'hôte ferme la room (supprimée pour tous) ; un autre joueur la quitte simplement.
+  const leave = async () => {
+    setConfirmLeave(false);
+    leavingRef.current = true;
+    const ok = await run(async () => {
       await leaveRoom(client, room.id);
       router.dismissTo('/online');
     });
+    if (!ok) leavingRef.current = false;
+  };
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -138,8 +150,28 @@ export function Lobby({ snapshot, userId, now, onGame, refresh }: LobbyProps) {
             En attente du lancement par l’hôte…
           </Text>
         )}
-        <DrawnButton label="Quitter la room" size="small" onPress={leave} style={styles.leave} />
+        <DrawnButton
+          label="Quitter la room"
+          size="small"
+          onPress={prompt ? () => setConfirmLeave(true) : leave}
+          disabled={pending}
+          accessibilityHint={
+            isHost ? 'En tant qu’hôte, supprime la room.' : 'Tu pourras la rejoindre à nouveau avec son code.'
+          }
+          style={styles.leave}
+        />
       </View>
+      {prompt && (
+        <ConfirmDialog
+          visible={confirmLeave}
+          title={prompt.title}
+          message={prompt.message}
+          cancelLabel="Rester dans la room"
+          confirmLabel={prompt.confirmLabel}
+          onCancel={() => setConfirmLeave(false)}
+          onConfirm={leave}
+        />
+      )}
     </SafeAreaView>
   );
 }

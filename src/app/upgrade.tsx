@@ -68,6 +68,7 @@ export default function UpgradeScreen() {
 
   return (
     <AuthScreen
+      header="back"
       title="Créer mon compte"
       subtitle="Choisis un pseudo et ajoute un e-mail : tu conserves ta progression et pourras te reconnecter partout.">
       {content()}

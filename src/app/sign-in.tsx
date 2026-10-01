@@ -38,7 +38,7 @@ export default function SignInScreen() {
   };
 
   return (
-    <AuthScreen title="Connexion" subtitle="Retrouve ta progression et tes parties.">
+    <AuthScreen header="back" title="Connexion" subtitle="Retrouve ta progression et tes parties.">
       {!configured ? (
         <NotConfiguredCard />
       ) : (
@@ -66,7 +66,7 @@ export default function SignInScreen() {
               value={password}
               onChangeText={edit('password', setPassword)}
               error={errors.password}
-              secureTextEntry
+              revealable
               autoComplete="current-password"
               textContentType="password"
               onSubmitEditing={submit}
@@ -81,7 +81,7 @@ export default function SignInScreen() {
           </DrawnCard>
 
           <View style={authStyles.links}>
-            <Link href="/sign-up" style={authStyles.link}>
+            <Link href="/sign-up" replace style={authStyles.link}>
               Pas encore de compte ? Inscris-toi
             </Link>
             <Text style={Typography.caption}>ou</Text>

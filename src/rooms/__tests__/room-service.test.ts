@@ -4,14 +4,22 @@ import { FunctionsFetchError, FunctionsHttpError, type SupabaseClient } from '@s
 import { OnlineError } from '@/online';
 
 import {
+  createRoom,
   describeOnlineError,
+  fetchActiveRoom,
   fetchRoom,
   GENERIC_ERROR,
+  HOST_CLOSED_NOTICE,
   isValidRoomCode,
   joinRoom,
+  leaveRoom,
+  leaveRoomPrompt,
   NETWORK_ERROR,
   normalizeRoomCode,
   playMove,
+  roomClosedNotice,
+  ROOM_CLOSED_NOTICE,
+  type RoomSnapshot,
 } from '../room-service';
 
 type Result = { data: unknown; error: unknown };
@@ -130,5 +138,62 @@ describe('fetchRoom', () => {
   it('renvoie null pour une room invisible', async () => {
     const { asSupabase } = fakeClient();
     await expect(fetchRoom(asSupabase, 'r')).resolves.toBeNull();
+  });
+});
+
+describe('une seule room active', () => {
+  it('explique en français le refus « déjà dans une room » (création et jointure)', async () => {
+    const { asSupabase } = fakeClient({ rpc: { data: null, error: { message: 'already_in_room', code: 'P0001' } } });
+    const joined = await joinRoom(asSupabase, 'K7QM3X').catch((e: unknown) => e);
+    expect(joined).toMatchObject({ code: 'already_in_room' });
+    expect(describeOnlineError(joined)).toMatch(/déjà dans une room/);
+    const created = await createRoom(asSupabase).catch((e: unknown) => e);
+    expect(created).toMatchObject({ code: 'already_in_room' });
+  });
+
+  it('lit la room active renvoyée par le serveur, ou null', async () => {
+    const row = { id: 'r1', code: 'K7QM3X', status: 'waiting', host_id: 'u1', created_at: '2026-10-01T10:00:00Z' };
+    const { client, asSupabase } = fakeClient({ rpc: { data: [row], error: null } });
+    await expect(fetchActiveRoom(asSupabase)).resolves.toEqual({
+      id: 'r1',
+      code: 'K7QM3X',
+      status: 'waiting',
+      hostId: 'u1',
+      createdAt: '2026-10-01T10:00:00Z',
+    });
+    expect(client.rpc).toHaveBeenCalledWith('my_active_room', undefined);
+    await expect(fetchActiveRoom(fakeClient({ rpc: { data: [], error: null } }).asSupabase)).resolves.toBeNull();
+  });
+
+  it('quitter la room appelle leave_room', async () => {
+    const { client, asSupabase } = fakeClient();
+    await leaveRoom(asSupabase, 'r1');
+    expect(client.rpc).toHaveBeenCalledWith('leave_room', { p_room: 'r1' });
+  });
+});
+
+describe('room fermée et sortie de la salle d’attente', () => {
+  const player = (id: string, userId: string | null, seat: number) =>
+    ({ id, userId, aiLevel: userId ? null : 'easy', seat, playerIndex: null, lastSeenAt: '', pseudo: null, avatar: null }) as unknown as RoomSnapshot['players'][number];
+  const snapshot = (hostId: string, players: RoomSnapshot['players'], status: 'waiting' | 'playing' = 'waiting'): RoomSnapshot => ({
+    room: { id: 'r1', code: 'K7QM3X', hostId, status, createdAt: '' },
+    players,
+    game: status === 'playing' ? ({ id: 'g1' } as unknown as RoomSnapshot['game']) : null,
+  });
+
+  it('dit aux invités que l’hôte a fermé la room, et reste neutre sinon', () => {
+    const waiting = snapshot('host', [player('p1', 'host', 0), player('p2', 'me', 1)]);
+    expect(roomClosedNotice(waiting, 'me')).toBe(HOST_CLOSED_NOTICE);
+    expect(roomClosedNotice(waiting, 'host')).toBe(ROOM_CLOSED_NOTICE);
+    const playing = snapshot('host', [player('p1', 'host', 0), player('p2', 'me', 1)], 'playing');
+    expect(roomClosedNotice(playing, 'me')).toBe(ROOM_CLOSED_NOTICE);
+  });
+
+  it('demande confirmation seulement à l’hôte qui ferme une room avec d’autres joueurs', () => {
+    const withFriend = snapshot('host', [player('p1', 'host', 0), player('p2', 'friend', 1)]);
+    expect(leaveRoomPrompt(withFriend, 'host')).toMatchObject({ title: 'Fermer la room ?', confirmLabel: 'Fermer la room' });
+    expect(leaveRoomPrompt(withFriend, 'friend')).toBeNull();
+    const withAi = snapshot('host', [player('p1', 'host', 0), player('p2', null, 1)]);
+    expect(leaveRoomPrompt(withAi, 'host')).toBeNull();
   });
 });

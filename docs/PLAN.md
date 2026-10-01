@@ -156,6 +156,23 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
   d'accroche, « Seules les légendes apparaissent ici. »
 - Décision confirmée : les parties hors ligne ne comptent pas dans les classements (rien n'est envoyé au serveur).
 
+## Étape 11 : retouches après les tests du mode en ligne (fait)
+
+- Plateau : une seule zone tactile au lieu de 121 `onPress` sur les cercles SVG (fin de l'avertissement React
+  `onResponderTerminate` sur le web) ; la case touchée vient des coordonnées (`cellAt`, testé).
+- Une seule room active par joueur, imposée côté serveur (migration `20261008120000_single_active_room.sql`,
+  codes `already_in_room`) : l'hôte qui quitte la salle d'attente supprime la room et renvoie les autres à
+  l'accueil (« L'hôte a fermé la room. »), un autre joueur la quitte simplement ; abandon et forfait libèrent le
+  joueur ; « Jouer en ligne » montre la room active (reprendre ou quitter). Remplace la limite de 5 rooms.
+- Navigation : la page Profil n'a plus de bouton « Accueil » ; connexion, inscription, `/upgrade`, avatar,
+  crédits, confidentialité et conditions sortent de `(main)` : pas de barre, un seul bouton « ‹ Retour »
+  (historique, avec retour de secours vers le profil ou l'accueil).
+- Bouton « Se déconnecter » sur le profil, avec confirmation pour un compte invité, partagé avec l'accueil
+  (`useSignOut`).
+- Œil pour afficher ou masquer le mot de passe dans les trois formulaires (`DrawnTextInput` `revealable`).
+- Limite connue : le jeu en ligne à deux sessions réelles (Supabase + Realtime) n'a pas pu être rejoué dans
+  l'environnement de développement ; voir la description de la pull request.
+
 ## Plus tard : amis
 
 - Table `friendships` (demande, acceptation), liste d'amis, invitation directe dans une room.

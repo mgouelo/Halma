@@ -86,5 +86,5 @@ export type OnlineErrorCode =
   | 'illegal_move'
   | 'conflict'
   | 'too_many_attempts'
-  | 'too_many_rooms'
+  | 'already_in_room'
   | 'server_error';

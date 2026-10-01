@@ -190,10 +190,9 @@ begin
 end $$;
 reset role;
 
--- Cinq salles d'attente au plus par joueur (Max en a déjà une).
+-- Une seule room active par joueur (Max est déjà dans une salle d'attente) : voir aussi rooms-check.sql.
 select pg_temp.as_user('c3000000-0000-0000-0000-000000000003');
-select public.create_room() from generate_series(1, 4);
-select pg_temp.expect_error('select public.create_room()', 'too_many_rooms');
+select pg_temp.expect_error('select public.create_room()', 'already_in_room');
 reset role;
 
 -- 5. Nettoyage des rooms abandonnées ---------------------------------------------------
@@ -202,7 +201,11 @@ select pg_temp.as_user('c3000000-0000-0000-0000-000000000003');
 select pg_temp.expect_error('select public.cleanup_abandoned_rooms()', '42501');
 reset role;
 
--- Les salles d'attente de Max : signe de vie il y a 2 jours, sauf celle que Léa a rejointe.
+-- Une ancienne salle d'attente de Max (créée avant la règle d'une seule room active), abandonnée.
+insert into public.rooms (code, host_id) values ('ABCDEF', 'c3000000-0000-0000-0000-000000000003');
+insert into public.room_players (room_id, seat, user_id)
+  select id, 0, 'c3000000-0000-0000-0000-000000000003' from public.rooms where code = 'ABCDEF';
+-- La salle d'attente de Max : signe de vie il y a 2 jours, sauf celui de Léa qui l'a rejointe.
 update public.room_players set last_seen_at = now() - interval '2 days'
   where user_id = 'c3000000-0000-0000-0000-000000000003';
 -- La partie de Léa et Max : aucun signe de vie depuis 8 jours.
@@ -216,7 +219,8 @@ do $$
 declare
   removed int := public.cleanup_abandoned_rooms();
 begin
-  assert removed = 5, format('4 salles d’attente abandonnées + 1 partie abandonnée (%s)', removed);
+  assert removed = 2, format('1 salle d’attente abandonnée + 1 partie abandonnée (%s)', removed);
+  assert not exists (select 1 from public.rooms where code = 'ABCDEF'), 'la salle d’attente abandonnée est supprimée';
   assert exists (select 1 from public.rooms where id = (select id from ids where name = 'waiting')),
     'la salle où Léa est active reste';
   assert not exists (select 1 from public.rooms where id = (select id from ids where name = 'game_room')),

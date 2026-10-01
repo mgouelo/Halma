@@ -21,6 +21,7 @@ import { useAuth } from '@/auth/auth-context';
 import { updateAvatar } from '@/auth/auth-service';
 import { useAuthAction } from '@/auth/use-auth-action';
 import { Avatar } from '@/components/avatar';
+import { BackButton } from '@/components/back-button';
 import { AuthScreen, Notice, NotConfiguredCard } from '@/components/auth-screen';
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
@@ -41,6 +42,7 @@ import {
 } from '@/constants/theme';
 import { useWideLayout } from '@/hooks/use-wide-layout';
 import { getSupabase } from '@/lib/supabase';
+import { goBack } from '@/navigation/back';
 
 type Tab = (typeof EDITABLE_SLOTS)[number] | 'colors';
 const TABS: readonly Tab[] = [...EDITABLE_SLOTS, 'colors'];
@@ -54,28 +56,28 @@ export default function AvatarScreen() {
   const { configured, loading, session, profile, profileError, refreshProfile } = useAuth();
   if (!configured) {
     return (
-      <AuthScreen title="Ton avatar" subtitle="Avatars indisponibles.">
+      <AuthScreen header="back" title="Ton avatar" subtitle="Avatars indisponibles.">
         <NotConfiguredCard />
       </AuthScreen>
     );
   }
   if (session && !profile && profileError) {
     return (
-      <AuthScreen title="Ton avatar" subtitle="Profil indisponible.">
+      <AuthScreen header="back" title="Ton avatar" subtitle="Profil indisponible.">
         <ErrorState message="Impossible de lire ton profil. Vérifie ta connexion." onRetry={refreshProfile} />
       </AuthScreen>
     );
   }
   if (loading || (session && !profile)) {
     return (
-      <AuthScreen title="Ton avatar" subtitle="Crée le personnage que verront les autres joueurs.">
+      <AuthScreen header="back" title="Ton avatar" subtitle="Crée le personnage que verront les autres joueurs.">
         <LoadingState />
       </AuthScreen>
     );
   }
   if (!session || !profile) {
     return (
-      <AuthScreen title="Ton avatar" subtitle="Connecte-toi (ou joue en invité) pour créer ton avatar.">
+      <AuthScreen header="back" title="Ton avatar" subtitle="Connecte-toi (ou joue en invité) pour créer ton avatar.">
         <DrawnButton label="Se connecter" onPress={() => router.push('/sign-in')} color={playerColor(1).piece} />
       </AuthScreen>
     );
@@ -102,21 +104,14 @@ function AvatarEditor({ userId, saved }: { userId: string; saved: string | null 
     const ok = await run(() => updateAvatar(getSupabase(), userId, serializeAvatar(avatar)));
     if (ok) {
       refreshProfile();
-      if (router.canGoBack()) router.back();
-      else router.replace('/profile');
+      goBack('/profile');
     }
   };
 
   return (
     <SafeAreaView style={styles.screen} edges={edges}>
       <ScrollView contentContainerStyle={[styles.content, wide && styles.wideContent]}>
-        <View style={styles.header}>
-          <DrawnButton
-            label="‹ Retour"
-            size="small"
-            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-          />
-        </View>
+        <BackButton />
         <Text style={Typography.title} accessibilityRole="header">
           Ton avatar
         </Text>
@@ -224,9 +219,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     padding: Spacing.four,
     gap: Spacing.four,
-  },
-  header: {
-    flexDirection: 'row',
   },
   body: {
     gap: Spacing.four,
