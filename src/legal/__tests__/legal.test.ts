@@ -9,11 +9,14 @@ const text = (doc: typeof PRIVACY) =>
   doc.sections.flatMap((s) => [s.title, ...(s.paragraphs ?? []), ...(s.bullets ?? [])]).join('\n');
 
 describe('pages légales', () => {
-  it('sont marquées comme brouillons, avec les champs à compléter visibles', () => {
-    for (const doc of [PRIVACY, TERMS]) {
-      expect(doc.draft).toBe(true);
-      expect(missingFields(doc)).toContain('[À COMPLÉTER : nom ou raison sociale de l’éditeur]');
-    }
+  it('sont marquées comme brouillons à faire relire', () => {
+    for (const doc of [PRIVACY, TERMS]) expect(doc.draft).toBe(true);
+  });
+
+  it('n’ont plus de champ à compléter, et indiquent la région Supabase (Irlande, UE)', () => {
+    expect(missingFields(PRIVACY)).toHaveLength(0);
+    expect(missingFields(TERMS)).toHaveLength(0);
+    expect(text(PRIVACY)).toMatch(/région Irlande, au sein de l’Union européenne/);
   });
 
   it('donnent l’adresse de contact, sans inventer d’autre coordonnée (e-mail, téléphone)', () => {

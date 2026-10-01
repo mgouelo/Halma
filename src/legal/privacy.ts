@@ -7,13 +7,13 @@ import type { LegalDocument } from './document';
 
 export const PRIVACY: LegalDocument = {
   title: 'Politique de confidentialité',
-  version: '[À COMPLÉTER : date de la version]',
+  version: '1er octobre 2026',
   draft: true,
   sections: [
     {
       title: 'Qui est responsable de vos données',
       paragraphs: [
-        'Halma est édité par [À COMPLÉTER : nom ou raison sociale de l’éditeur], [À COMPLÉTER : adresse postale].',
+        'Halma est édité par Matth.',
         `Pour toute question sur vos données : ${CONTACT_EMAIL}.`,
       ],
     },
@@ -33,7 +33,7 @@ export const PRIVACY: LegalDocument = {
         'Signes de vie : tant qu’une room est ouverte, l’application envoie toutes les 10 secondes l’heure de votre dernier passage, pour savoir si vous êtes encore connecté (au bout de 2 minutes sans signe de vie, vous êtes déclaré forfait).',
         'Statistiques : nombre de victoires en ligne (par niveau d’IA), de parties lancées, et votre série de jours de connexion (le jour de votre dernière ouverture de l’application).',
         'Protection contre les abus : les codes de room inconnus que vous essayez (effacés après un jour).',
-        'Journaux techniques de l’hébergeur (Supabase), qui peuvent contenir votre adresse IP : [À COMPLÉTER : durée de conservation selon l’offre Supabase utilisée].',
+        'Journaux techniques de l’hébergeur (Supabase), qui peuvent contenir votre adresse IP, conservés par Supabase selon la durée prévue par son offre.',
       ],
     },
     {
@@ -56,13 +56,13 @@ export const PRIVACY: LegalDocument = {
     {
       title: 'Où sont stockées vos données',
       paragraphs: [
-        'Chez notre hébergeur Supabase (base de données Postgres et authentification), dans la région [À COMPLÉTER : région du projet Supabase, par exemple Union européenne (Francfort)]. Sur votre appareil, l’application garde seulement votre session (pour rester connecté).',
+        'Chez notre hébergeur Supabase (base de données Postgres et authentification), dans la région Irlande, au sein de l’Union européenne. Sur votre appareil, l’application garde seulement votre session (pour rester connecté).',
       ],
     },
     {
       title: 'Pourquoi et combien de temps',
       paragraphs: [
-        'Ces données servent à faire fonctionner le jeu en ligne (comptes, parties, classements) et à le protéger contre les abus. Base légale : [À COMPLÉTER : base légale, par exemple l’exécution du contrat (conditions d’utilisation)].',
+        'Ces données servent à faire fonctionner le jeu en ligne (comptes, parties, classements) et à le protéger contre les abus. Base légale : l’exécution du contrat (les conditions d’utilisation) pour les comptes et les parties, et notre intérêt légitime pour la protection contre les abus.',
         'Elles sont conservées tant que votre compte existe. Les rooms abandonnées sont effacées automatiquement (salles d’attente après 1 jour sans activité, parties après 7 jours, parties terminées après 30 jours).',
       ],
     },
@@ -77,7 +77,7 @@ export const PRIVACY: LegalDocument = {
     },
     {
       title: 'Âge minimum',
-      paragraphs: ['[À COMPLÉTER : âge minimum pour créer un compte, et règles pour les mineurs].'],
+      paragraphs: ['Il faut avoir au moins 15 ans pour créer un compte. En dessous de cet âge, l’accord d’un parent ou d’un représentant légal est nécessaire.'],
     },
   ],
 };
