@@ -307,9 +307,9 @@ const styles = StyleSheet.create({
   list: {
     gap: Spacing.two,
   },
-  rows: {
-    paddingVertical: Spacing.one,
-  },
+  // Pas de marge autour des lignes : le fond de la ligne « C'est toi » remplit la carte jusqu'au trait
+  // (la carte arrondit les coins et masque ce qui dépasse).
+  rows: {},
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -322,11 +322,9 @@ const styles = StyleSheet.create({
     borderTopWidth: Stroke.thin,
     borderTopColor: Colors.line,
   },
-  // Sa propre ligne : fond teinté et trait épais à gauche (pas seulement une couleur).
+  // Sa propre ligne : fond teinté, et la mention « C'est toi » (pas seulement une couleur).
   rowMe: {
     backgroundColor: playerColor(0).tint,
-    borderLeftWidth: Stroke.bold * 2,
-    borderLeftColor: Colors.ink,
   },
   rank: {
     width: 44,
