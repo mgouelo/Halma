@@ -179,9 +179,11 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
   des joueurs), autres joueurs atténués, « joue » écrit dans la barre ; cadre du plateau teinté de sa couleur.
 - En ligne : bannière « À toi de jouer ! » dans ta couleur, sinon « En attente de » suivi du joueur ; titre de
   l'onglet du navigateur assorti (`expo-router/head`, web seulement).
-- Branche d'arrivée (en local celle du joueur courant, en ligne toujours la tienne) : teinte plus marquée,
-  contour en pointillés pastel qui pulse lentement, drapeau au-delà de la pointe. Calque sans toucher : calcul du
-  plateau et zone tactile inchangés. Vérifiée de 2 à 6 joueurs, petit et grand écran (tests et captures).
+- Branche d'arrivée (en local celle du joueur courant, en ligne toujours la tienne) : simplement teintée plus
+  fort que les branches de départ. Calcul du plateau et zone tactile inchangés. Vérifiée de 2 à 6 joueurs, petit
+  et grand écran (tests et captures).
+- Retouche : le contour en pointillés et le drapeau d'abord posés sur la branche d'arrivée ont été retirés ;
+  seule la teinte reste.
 - Profil : icône SVG décorative devant chaque statistique (coupe, drapeau de départ, flamme, flamme et étoile).
 - Tout suit « Réduire les animations » ; aucun indice ne repose sur la couleur seule.
 - Limite : l'écran en ligne a été vérifié avec une partie factice (pas de Supabase dans l'environnement de

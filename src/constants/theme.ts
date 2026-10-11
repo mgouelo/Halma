@@ -134,11 +134,10 @@ export const MoveHopDuration = 170;
 
 /**
  * Mise en évidence du tour : durée d'un aller (ms) de la pulsation lente du
- * halo autour du joueur courant, et de celle de la branche d'arrivée. Aucune
- * pulsation si l'utilisateur a demandé de réduire les animations.
+ * halo autour du joueur courant. Aucune pulsation si l'utilisateur a demandé
+ * de réduire les animations.
  */
 export const TurnPulseDuration = 900;
-export const GoalPulseDuration = 1400;
 
 /** Opacité de la couleur `piece` qui teinte la branche d'arrivée (plus marquée que la teinte `tint` des départs). */
 export const GoalTintOpacity = 0.45;

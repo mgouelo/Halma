@@ -68,7 +68,7 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
               ? moves.length > 0
                 ? 'Touche une case en pointillés pour jouer.'
                 : 'Ce pion ne peut pas bouger.'
-              : 'Touche un de tes pions. Vise le drapeau !'
+              : 'Touche un de tes pions. Vise ta branche teintée !'
             : current?.aiLevel
               ? 'L’IA réfléchit…'
               : currentAway !== null
