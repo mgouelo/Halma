@@ -162,18 +162,14 @@ Retours des parties de test : on ne voyait pas assez vite à qui c'était le tou
   sinon « En attente de » suivi du joueur. Sur le web, le titre de l'onglet suit (« ● À toi de jouer ! · Halma »,
   « En attente de Camille · Halma », « Partie terminée · Halma ») avec `expo-router/head` (rendu seulement sur
   le web). Textes dans `src/rooms/turn-display.ts`.
-- **Branche d'arrivée** (`src/components/board/goal.ts` et `goal-marker.tsx`) : celle du joueur dont c'est le
-  tour en local, toujours la tienne en ligne (aucune pour un spectateur, un joueur parti ou une partie finie).
-  Teinte plus marquée que les branches de départ (couleur `piece`, opacité `GoalTintOpacity`), contour en
-  pointillés pastel bordés de noir qui pulse lentement, et un drapeau dans une pastille au-delà de la pointe
-  (dans la marge du plateau, sans cacher de pion). Le contour et le drapeau sont dans un calque sans toucher posé
-  au-dessus du plateau : ni le calcul du plateau ni la zone tactile ne changent. Le calque peut déborder dans la
-  marge intérieure du cadre (`GOAL_OVERFLOW`).
-- **Réduire les animations** : halo et contour restent immobiles (pleinement visibles) ; seul le mouvement
-  disparaît, les indices (anneau, texte, drapeau) restent.
-- Tests : `goal.test.ts` (qui voit sa branche ; contour autour des 10 cases sans déborder sur l'hexagone central ;
-  drapeau dans le cadre et hors des cases, de 2 à 6 joueurs, branches vides comprises, petit et grand écran),
-  `board.test.tsx` (même zone tactile), `turn-display.test.ts`, `turn-highlight.test.tsx`.
+- **Branche d'arrivée** : celle du joueur dont c'est le tour en local, toujours la tienne en ligne (aucune pour
+  un spectateur, un joueur parti ou une partie finie ; `goalPlayer` dans `src/components/board/goal.ts`). Ses
+  cases sont simplement teintées plus fort que les branches de départ (couleur `piece`, opacité
+  `GoalTintOpacity`), sous les pions ; ni le calcul du plateau ni la zone tactile ne changent.
+- **Réduire les animations** : le halo reste immobile (pleinement visible) ; seul le mouvement disparaît, les
+  indices (anneau, texte) restent.
+- Tests : `goal.test.ts` (qui voit sa branche), `board.test.tsx` (les 10 cases teintées de la branche visée, de
+  2 à 6 joueurs, branches vides comprises ; même zone tactile), `turn-display.test.ts`, `turn-highlight.test.tsx`.
 
 Captures : `docs/screenshots/tour-*.png`.
 
@@ -535,9 +531,9 @@ des 86 morceaux par le parseur XML de `react-native-svg`, celui qu'utilise `SvgX
 - **Erreur inattendue** : `src/app/_layout.tsx` exporte un `ErrorBoundary` (écran « Oups, un pion est tombé »,
   `src/components/error-screen.tsx`) avec « Réessayer » et « Retour à l'accueil » : jamais d'écran blanc.
 - **Animations** (Reanimated) : fondu et zoom de l'écran de fin, fondu des messages, arrivée et départ des
-  joueurs dans la salle d'attente, changement de tour, pion animé le long de son chemin, halo du joueur courant
-  et contour de la branche d'arrivée. Toutes suivent le réglage « Réduire les animations » du système (le pion
-  arrive alors directement, halo et contour restent immobiles).
+  joueurs dans la salle d'attente, changement de tour, pion animé le long de son chemin, halo du joueur courant.
+  Toutes suivent le réglage « Réduire les animations » du système (le pion arrive alors directement, le halo
+  reste immobile).
 - **Accessibilité** :
   - zones touchables d'au moins 44 points (`TouchTarget`) : boutons, choix de niveau, onglets et couleurs de l'éditeur d'avatar ;
   - contrastes vérifiés par un test (`src/constants/__tests__/theme.test.ts`) : texte noir sur blanc et sur tous

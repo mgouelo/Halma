@@ -1,7 +1,10 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
-import { createGame } from '@/game';
+import Svg, { Circle } from 'react-native-svg';
+
+import { GoalTintOpacity } from '@/constants/theme';
+import { cornerCells, createGame, type PlayerCount } from '@/game';
 
 import { Board } from '../board';
 import { computeBoardLayout } from '../layout';
@@ -50,9 +53,30 @@ describe('plateau : branche d’arrivée', () => {
     // Une seule zone accessible : le marqueur de la branche est décoratif.
     expect(screen.getAllByLabelText('Plateau de jeu')).toHaveLength(1);
     const zone = screen.getByLabelText('Plateau de jeu');
-    // Une case de la branche d'arrivée (vide à 3 joueurs), sous le contour en pointillés.
+    // Une case de la branche d'arrivée (vide à 3 joueurs), sous sa teinte.
     const { x, y } = layout.toPoint({ q: -4, r: 8 });
     touch(zone, x, y);
     expect(onCellPress).toHaveBeenCalledWith({ q: -4, r: 8 });
+  });
+
+  it('teinte les 10 cases de la branche d’arrivée du joueur mis en évidence, de 2 à 6 joueurs', () => {
+    for (const count of [2, 3, 4, 5, 6] as PlayerCount[]) {
+      const game = createGame(count);
+      for (const player of game.players) {
+        const { UNSAFE_getAllByType, unmount } = render(<Board game={game} layout={layout} goal={player.id} />);
+        const tinted = UNSAFE_getAllByType(Circle).filter((circle) => circle.props.fillOpacity === GoalTintOpacity);
+        const expected = cornerCells(player.target).map((cell) => layout.toPoint(cell));
+        expect(tinted.map((circle) => `${circle.props.cx},${circle.props.cy}`).sort()).toEqual(
+          expected.map((p) => `${p.x},${p.y}`).sort(),
+        );
+        unmount();
+      }
+    }
+  });
+
+  it('ne dessine qu’un seul SVG et aucune teinte de branche d’arrivée sans joueur mis en évidence', () => {
+    const { UNSAFE_getAllByType } = render(<Board game={createGame(4)} layout={layout} goal={null} />);
+    expect(UNSAFE_getAllByType(Svg)).toHaveLength(1);
+    expect(UNSAFE_getAllByType(Circle).filter((circle) => circle.props.fillOpacity === GoalTintOpacity)).toHaveLength(0);
   });
 });

@@ -16,7 +16,6 @@ import {
   type PlayerId,
 } from '@/game';
 
-import { GoalMarker } from './goal-marker';
 import { cellAt, type BoardLayout } from './layout';
 import { MovingPiece } from './moving-piece';
 
@@ -30,7 +29,7 @@ interface BoardProps {
   animating?: { move: Move; player: number; turn: number } | null;
   /**
    * Joueur dont la branche d'arrivée est mise en évidence (voir `goalPlayer`) :
-   * teinte plus marquée, contour en pointillés et drapeau. Affichage seulement.
+   * ses cases sont teintées plus fort que les branches de départ. Affichage seulement.
    */
   goal?: PlayerId | null;
   onCellPress?: (cell: Cell) => void;
@@ -165,8 +164,6 @@ export function Board({ game, layout, selected, moves = [], animating, goal = nu
           );
         })}
       </Svg>
-
-      {goalCorner !== null && goal !== null && <GoalMarker layout={layout} corner={goalCorner} player={goal} />}
 
       {animating && onAnimationEnd && (
         <MovingPiece
