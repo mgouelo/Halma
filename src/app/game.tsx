@@ -5,12 +5,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/auth/auth-context';
 import { aiAvatar } from '@/avatar/avatar';
+import { goalPlayer } from '@/components/board/goal';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DrawnButton } from '@/components/drawn-button';
 import { GameLayout, TurnStatus } from '@/components/game-layout';
 import { PlayerChip } from '@/components/player-chip';
 import { VictoryOverlay } from '@/components/victory-overlay';
-import { Colors, Typography } from '@/constants/theme';
+import { Colors, playerColor, Typography } from '@/constants/theme';
 import { AI_LEVEL_LABELS, parseControllers } from '@/hooks/game-setup';
 import { GUARD_TEXTS, needsConfirmation } from '@/hooks/leave-guard';
 import type { Controller } from '@/hooks/local-game-reducer';
@@ -82,12 +83,22 @@ function GameView() {
                 size={vsAi ? 40 : 22}
                 detail={describeController(controllers[game.currentPlayer], vsAi)}
                 avatar={vsAi ? avatarOf(game.currentPlayer) : undefined}
+                turn="active"
               />
             )
           }
         />
       }
-      board={{ game, selected, moves, animating, onCellPress: tap, onAnimationEnd: animationEnd }}
+      frameTint={finished ? undefined : playerColor(game.currentPlayer).tint}
+      board={{
+        game,
+        selected,
+        moves,
+        animating,
+        goal: goalPlayer(game),
+        onCellPress: tap,
+        onAnimationEnd: animationEnd,
+      }}
       footer={
         <DrawnButton label="Nouvelle partie" size="small" onPress={guard.requestRestart} style={styles.reset} />
       }

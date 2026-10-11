@@ -149,6 +149,34 @@ cases). Un doigt qui a glissé de plus de 10 points n'est pas une touche. Le mê
 le web ; le plateau de l'accueil, en lecture seule, n'a pas de zone tactile. Testé par `layout.test.ts` (les 121
 cases, à plusieurs tailles, sur toute la surface du cercle, hors plateau) et `board.test.tsx`.
 
+## Tour et branche d'arrivée
+
+Retours des parties de test : on ne voyait pas assez vite à qui c'était le tour ni où aller.
+
+- **Joueur courant** (`PlayerChip` avec `turn`) : dans la pastille « Au tour de » et dans la barre des joueurs en
+  ligne, son avatar est entouré d'un anneau noir épais et d'un halo pastel qui pulse lentement ; les autres
+  joueurs sont atténués (avatar pâli, nom en gris `inkSoft`, toujours lisible). Dans la barre, le joueur courant
+  est aussi écrit (« joue ») : la couleur n'est jamais le seul indice.
+- **Cadre du plateau** : teinté de la couleur pâle (`tint`) du joueur dont c'est le tour.
+- **En ligne** : quand c'est ton tour, une bannière « À toi de jouer ! » dans ta couleur remplace « Au tour de » ;
+  sinon « En attente de » suivi du joueur. Sur le web, le titre de l'onglet suit (« ● À toi de jouer ! · Halma »,
+  « En attente de Camille · Halma », « Partie terminée · Halma ») avec `expo-router/head` (rendu seulement sur
+  le web). Textes dans `src/rooms/turn-display.ts`.
+- **Branche d'arrivée** (`src/components/board/goal.ts` et `goal-marker.tsx`) : celle du joueur dont c'est le
+  tour en local, toujours la tienne en ligne (aucune pour un spectateur, un joueur parti ou une partie finie).
+  Teinte plus marquée que les branches de départ (couleur `piece`, opacité `GoalTintOpacity`), contour en
+  pointillés pastel bordés de noir qui pulse lentement, et un drapeau dans une pastille au-delà de la pointe
+  (dans la marge du plateau, sans cacher de pion). Le contour et le drapeau sont dans un calque sans toucher posé
+  au-dessus du plateau : ni le calcul du plateau ni la zone tactile ne changent. Le calque peut déborder dans la
+  marge intérieure du cadre (`GOAL_OVERFLOW`).
+- **Réduire les animations** : halo et contour restent immobiles (pleinement visibles) ; seul le mouvement
+  disparaît, les indices (anneau, texte, drapeau) restent.
+- Tests : `goal.test.ts` (qui voit sa branche ; contour autour des 10 cases sans déborder sur l'hexagone central ;
+  drapeau dans le cadre et hors des cases, de 2 à 6 joueurs, branches vides comprises, petit et grand écran),
+  `board.test.tsx` (même zone tactile), `turn-display.test.ts`, `turn-highlight.test.tsx`.
+
+Captures : `docs/screenshots/tour-*.png`.
+
 ## Parties hors ligne
 
 Deux modes, sur l'accueil (carte « Hors ligne ») :
@@ -376,7 +404,9 @@ double grâce au verrou de version.
   pour apparaître dans les classements et les consulter), avec « Créer mon compte » (invité, vers `/upgrade`) ou
   « Se connecter » (non connecté), et un lien secondaire. Aucune requête de classement n'est envoyée ; la barre de
   navigation reste affichée.
-- **Profil** : victoires, parties lancées, série actuelle et meilleure série.
+- **Profil** : victoires, parties lancées, série actuelle et meilleure série, chacune précédée d'une petite icône
+  dessinée en SVG dans la DA (`src/components/stat-icons.tsx` : coupe, drapeau de départ et pion, flamme, flamme
+  et étoile). Les icônes sont masquées aux lecteurs d'écran : chaque case est lue « Victoires : 12 ».
 
 Code : `supabase/migrations/20261003120000_player_stats.sql`, `20261004120000_leaderboards_without_games_started.sql`
 et `20261007120000_leaderboards_without_guests.sql`, `src/stats/` (appels à Supabase, mise en forme
@@ -505,8 +535,9 @@ des 86 morceaux par le parseur XML de `react-native-svg`, celui qu'utilise `SvgX
 - **Erreur inattendue** : `src/app/_layout.tsx` exporte un `ErrorBoundary` (écran « Oups, un pion est tombé »,
   `src/components/error-screen.tsx`) avec « Réessayer » et « Retour à l'accueil » : jamais d'écran blanc.
 - **Animations** (Reanimated) : fondu et zoom de l'écran de fin, fondu des messages, arrivée et départ des
-  joueurs dans la salle d'attente, changement de tour, pion animé le long de son chemin. Toutes suivent le
-  réglage « Réduire les animations » du système (le pion arrive alors directement).
+  joueurs dans la salle d'attente, changement de tour, pion animé le long de son chemin, halo du joueur courant
+  et contour de la branche d'arrivée. Toutes suivent le réglage « Réduire les animations » du système (le pion
+  arrive alors directement, halo et contour restent immobiles).
 - **Accessibilité** :
   - zones touchables d'au moins 44 points (`TouchTarget`) : boutons, choix de niveau, onglets et couleurs de l'éditeur d'avatar ;
   - contrastes vérifiés par un test (`src/constants/__tests__/theme.test.ts`) : texte noir sur blanc et sur tous
@@ -788,7 +819,9 @@ minimax classique.
 9. ~~Retouches après les tests du mode en ligne : plateau à une seule zone tactile, une seule room active par
    joueur, écrans de compte sans barre avec « ‹ Retour », déconnexion depuis le profil, œil des mots de passe.~~
    Fait.
-10. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », amis.
+10. ~~Tour bien visible (halo, « À toi de jouer ! », titre de l'onglet), branche d'arrivée mise en évidence,
+    icônes des statistiques du profil.~~ Fait.
+11. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », amis.
 
 ## Inspiration
 

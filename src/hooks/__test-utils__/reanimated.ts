@@ -20,3 +20,5 @@ export const withDelay = (_delay: number, value: unknown) => value;
 export const withRepeat = identity;
 export const withSequence = identity;
 export const withTiming = identity;
+export const cancelAnimation = () => {};
+export const Easing = { inOut: identity, quad: identity };

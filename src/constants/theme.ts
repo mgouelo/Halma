@@ -131,3 +131,17 @@ export const MaxWideContentWidth = 1120;
 
 /** Durée d'un saut ou d'un pas lors de l'animation d'un coup (ms). */
 export const MoveHopDuration = 170;
+
+/**
+ * Mise en évidence du tour : durée d'un aller (ms) de la pulsation lente du
+ * halo autour du joueur courant, et de celle de la branche d'arrivée. Aucune
+ * pulsation si l'utilisateur a demandé de réduire les animations.
+ */
+export const TurnPulseDuration = 900;
+export const GoalPulseDuration = 1400;
+
+/** Opacité de la couleur `piece` qui teinte la branche d'arrivée (plus marquée que la teinte `tint` des départs). */
+export const GoalTintOpacity = 0.45;
+
+/** Opacité de l'avatar d'un joueur qui attend son tour (son nom passe en `inkSoft`, toujours lisible). */
+export const WaitingOpacity = 0.5;
