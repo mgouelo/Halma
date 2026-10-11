@@ -5,17 +5,8 @@
 // envoyé à l'Edge Function ; s'il est refusé, l'affichage revient au dernier
 // état confirmé. Les coups des autres (reçus par Realtime) sont animés.
 
-import {
-  applyMove,
-  cellKey,
-  getLegalMoves,
-  pieceAt,
-  sameCell,
-  type Cell,
-  type GameState,
-  type Move,
-  type PlayerId,
-} from '@/game';
+import { applyMove, sameCell, type Cell, type GameState, type Move, type PlayerId } from '@/game';
+import { resolveTap, type Mutators, type TapNotice } from '@/mutators/mutators';
 import type { StoredGame } from '@/online';
 
 export interface PendingMove {
@@ -36,20 +27,34 @@ export interface OnlineGameState {
   pending: PendingMove | null;
   /** Dernier refus du serveur, à afficher. */
   error: string | null;
+  /** Retour discret après une touche refusée (mutateurs), effacé à la touche suivante. */
+  notice: TapNotice | null;
 }
 
 export type OnlineGameAction =
   /** Nouvelle version de la partie (réponse du serveur ou Realtime). */
   | { type: 'sync'; game: StoredGame }
-  /** Touche sur une case ; `me` est l'identifiant du joueur sur cet appareil (null : spectateur). */
-  | { type: 'tap'; cell: Cell; me: PlayerId | null }
+  /**
+   * Touche sur une case ; `me` est l'identifiant du joueur sur cet appareil
+   * (null : spectateur) ; `mutators` sont ceux de la room, figés au lancement.
+   */
+  | { type: 'tap'; cell: Cell; me: PlayerId | null; mutators: Mutators }
   /** Le serveur a refusé le coup en attente. */
   | { type: 'rejected'; pending: PendingMove; message: string }
   | { type: 'animationEnd' }
   | { type: 'dismissError' };
 
 export function initOnlineGame(server: StoredGame): OnlineGameState {
-  return { server, game: server.state, selected: null, moves: [], animating: null, pending: null, error: null };
+  return {
+    server,
+    game: server.state,
+    selected: null,
+    moves: [],
+    animating: null,
+    pending: null,
+    error: null,
+    notice: null,
+  };
 }
 
 function lastEntry(state: GameState) {
@@ -109,6 +114,7 @@ function sync(state: OnlineGameState, next: StoredGame): OnlineGameState {
     animating,
     selected: turnChanged ? null : state.selected,
     moves: turnChanged ? [] : state.moves,
+    notice: turnChanged ? null : state.notice,
   };
 }
 
@@ -133,31 +139,41 @@ export function onlineGameReducer(state: OnlineGameState, action: OnlineGameActi
         selected: null,
         moves: [],
         error: action.message,
+        notice: null,
       };
 
     case 'tap': {
-      if (!canPlay(state, action.me)) return state;
+      if (!canPlay(state, action.me) || action.me === null) return state;
       const { game } = state;
-
-      const move = state.moves.find((m) => sameCell(m.path[m.path.length - 1], action.cell));
-      if (move) {
-        return {
-          ...state,
-          game: applyMove(game, move),
-          selected: null,
-          moves: [],
-          animating: { move, player: game.currentPlayer, turn: game.turn + 1 },
-          pending: { move, turn: game.turn },
-          error: null,
-        };
+      const outcome = resolveTap({
+        game,
+        player: action.me,
+        selected: state.selected,
+        moves: state.moves,
+        cell: action.cell,
+        mutators: action.mutators,
+      });
+      switch (outcome.kind) {
+        case 'play': {
+          const { move } = outcome;
+          return {
+            ...state,
+            game: applyMove(game, move),
+            selected: null,
+            moves: [],
+            animating: { move, player: game.currentPlayer, turn: game.turn + 1 },
+            pending: { move, turn: game.turn },
+            error: null,
+            notice: null,
+          };
+        }
+        case 'select':
+          return { ...state, selected: outcome.selected, moves: outcome.moves, error: null, notice: null };
+        case 'clear':
+          return { ...state, selected: null, moves: [], notice: null };
+        case 'ignore':
+          return state.notice === outcome.notice ? state : { ...state, notice: outcome.notice };
       }
-
-      const tappedOwnPiece = pieceAt(game, action.cell) === action.me;
-      const tappedSelected = state.selected !== null && cellKey(state.selected) === cellKey(action.cell);
-      if (tappedOwnPiece && !tappedSelected) {
-        return { ...state, selected: action.cell, moves: getLegalMoves(game, action.cell), error: null };
-      }
-      return state.selected ? { ...state, selected: null, moves: [] } : state;
     }
   }
 }

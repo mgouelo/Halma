@@ -5,18 +5,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
+import { MutatorSettings } from '@/components/mutator-settings';
 import { useScreenEdges } from '@/components/nav-bar/screen-edges';
 import { PlayerChip } from '@/components/player-chip';
 import { Stepper } from '@/components/stepper';
 import { Colors, MaxContentWidth, playerColor, Spacing, Stroke, Typography } from '@/constants/theme';
 import { MAX_HUMAN_COUNT, MIN_HUMAN_COUNT, serializeHumanCount, turnOrderLabel } from '@/hooks/game-setup';
+import { DEFAULT_MUTATORS, serializeMutators, type Mutators } from '@/mutators/mutators';
 
 /** Partie entre amis sur le même appareil : de 2 à 6 joueurs qui se passent l'écran. */
 export default function LocalSetupScreen() {
   const [count, setCount] = useState(MIN_HUMAN_COUNT);
   const edges = useScreenEdges();
+  const [mutators, setMutators] = useState<Mutators>(DEFAULT_MUTATORS);
 
-  const start = () => router.push({ pathname: '/game', params: { players: serializeHumanCount(count) } });
+  const start = () =>
+    router.push({
+      pathname: '/game',
+      params: { players: serializeHumanCount(count), ...serializeMutators(mutators) },
+    });
 
   return (
     <SafeAreaView style={styles.screen} edges={edges}>
@@ -64,6 +71,11 @@ export default function LocalSetupScreen() {
             ))}
           </View>
         </DrawnCard>
+        <MutatorSettings
+          value={mutators}
+          onChange={(key, value) => setMutators((prev) => ({ ...prev, [key]: value }))}
+          caption="Options de la partie, pour tous les joueurs."
+        />
       </ScrollView>
 
       <View style={styles.footer}>

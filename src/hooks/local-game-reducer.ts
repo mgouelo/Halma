@@ -5,18 +5,15 @@
 
 import {
   applyMove,
-  cellKey,
   createGame,
-  getLegalMoves,
   isPlayerCount,
-  pieceAt,
-  sameCell,
   type AiLevel,
   type Cell,
   type GameState,
   type Move,
   type PlayerId,
 } from '@/game';
+import { DEFAULT_MUTATORS, resolveTap, type Mutators, type TapNotice } from '@/mutators/mutators';
 
 /** Qui joue chaque place : un humain sur l'appareil, ou une IA d'un niveau donné. */
 export type Controller = 'human' | AiLevel;
@@ -31,6 +28,10 @@ export interface LocalGameState {
   moves: Move[];
   /** Dernier coup joué, tant que son animation n'est pas terminée. */
   animating: { move: Move; player: PlayerId; turn: number } | null;
+  /** Mutateurs de la partie (options d'interface, voir `src/mutators/`). */
+  mutators: Mutators;
+  /** Retour discret après une touche refusée, effacé à la touche suivante. */
+  notice: TapNotice | null;
 }
 
 export type LocalGameAction =
@@ -42,7 +43,13 @@ export type LocalGameAction =
 
 export const TWO_HUMANS: readonly Controller[] = ['human', 'human'];
 
-export function initLocalGame(controllers: readonly Controller[] = TWO_HUMANS): LocalGameState {
+export interface LocalGameSetup {
+  controllers: readonly Controller[];
+  mutators?: Mutators;
+}
+
+export function initLocalGame(setup: LocalGameSetup | readonly Controller[] = TWO_HUMANS): LocalGameState {
+  const { controllers, mutators = DEFAULT_MUTATORS } = isControllerList(setup) ? { controllers: setup } : setup;
   const count = controllers.length;
   if (!isPlayerCount(count)) throw new Error(`Nombre de joueurs invalide : ${count}`);
   return {
@@ -51,7 +58,13 @@ export function initLocalGame(controllers: readonly Controller[] = TWO_HUMANS): 
     selected: null,
     moves: [],
     animating: null,
+    mutators: { ...mutators },
+    notice: null,
   };
+}
+
+function isControllerList(setup: LocalGameSetup | readonly Controller[]): setup is readonly Controller[] {
+  return Array.isArray(setup);
 }
 
 /** Destination d'un coup (dernière case du chemin). */
@@ -86,13 +99,14 @@ function play(state: LocalGameState, move: Move): LocalGameState {
     selected: null,
     moves: [],
     animating: { move, player: game.currentPlayer, turn: game.turn + 1 },
+    notice: null,
   };
 }
 
 export function localGameReducer(state: LocalGameState, action: LocalGameAction): LocalGameState {
   switch (action.type) {
     case 'reset':
-      return initLocalGame(state.controllers);
+      return initLocalGame({ controllers: state.controllers, mutators: state.mutators });
 
     case 'animationEnd':
       return state.animating ? { ...state, animating: null } : state;
@@ -105,15 +119,24 @@ export function localGameReducer(state: LocalGameState, action: LocalGameAction)
       const { game } = state;
       if (game.status !== 'playing' || state.animating || currentController(state) !== 'human') return state;
 
-      const move = state.moves.find((m) => sameCell(destinationOf(m), action.cell));
-      if (move) return play(state, move);
-
-      const tappedOwnPiece = pieceAt(game, action.cell) === game.currentPlayer;
-      const tappedSelected = state.selected !== null && cellKey(state.selected) === cellKey(action.cell);
-      if (tappedOwnPiece && !tappedSelected) {
-        return { ...state, selected: action.cell, moves: getLegalMoves(game, action.cell) };
+      const outcome = resolveTap({
+        game,
+        player: game.currentPlayer,
+        selected: state.selected,
+        moves: state.moves,
+        cell: action.cell,
+        mutators: state.mutators,
+      });
+      switch (outcome.kind) {
+        case 'play':
+          return play(state, outcome.move);
+        case 'select':
+          return { ...state, selected: outcome.selected, moves: outcome.moves, notice: null };
+        case 'clear':
+          return { ...state, selected: null, moves: [], notice: null };
+        case 'ignore':
+          return state.notice === outcome.notice ? state : { ...state, notice: outcome.notice };
       }
-      return state.selected ? { ...state, selected: null, moves: [] } : state;
     }
   }
 }

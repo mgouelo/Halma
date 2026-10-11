@@ -173,6 +173,44 @@ Retours des parties de test : on ne voyait pas assez vite à qui c'était le tou
 
 Captures : `docs/screenshots/tour-*.png`.
 
+## Mutateurs de partie
+
+Deux options de partie, activables ou non, réglées avant le lancement (`src/mutators/mutators.ts`) :
+
+| Mutateur | Par défaut | Effet |
+| -------- | ---------- | ----- |
+| **Toucher c'est jouer** | désactivé | Un pion sélectionné qui **peut** bouger doit être joué : impossible d'en sélectionner un autre ou d'annuler. Un pion bloqué ne verrouille rien (on peut en choisir un autre). |
+| **Clairvoyance** | activée (comportement d'avant) | Les cases où le pion sélectionné peut aller sont en pointillés. Désactivée, elles sont masquées ; une touche sur une case où le pion ne peut pas aller ne joue rien et garde la sélection. |
+
+- **Options d'interface, pas règles** : le moteur `src/game/` et l'Edge Function `game-action` ne changent pas.
+  Le réducteur calcule toujours les coups légaux avec le moteur (affichés ou non), et en ligne le serveur valide
+  chaque coup comme avant. **Les mutateurs ne sont donc pas vérifiés côté serveur** : un client modifié pourrait
+  les ignorer. Ils ne changent rien aux statistiques ni aux classements.
+- **Décision d'une touche** : `resolveTap`, partagée par les parties locales (`src/hooks/local-game-reducer.ts`)
+  et en ligne (`src/rooms/online-game-reducer.ts`). Une touche refusée donne un retour discret à la place de la
+  consigne (« Ce pion ne peut pas aller là. », « Toucher c'est jouer : joue le pion choisi. »), sans montrer les
+  cases possibles.
+- **Parties locales** : deux interrupteurs avec une phrase d'explication sur les écrans de réglage (contre l'IA,
+  entre amis), transmis dans l'URL : `/game?players=2&touch=1&clairvoyance=0`. Valeurs acceptées : `1`, `true`,
+  `on`, `oui`… et `0`, `false`, `off`, `non`… ; une valeur absente ou invalide garde la valeur par défaut.
+  « Nouvelle partie » garde les mêmes mutateurs.
+- **Parties en ligne** : l'hôte les règle dans la salle d'attente, les autres joueurs les voient en lecture
+  seule (mises à jour en direct par Realtime). Ils sont stockés dans `rooms.settings` (jsonb, migration
+  `20261012120000_room_settings.sql`), écrits seulement par la fonction SQL `set_room_settings` (`security
+  definer`) : hôte d'une room **en attente** uniquement (`not_host`, `room_started`), booléens des clés connues
+  `touch_move` et `clairvoyance` uniquement (`bad_request`, et une contrainte CHECK sur la colonne). Figés au
+  lancement, ils s'appliquent pareil chez tous les joueurs. Lisibles par les membres comme le reste de la room.
+- **Pendant la partie** : de petits badges sous la consigne indiquent les mutateurs actifs.
+- **Interrupteur** : dessiné dans la DA (`src/components/mutator-settings.tsx`), rôle `switch` pour les lecteurs
+  d'écran, état écrit à côté (« Activé » / « Désactivé ») ; en lecture seule, le rail est en pointillés.
+- Tests : `src/mutators/__tests__/mutators.test.ts` (paramètres d'URL, `rooms.settings`, badges, consigne),
+  `local-game-reducer.test.ts` (sélection verrouillée, pion bloqué, cases masquées, coup illégal ignoré),
+  `online-game-reducer.test.ts`, `room-service.test.ts` (réglage en ligne), `local-game-screen.test.tsx`,
+  `mutator-settings.test.tsx`, et `supabase/checks/rooms-check.sql` (réglage par l'hôte, refus d'un autre joueur
+  et après le lancement, valeurs invalides).
+
+Captures : `docs/screenshots/mutateurs-*.png`.
+
 ## Parties hors ligne
 
 Deux modes, sur l'accueil (carte « Hors ligne ») :
@@ -270,7 +308,7 @@ Les clients **ne peuvent rien écrire** dans `rooms`, `room_players` ni `games` 
 
 | Action | Passe par | Vérifications |
 | ------ | --------- | ------------- |
-| Créer, rejoindre, quitter une room ; ajouter, régler, retirer une IA ; signe de vie | fonctions SQL `create_room`, `join_room`, `leave_room`, `add_ai`, `set_ai_level`, `remove_ai`, `heartbeat` (`security definer`) | membre, hôte, room en attente, 6 places au plus, une seule room active |
+| Créer, rejoindre, quitter une room ; ajouter, régler, retirer une IA ; régler les mutateurs ; signe de vie | fonctions SQL `create_room`, `join_room`, `leave_room`, `add_ai`, `set_ai_level`, `remove_ai`, `set_room_settings`, `heartbeat` (`security definer`) | membre, hôte, room en attente, 6 places au plus, une seule room active ; réglages : booléens connus |
 | Lancer la partie, jouer un coup, faire jouer une IA, déclarer forfait, abandonner | Edge Function `game-action` (clé `service_role`) | voir ci-dessous |
 
 L'Edge Function (`supabase/functions/game-action/index.ts`) authentifie le jeton, puis passe la demande à
@@ -714,6 +752,7 @@ Toujours installer les paquets Expo avec `npx expo install <paquet>` pour obteni
   de la politique de confidentialité et des conditions d'utilisation (brouillons).
 - `src/lib/flash-notice.ts` : message à usage unique affiché sur l'écran suivant (room fermée par l'hôte).
 - `src/components/` : composants d'affichage, dont `board/` (plateau SVG, pion animé, calcul de mise en page), `game-layout.tsx` (mise en page des parties, téléphone et grand écran) et `state-view.tsx` (chargement, erreurs).
+- `src/mutators/` : mutateurs de partie (options d'interface, URL, `rooms.settings`, décision d'une touche) ; `src/components/mutator-settings.tsx` : interrupteurs et badges.
 - `src/hooks/` : état d'interface de la partie (sélection, animation, tour des IA), qui délègue règles et IA à `src/game/` ; paramètres de partie (`game-setup.ts`) ; confirmation avant de quitter ou recommencer une partie locale (`leave-guard.ts`, `use-leave-guard.ts`).
 - `src/constants/theme.ts` : couleurs, couleurs pastel des joueurs, police et typographie, traits, espacements ; `src/constants/fonts.ts` : fichiers de la police.
 - `src/auth/` et `src/lib/supabase.ts` : comptes (voir « Comptes (Supabase) »).
@@ -817,7 +856,8 @@ minimax classique.
    Fait.
 10. ~~Tour bien visible (halo, « À toi de jouer ! », titre de l'onglet), branche d'arrivée mise en évidence,
     icônes des statistiques du profil.~~ Fait.
-11. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », amis.
+11. ~~Mutateurs de partie : « Toucher c'est jouer » et « Clairvoyance » (local et en ligne).~~ Fait.
+12. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », amis.
 
 ## Inspiration
 

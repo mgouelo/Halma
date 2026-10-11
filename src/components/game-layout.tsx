@@ -37,6 +37,8 @@ interface GameLayoutProps {
   players?: ReactNode;
   /** Message d'erreur ou d'information. */
   notice?: ReactNode;
+  /** Badges des mutateurs actifs. */
+  badges?: ReactNode;
   /** Actions (nouvelle partie, abandon). */
   footer?: ReactNode;
   /** Écran de fin, par-dessus tout le reste. */
@@ -60,7 +62,17 @@ interface GameLayoutProps {
  * autour du plateau ; sur grand écran (tablette, ordinateur), les informations
  * passent dans un panneau à gauche et le plateau prend toute la hauteur.
  */
-export function GameLayout({ header, status, players, notice, footer, overlay, frameTint, board }: GameLayoutProps) {
+export function GameLayout({
+  header,
+  status,
+  players,
+  notice,
+  badges,
+  footer,
+  overlay,
+  frameTint,
+  board,
+}: GameLayoutProps) {
   const wide = useWideLayout();
   const area = useMeasuredSize();
   const layout = useMemo(
@@ -85,6 +97,7 @@ export function GameLayout({ header, status, players, notice, footer, overlay, f
           <ScrollView style={styles.panel} contentContainerStyle={styles.panelContent}>
             {header}
             {status}
+            {badges}
             {players}
             {notice}
             {footer}
@@ -96,6 +109,7 @@ export function GameLayout({ header, status, players, notice, footer, overlay, f
           {header}
           {players}
           {status}
+          {badges}
           {notice}
           {boardArea}
           {footer}

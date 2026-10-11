@@ -8,6 +8,7 @@ import { Notice } from '@/components/auth-screen';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
+import { MutatorSettings } from '@/components/mutator-settings';
 import { PlayerChip } from '@/components/player-chip';
 import { SegmentedPicker } from '@/components/segmented-picker';
 import { Colors, MaxContentWidth, playerColor, Spacing, Stroke, Typography } from '@/constants/theme';
@@ -23,6 +24,7 @@ import {
   leaveRoomPrompt,
   removeAi,
   setAiLevel,
+  setRoomMutators,
   startGame,
   type RoomPlayer,
   type RoomSnapshot,
@@ -127,6 +129,17 @@ export function Lobby({ snapshot, userId, now, onGame, refresh, leavingRef }: Lo
           )}
           {count === 5 && <Text style={Typography.caption}>À 5, une branche du plateau reste vide.</Text>}
         </DrawnCard>
+
+        <MutatorSettings
+          value={room.mutators}
+          onChange={isHost ? (key, value) => act(() => setRoomMutators(client, room.id, { [key]: value })) : undefined}
+          disabled={pending}
+          caption={
+            isHost
+              ? 'Pour tous les joueurs, figés au lancement de la partie.'
+              : 'Réglés par l’hôte, figés au lancement de la partie.'
+          }
+        />
 
         {error && <Notice>{error}</Notice>}
       </ScrollView>

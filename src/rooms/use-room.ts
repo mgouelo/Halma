@@ -8,11 +8,17 @@ import {
   storedGameFromRow,
   type GameRow,
   type RoomPlayerRow,
-  type RoomRow,
   type StoredGame,
 } from '@/online';
 
-import { describeOnlineError, fetchRoom, heartbeat, roomFromRow, type RoomSnapshot } from './room-service';
+import {
+  describeOnlineError,
+  fetchRoom,
+  heartbeat,
+  roomFromRow,
+  type ClientRoomRow,
+  type RoomSnapshot,
+} from './room-service';
 
 export type RoomLoadStatus = 'loading' | 'ready' | 'missing' | 'error';
 
@@ -87,7 +93,7 @@ export function useRoom(roomId: string) {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, (payload) => {
         if (payload.eventType === 'DELETE') return setStatus('missing');
-        const room = roomFromRow(payload.new as RoomRow);
+        const room = roomFromRow(payload.new as ClientRoomRow);
         setSnapshot((prev) => (prev ? { ...prev, room } : prev));
       })
       // (Ré)abonnement : on relit la room pour ne rien manquer pendant la coupure.

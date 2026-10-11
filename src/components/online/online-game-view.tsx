@@ -7,9 +7,11 @@ import { Notice } from '@/components/auth-screen';
 import { DrawnButton } from '@/components/drawn-button';
 import { goalPlayer } from '@/components/board/goal';
 import { GameLayout, TurnStatus } from '@/components/game-layout';
+import { MutatorBadges } from '@/components/mutator-settings';
 import { PlayerChip } from '@/components/player-chip';
 import { VictoryOverlay } from '@/components/victory-overlay';
 import { Colors, playerColor, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
+import { selectionHint } from '@/mutators/mutators';
 import { participantOfPlayer, type StoredGame } from '@/online';
 import { participantAvatar, participantName } from '@/rooms/names';
 import { secondsBeforeForfeit } from '@/rooms/presence';
@@ -24,11 +26,28 @@ interface OnlineGameViewProps {
   onGame: (game: StoredGame | null) => void;
 }
 
+const MY_TURN_IDLE_HINT = 'Touche un de tes pions. Vise ta branche teintée !';
+
 /** Partie en ligne : plateau, tour, joueurs (connectés ou non), abandon et fin de partie. */
 export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameViewProps) {
   const { room, players } = snapshot;
-  const { game, server, me, selected, moves, animating, pending, error, tap, animationEnd, dismissError, resign } =
-    useOnlineGame({ roomId: room.id, server: snapshot.game, players, userId, now, onGame });
+  // Mutateurs réglés par l'hôte dans la salle d'attente, figés au lancement (la room n'est plus modifiable).
+  const { mutators } = room;
+  const {
+    game,
+    server,
+    me,
+    selected,
+    moves,
+    animating,
+    pending,
+    error,
+    notice,
+    tap,
+    animationEnd,
+    dismissError,
+    resign,
+  } = useOnlineGame({ roomId: room.id, server: snapshot.game, players, userId, now, onGame, mutators });
   const [confirmResign, setConfirmResign] = useState(false);
   const [resignError, setResignError] = useState<string | null>(null);
   const [resigning, setResigning] = useState(false);
@@ -64,11 +83,7 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
         : animating
           ? ' '
           : myTurn
-            ? selected
-              ? moves.length > 0
-                ? 'Touche une case en pointillés pour jouer.'
-                : 'Ce pion ne peut pas bouger.'
-              : 'Touche un de tes pions. Vise ta branche teintée !'
+            ? selectionHint({ selected, moves, notice, mutators, idle: MY_TURN_IDLE_HINT })
             : current?.aiLevel
               ? 'L’IA réfléchit…'
               : currentAway !== null
@@ -180,10 +195,12 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
         )
       }
       frameTint={finished ? undefined : playerColor(game.currentPlayer).tint}
+      badges={<MutatorBadges value={mutators} />}
       board={{
         game,
         selected,
-        moves,
+        // Sans « Clairvoyance », les cases atteignables ne sont pas dessinées.
+        moves: mutators.clairvoyance ? moves : [],
         animating,
         goal: goalPlayer(game, { me, forfeited: server.forfeited }),
         onCellPress: tap,

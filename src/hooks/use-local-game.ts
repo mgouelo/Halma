@@ -2,6 +2,8 @@ import { useEffect, useReducer } from 'react';
 
 import { chooseMoveAsync, type Cell } from '@/game';
 
+import { DEFAULT_MUTATORS, type Mutators } from '@/mutators/mutators';
+
 import { initLocalGame, isAiTurn, localGameReducer, TWO_HUMANS, type Controller } from './local-game-reducer';
 
 /** Temps minimal avant qu'une IA joue, pour que son coup reste lisible (ms). */
@@ -12,8 +14,8 @@ const AI_MIN_THINK_MS = 450;
  * jouer, son coup est calculé en tâche découpée (`chooseMoveAsync`) pour ne pas
  * figer l'interface, puis joué comme un coup humain (avec animation).
  */
-export function useLocalGame(controllers: readonly Controller[] = TWO_HUMANS) {
-  const [state, dispatch] = useReducer(localGameReducer, controllers, initLocalGame);
+export function useLocalGame(controllers: readonly Controller[] = TWO_HUMANS, mutators: Mutators = DEFAULT_MUTATORS) {
+  const [state, dispatch] = useReducer(localGameReducer, { controllers, mutators }, initLocalGame);
 
   const aiTurn = isAiTurn(state);
   const { game } = state;

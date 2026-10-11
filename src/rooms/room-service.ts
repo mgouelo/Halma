@@ -7,6 +7,7 @@
 import { FunctionsFetchError, FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js';
 
 import type { AiLevel, Move } from '@/game';
+import { mutatorsFromSettings, settingsFromMutators, type Mutators } from '@/mutators/mutators';
 import {
   GAME_COLUMNS,
   isOnlineErrorCode,
@@ -32,6 +33,8 @@ export interface RoomInfo {
   hostId: string;
   status: RoomStatus;
   createdAt: string;
+  /** Mutateurs réglés par l'hôte (colonne `settings`), figés au lancement. */
+  mutators: Mutators;
 }
 
 /** Participant avec le pseudo et l'avatar du joueur (null pour une IA). */
@@ -73,8 +76,25 @@ export function isValidRoomCode(code: string): boolean {
   return ROOM_CODE.test(code);
 }
 
-export function roomFromRow(row: RoomRow): RoomInfo {
-  return { id: row.id, code: row.code, hostId: row.host_id, status: row.status, createdAt: row.created_at };
+/**
+ * Colonnes de `rooms` lues par l'application : celles de l'Edge Function plus
+ * `settings` (mutateurs), dont le serveur n'a pas besoin. `ROOM_COLUMNS` reste
+ * inchangé : game-action n'a pas à être redéployée.
+ */
+const CLIENT_ROOM_COLUMNS = `${ROOM_COLUMNS}, settings`;
+
+/** Ligne de `rooms` vue par l'application (avec ses réglages). */
+export type ClientRoomRow = RoomRow & { settings?: unknown };
+
+export function roomFromRow(row: ClientRoomRow): RoomInfo {
+  return {
+    id: row.id,
+    code: row.code,
+    hostId: row.host_id,
+    status: row.status,
+    createdAt: row.created_at,
+    mutators: mutatorsFromSettings(row.settings),
+  };
 }
 
 type ProfileEmbed = { pseudo: string; avatar: string | null };
@@ -133,6 +153,15 @@ export function removeAi(client: SupabaseClient, playerId: string): Promise<void
   return rpc<void>(client, 'remove_ai', { p_player: playerId });
 }
 
+/**
+ * L'hôte change des mutateurs de sa room en attente. La base refuse un autre
+ * joueur (`not_host`), une room lancée (`room_started`) et toute valeur qui
+ * n'est pas un booléen connu (`bad_request`).
+ */
+export function setRoomMutators(client: SupabaseClient, roomId: string, mutators: Partial<Mutators>): Promise<void> {
+  return rpc<void>(client, 'set_room_settings', { p_room: roomId, p_settings: settingsFromMutators(mutators) });
+}
+
 export function heartbeat(client: SupabaseClient, roomId: string): Promise<void> {
   return rpc<void>(client, 'heartbeat', { p_room: roomId });
 }
@@ -140,7 +169,7 @@ export function heartbeat(client: SupabaseClient, roomId: string): Promise<void>
 /** Room, participants (avec pseudos) et partie ; null si la room est introuvable ou invisible. */
 export async function fetchRoom(client: SupabaseClient, roomId: string): Promise<RoomSnapshot | null> {
   const [room, players, game] = await Promise.all([
-    client.from('rooms').select(ROOM_COLUMNS).eq('id', roomId).maybeSingle<RoomRow>(),
+    client.from('rooms').select(CLIENT_ROOM_COLUMNS).eq('id', roomId).maybeSingle<ClientRoomRow>(),
     client
       .from('room_players')
       .select(`${ROOM_PLAYER_COLUMNS}, profiles(pseudo, avatar)`)
