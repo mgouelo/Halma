@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
+import { MutatorSettings } from '@/components/mutator-settings';
 import { useScreenEdges } from '@/components/nav-bar/screen-edges';
 import { PlayerChip } from '@/components/player-chip';
 import { SegmentedPicker } from '@/components/segmented-picker';
@@ -12,10 +13,12 @@ import { Stepper } from '@/components/stepper';
 import { Colors, MaxContentWidth, playerColor, Spacing, Stroke, Typography } from '@/constants/theme';
 import { AI_LEVELS, type AiLevel } from '@/game';
 import { AI_LEVEL_LABELS, MAX_AI_COUNT, MIN_AI_COUNT, serializeAiLevels } from '@/hooks/game-setup';
+import { DEFAULT_MUTATORS, serializeMutators, type Mutators } from '@/mutators/mutators';
 
 export default function AiSetupScreen() {
   const [count, setCount] = useState(1);
   const edges = useScreenEdges();
+  const [mutators, setMutators] = useState<Mutators>(DEFAULT_MUTATORS);
   // On garde les niveaux des 5 places : réduire puis augmenter le nombre d'IA ne perd pas les choix.
   const [levels, setLevels] = useState<AiLevel[]>(() => Array(MAX_AI_COUNT).fill('medium'));
 
@@ -23,7 +26,10 @@ export default function AiSetupScreen() {
     setLevels((prev) => prev.map((current, i) => (i === index ? level : current)));
 
   const start = () =>
-    router.push({ pathname: '/game', params: { ai: serializeAiLevels(levels.slice(0, count)) } });
+    router.push({
+      pathname: '/game',
+      params: { ai: serializeAiLevels(levels.slice(0, count)), ...serializeMutators(mutators) },
+    });
 
   return (
     <SafeAreaView style={styles.screen} edges={edges}>
@@ -74,6 +80,11 @@ export default function AiSetupScreen() {
             );
           })}
         </DrawnCard>
+        <MutatorSettings
+          value={mutators}
+          onChange={(key, value) => setMutators((prev) => ({ ...prev, [key]: value }))}
+          caption="Options de la partie, pour tous les joueurs."
+        />
       </ScrollView>
 
       <View style={styles.footer}>

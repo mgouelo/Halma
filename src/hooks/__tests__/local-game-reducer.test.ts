@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { cellKey, cornerCells, createGame, type GameState, type PlayerId } from '@/game';
+import { DEFAULT_MUTATORS, type Mutators } from '@/mutators/mutators';
 
 import {
   destinationOf,
@@ -17,10 +18,11 @@ function withBoard(
   pieces: [number, number, PlayerId][],
   currentPlayer: PlayerId = 0,
   controllers: Controller[] = ['human', 'human'],
+  mutators: Mutators = DEFAULT_MUTATORS,
 ): LocalGameState {
   const game: GameState = { ...createGame(2), board: {}, currentPlayer };
   for (const [q, r, player] of pieces) game.board[cellKey({ q, r })] = player;
-  return { game, controllers, selected: null, moves: [], animating: null };
+  return { game, controllers, selected: null, moves: [], animating: null, mutators: { ...mutators }, notice: null };
 }
 
 describe('localGameReducer', () => {
@@ -136,5 +138,88 @@ describe('localGameReducer avec des IA', () => {
   it('garde les mêmes contrôleurs en recommençant', () => {
     const state = localGameReducer(initLocalGame(['human', 'easy', 'hard']), { type: 'reset' });
     expect(state.controllers).toEqual(['human', 'easy', 'hard']);
+  });
+});
+
+describe('localGameReducer : mutateurs', () => {
+  const touchMove = { touchMove: true, clairvoyance: true };
+  const blind = { touchMove: false, clairvoyance: false };
+  // Pion bloqué à la pointe de la branche du haut : ses deux voisins et leurs cases d'arrivée de saut sont occupés.
+  const blockedPieces: [number, number, PlayerId][] = [
+    [4, -8, 0],
+    [3, -7, 1],
+    [4, -7, 1],
+    [2, -6, 1],
+    [4, -6, 1],
+  ];
+
+  it('Toucher c’est jouer : un pion qui peut bouger ne se change ni ne s’annule', () => {
+    const selected = localGameReducer(withBoard([[0, 0, 0], [0, 3, 0]], 0, undefined, touchMove), {
+      type: 'tap',
+      cell: c(0, 0),
+    });
+    expect(selected.moves.length).toBeGreaterThan(0);
+
+    const other = localGameReducer(selected, { type: 'tap', cell: c(0, 3) });
+    expect(other.selected).toEqual(c(0, 0));
+    expect(other.notice).toBe('locked');
+
+    const again = localGameReducer(selected, { type: 'tap', cell: c(0, 0) });
+    expect(again.selected).toEqual(c(0, 0));
+
+    const elsewhere = localGameReducer(selected, { type: 'tap', cell: c(3, 3) });
+    expect(elsewhere.selected).toEqual(c(0, 0));
+    expect(elsewhere.notice).toBe('illegal');
+
+    // Le coup du pion choisi se joue normalement et efface le retour.
+    const played = localGameReducer(elsewhere, { type: 'tap', cell: c(1, 0) });
+    expect(played.game.board['1,0']).toBe(0);
+    expect(played.notice).toBeNull();
+  });
+
+  it('Toucher c’est jouer : un pion bloqué ne verrouille pas le joueur', () => {
+    const state = withBoard([...blockedPieces, [0, 0, 0]], 0, undefined, touchMove);
+    const blocked = localGameReducer(state, { type: 'tap', cell: c(4, -8) });
+    expect(blocked.selected).toEqual(c(4, -8));
+    expect(blocked.moves).toEqual([]);
+    // Il peut choisir un autre pion…
+    expect(localGameReducer(blocked, { type: 'tap', cell: c(0, 0) }).selected).toEqual(c(0, 0));
+    // … ou annuler sa sélection.
+    expect(localGameReducer(blocked, { type: 'tap', cell: c(4, -8) }).selected).toBeNull();
+  });
+
+  it('sans Toucher c’est jouer, on change toujours de pion (comportement par défaut)', () => {
+    const selected = localGameReducer(withBoard([[0, 0, 0], [0, 3, 0]]), { type: 'tap', cell: c(0, 0) });
+    expect(localGameReducer(selected, { type: 'tap', cell: c(0, 3) }).selected).toEqual(c(0, 3));
+  });
+
+  it('sans Clairvoyance : les coups restent connus du réducteur, une case illégale ne joue rien', () => {
+    const selected = localGameReducer(withBoard([[0, 0, 0], [1, 0, 1]], 0, undefined, blind), {
+      type: 'tap',
+      cell: c(0, 0),
+    });
+    // Les cases atteignables sont calculées (l'écran ne les dessine pas).
+    expect(selected.moves.map((m) => cellKey(destinationOf(m)))).toContain('2,0');
+
+    const illegal = localGameReducer(selected, { type: 'tap', cell: c(3, 3) });
+    expect(illegal.game).toBe(selected.game);
+    expect(illegal.selected).toEqual(c(0, 0));
+    expect(illegal.notice).toBe('illegal');
+    // Le même refus ne recrée pas d'état.
+    expect(localGameReducer(illegal, { type: 'tap', cell: c(3, 3) })).toBe(illegal);
+
+    // Toucher le pion choisi annule la sélection (Toucher c'est jouer est désactivé).
+    expect(localGameReducer(illegal, { type: 'tap', cell: c(0, 0) }).selected).toBeNull();
+
+    // Une case légale joue le coup.
+    const played = localGameReducer(illegal, { type: 'tap', cell: c(2, 0) });
+    expect(played.game.board['2,0']).toBe(0);
+    expect(played.notice).toBeNull();
+  });
+
+  it('garde les mutateurs à « Nouvelle partie »', () => {
+    const state = initLocalGame({ controllers: ['human', 'medium'], mutators: touchMove });
+    expect(localGameReducer(state, { type: 'reset' }).mutators).toEqual(touchMove);
+    expect(initLocalGame().mutators).toEqual(DEFAULT_MUTATORS);
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import { FunctionsFetchError, FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js';
 
+import { DEFAULT_MUTATORS } from '@/mutators/mutators';
 import { OnlineError } from '@/online';
 
 import {
@@ -19,6 +20,8 @@ import {
   playMove,
   roomClosedNotice,
   ROOM_CLOSED_NOTICE,
+  roomFromRow,
+  setRoomMutators,
   type RoomSnapshot,
 } from '../room-service';
 
@@ -127,7 +130,14 @@ describe('fetchRoom', () => {
       },
     });
     const snapshot = await fetchRoom(asSupabase, 'r');
-    expect(snapshot?.room).toEqual({ id: 'r', code: 'K7QM3X', hostId: 'u1', status: 'waiting', createdAt: 't' });
+    expect(snapshot?.room).toEqual({
+      id: 'r',
+      code: 'K7QM3X',
+      hostId: 'u1',
+      status: 'waiting',
+      createdAt: 't',
+      mutators: DEFAULT_MUTATORS,
+    });
     expect(snapshot?.players.map((p) => [p.id, p.pseudo, p.avatar, p.aiLevel])).toEqual([
       ['p1', null, null, 'easy'],
       ['p0', 'Alice', 'felix', null],
@@ -176,7 +186,7 @@ describe('room fermée et sortie de la salle d’attente', () => {
   const player = (id: string, userId: string | null, seat: number) =>
     ({ id, userId, aiLevel: userId ? null : 'easy', seat, playerIndex: null, lastSeenAt: '', pseudo: null, avatar: null }) as unknown as RoomSnapshot['players'][number];
   const snapshot = (hostId: string, players: RoomSnapshot['players'], status: 'waiting' | 'playing' = 'waiting'): RoomSnapshot => ({
-    room: { id: 'r1', code: 'K7QM3X', hostId, status, createdAt: '' },
+    room: { id: 'r1', code: 'K7QM3X', hostId, status, createdAt: '', mutators: DEFAULT_MUTATORS },
     players,
     game: status === 'playing' ? ({ id: 'g1' } as unknown as RoomSnapshot['game']) : null,
   });
@@ -195,5 +205,37 @@ describe('room fermée et sortie de la salle d’attente', () => {
     expect(leaveRoomPrompt(withFriend, 'friend')).toBeNull();
     const withAi = snapshot('host', [player('p1', 'host', 0), player('p2', null, 1)]);
     expect(leaveRoomPrompt(withAi, 'host')).toBeNull();
+  });
+});
+
+describe('mutateurs d’une room', () => {
+  it('l’hôte les règle par la fonction SQL, avec les clés de la base', async () => {
+    const { client, asSupabase } = fakeClient();
+    await setRoomMutators(asSupabase, 'r1', { touchMove: true });
+    expect(client.rpc).toHaveBeenCalledWith('set_room_settings', { p_room: 'r1', p_settings: { touch_move: true } });
+  });
+
+  it('remonte le refus de la base (autre joueur, partie lancée)', async () => {
+    const { asSupabase } = fakeClient({ rpc: { data: null, error: { message: 'not_host' } } });
+    await expect(setRoomMutators(asSupabase, 'r1', { clairvoyance: false })).rejects.toMatchObject({
+      code: 'not_host',
+    });
+  });
+
+  it('lit les mutateurs avec la room, et garde les valeurs par défaut sans colonne', async () => {
+    const row = { id: 'r1', code: 'K7QM3X', host_id: 'h', status: 'waiting' as const, created_at: '' };
+    expect(roomFromRow({ ...row, settings: { touch_move: true, clairvoyance: false } }).mutators).toEqual({
+      touchMove: true,
+      clairvoyance: false,
+    });
+    expect(roomFromRow(row).mutators).toEqual(DEFAULT_MUTATORS);
+
+    const { client, asSupabase } = fakeClient({
+      tables: { rooms: { data: { ...row, settings: { touch_move: true, clairvoyance: true } }, error: null } },
+    });
+    const snapshot = await fetchRoom(asSupabase, 'r1');
+    expect(snapshot?.room.mutators).toEqual({ touchMove: true, clairvoyance: true });
+    const select = client.from.mock.results[0].value as { select: jest.Mock };
+    expect(select.select).toHaveBeenCalledWith(expect.stringContaining('settings'));
   });
 });

@@ -189,6 +189,19 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
 - Limite : l'écran en ligne a été vérifié avec une partie factice (pas de Supabase dans l'environnement de
   développement).
 
+## Étape 13 : mutateurs de partie (fait)
+
+- « Toucher c'est jouer » (désactivé par défaut) : un pion sélectionné qui peut bouger doit être joué ; un pion
+  bloqué ne verrouille pas le joueur.
+- « Clairvoyance » (activée par défaut) : désactivée, les cases atteignables sont masquées ; une touche sur une
+  case illégale ne joue rien (retour discret, sans révéler les cases possibles).
+- Options d'interface uniquement : moteur et Edge Function `game-action` inchangés, non vérifiées côté serveur,
+  sans effet sur les statistiques ni les classements.
+- Local : interrupteurs sur les écrans de réglage, paramètres d'URL (`touch`, `clairvoyance`) analysés de façon
+  robuste. En ligne : réglés par l'hôte dans la salle d'attente (lecture seule pour les autres), stockés dans
+  `rooms.settings` (migration `20261012120000_room_settings.sql`, fonction `set_room_settings`), figés au
+  lancement. Badges des mutateurs actifs pendant la partie.
+
 ## Plus tard : amis
 
 - Table `friendships` (demande, acceptation), liste d'amis, invitation directe dans une room.

@@ -96,6 +96,15 @@ begin
 end $$;
 -- Seul l'hôte gère les IA.
 select pg_temp.expect_error($$select public.add_ai((select id from ids where name = 'room'), 'easy')$$, 'not_host');
+-- Mutateurs : valeurs par défaut lisibles par Bob, mais seul l'hôte les règle.
+do $$
+begin
+  assert (select settings from public.rooms where id = (select id from ids where name = 'room'))
+    = '{"touch_move": false, "clairvoyance": true}'::jsonb, 'mutateurs par défaut, lisibles par les membres';
+end $$;
+select pg_temp.expect_error(
+  $$select public.set_room_settings((select id from ids where name = 'room'), '{"touch_move": true}')$$, 'not_host');
+select pg_temp.expect_error($$update public.rooms set settings = '{"touch_move": true}'$$, '42501');
 
 -- Carol n'est pas dans la room : elle ne voit rien.
 set request.jwt.claim.sub = 'c0000000-0000-0000-0000-000000000003';
@@ -107,8 +116,32 @@ end $$;
 -- Son heartbeat sur la room ne touche à rien.
 select public.heartbeat((select id from ids where name = 'room'));
 
--- Alice ajoute, règle et retire des IA.
+-- Alice règle les mutateurs : un seul à la fois (l'autre garde sa valeur), puis les deux.
 set request.jwt.claim.sub = 'a0000000-0000-0000-0000-000000000001';
+do $$
+declare room uuid := (select id from ids where name = 'room');
+begin
+  assert public.set_room_settings(room, '{"touch_move": true}') = '{"touch_move": true, "clairvoyance": true}'::jsonb,
+    'l’hôte active « Toucher c’est jouer »';
+  assert public.set_room_settings(room, '{"clairvoyance": false, "touch_move": true}')
+    = '{"touch_move": true, "clairvoyance": false}'::jsonb, 'l’hôte désactive « Clairvoyance »';
+  assert public.set_room_settings(room, '{}') = '{"touch_move": true, "clairvoyance": false}'::jsonb,
+    'un objet vide ne change rien';
+end $$;
+-- Valeurs invalides : autre type, clé inconnue, pas un objet, null.
+select pg_temp.expect_error($$select public.set_room_settings((select id from ids where name = 'room'), '{"touch_move": "yes"}')$$, 'bad_request');
+select pg_temp.expect_error($$select public.set_room_settings((select id from ids where name = 'room'), '{"clairvoyance": 1}')$$, 'bad_request');
+select pg_temp.expect_error($$select public.set_room_settings((select id from ids where name = 'room'), '{"clairvoyance": null}')$$, 'bad_request');
+select pg_temp.expect_error($$select public.set_room_settings((select id from ids where name = 'room'), '{"turbo": true}')$$, 'bad_request');
+select pg_temp.expect_error($$select public.set_room_settings((select id from ids where name = 'room'), '[true, false]')$$, 'bad_request');
+select pg_temp.expect_error($$select public.set_room_settings((select id from ids where name = 'room'), null)$$, 'bad_request');
+do $$
+begin
+  assert (select settings from public.rooms where id = (select id from ids where name = 'room'))
+    = '{"touch_move": true, "clairvoyance": false}'::jsonb, 'les refus ne changent rien';
+end $$;
+
+-- Alice ajoute, règle et retire des IA.
 insert into ids select 'ai1', public.add_ai((select id from ids where name = 'room'), 'easy');
 select pg_temp.expect_error($$select public.add_ai((select id from ids where name = 'room'), 'expert')$$, 'bad_request');
 select public.set_ai_level((select id from ids where name = 'ai1'), 'hard');
@@ -240,6 +273,14 @@ set role authenticated;
 set request.jwt.claim.sub = 'a0000000-0000-0000-0000-000000000001';
 select pg_temp.expect_error($$select public.leave_room((select id from ids where name = 'room'))$$, 'room_started');
 select pg_temp.expect_error($$select public.add_ai((select id from ids where name = 'room'), 'easy')$$, 'room_started');
+-- Mutateurs figés au lancement : l'hôte ne les change plus, ils restent lisibles.
+select pg_temp.expect_error(
+  $$select public.set_room_settings((select id from ids where name = 'room'), '{"touch_move": false}')$$, 'room_started');
+do $$
+begin
+  assert (select settings from public.rooms where id = (select id from ids where name = 'room'))
+    = '{"touch_move": true, "clairvoyance": false}'::jsonb, 'mutateurs figés pendant la partie';
+end $$;
 
 -- Les joueurs lisent la partie mais ne l'écrivent pas.
 do $$

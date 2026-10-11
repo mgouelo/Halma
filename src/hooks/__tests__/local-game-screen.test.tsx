@@ -131,3 +131,27 @@ describe('partie locale : quitter et recommencer', () => {
     expect(screen.getByText('Bleu')).toBeTruthy();
   });
 });
+
+describe('partie locale : mutateurs reçus dans l’URL', () => {
+  it('par défaut : Clairvoyance seule, cases atteignables transmises au plateau', () => {
+    start('/game');
+    expect(screen.getByLabelText('Mutateurs actifs : Clairvoyance')).toBeTruthy();
+    playOneMove();
+    expect(screen.getByText('Coup 2')).toBeTruthy();
+  });
+
+  it('sans Clairvoyance : le plateau ne reçoit aucune case, la consigne ne parle pas de pointillés', () => {
+    start('/game?clairvoyance=0&touch=1');
+    expect(screen.getByLabelText('Mutateurs actifs : Toucher c’est jouer')).toBeTruthy();
+    fireEvent.press(screen.getByText('Choisir un pion'));
+    expect(screen.getByText('Touche la case où aller.')).toBeTruthy();
+    // Le faux plateau joue la première case reçue : il n'en reçoit aucune.
+    fireEvent.press(screen.getByText('Jouer le coup'));
+    expect(screen.getByText('Coup 1')).toBeTruthy();
+  });
+
+  it('valeurs invalides : réglages par défaut', () => {
+    start('/game?clairvoyance=bof&touch=42');
+    expect(screen.getByLabelText('Mutateurs actifs : Clairvoyance')).toBeTruthy();
+  });
+});

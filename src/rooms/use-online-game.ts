@@ -2,6 +2,7 @@ import { useEffect, useReducer, useRef } from 'react';
 
 import type { Cell, PlayerId } from '@/game';
 import { getSupabase } from '@/lib/supabase';
+import type { Mutators } from '@/mutators/mutators';
 import type { StoredGame } from '@/online';
 
 import { initOnlineGame, onlineGameReducer, type PendingMove } from './online-game-reducer';
@@ -18,6 +19,8 @@ interface OnlineGameOptions {
   now: number;
   /** Partie à jour renvoyée par le serveur. */
   onGame: (game: StoredGame | null) => void;
+  /** Mutateurs de la room (réglés par l'hôte, figés au lancement). */
+  mutators: Mutators;
 }
 
 /**
@@ -25,7 +28,7 @@ interface OnlineGameOptions {
  * coups à l'Edge Function, animation des coups reçus, et demandes au serveur
  * de faire jouer les IA ou de déclarer forfait les joueurs partis.
  */
-export function useOnlineGame({ roomId, server, players, userId, now, onGame }: OnlineGameOptions) {
+export function useOnlineGame({ roomId, server, players, userId, now, onGame, mutators }: OnlineGameOptions) {
   const [state, dispatch] = useReducer(onlineGameReducer, server, initOnlineGame);
   const me: PlayerId | null = players.find((p) => p.userId === userId)?.playerIndex ?? null;
 
@@ -84,7 +87,7 @@ export function useOnlineGame({ roomId, server, players, userId, now, onGame }: 
   return {
     ...state,
     me,
-    tap: (cell: Cell) => dispatch({ type: 'tap', cell, me }),
+    tap: (cell: Cell) => dispatch({ type: 'tap', cell, me, mutators }),
     animationEnd: () => dispatch({ type: 'animationEnd' }),
     dismissError: () => dispatch({ type: 'dismissError' }),
     resign,

@@ -9,6 +9,7 @@ import { goalPlayer } from '@/components/board/goal';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DrawnButton } from '@/components/drawn-button';
 import { GameLayout, TurnStatus } from '@/components/game-layout';
+import { MutatorBadges } from '@/components/mutator-settings';
 import { PlayerChip } from '@/components/player-chip';
 import { VictoryOverlay } from '@/components/victory-overlay';
 import { Colors, playerColor, Typography } from '@/constants/theme';
@@ -18,6 +19,7 @@ import type { Controller } from '@/hooks/local-game-reducer';
 import { useIsClient } from '@/hooks/use-is-client';
 import { useLeaveGuard } from '@/hooks/use-leave-guard';
 import { useLocalGame } from '@/hooks/use-local-game';
+import { parseMutatorParams, selectionHint, type Mutators } from '@/mutators/mutators';
 
 function describeController(controller: Controller, vsAi: boolean): string | undefined {
   if (controller !== 'human') return `IA · ${AI_LEVEL_LABELS[controller]}`;
@@ -32,8 +34,9 @@ export default function GameScreen() {
 }
 
 function GameView() {
-  const { ai, players } = useLocalSearchParams<{ ai?: string; players?: string }>();
-  const [controllers] = useState(() => parseControllers(ai, players));
+  const params = useLocalSearchParams<{ ai?: string; players?: string; touch?: string; clairvoyance?: string }>();
+  const [controllers] = useState(() => parseControllers(params.ai, params.players));
+  const [mutators] = useState<Mutators>(() => parseMutatorParams(params));
   const vsAi = controllers.some((c) => c !== 'human');
   const { session, profile } = useAuth();
   // Contre l'IA : ton avatar (tiré de ton compte, ou d'une graine locale sans compte) et ceux des IA.
@@ -41,7 +44,10 @@ function GameView() {
     controllers[player] === 'human'
       ? { value: profile?.avatar ?? null, seed: session?.user.id ?? 'joueur-local' }
       : { value: aiAvatar(`local-${player}`), seed: `local-${player}` };
-  const { game, selected, moves, animating, aiThinking, tap, animationEnd, reset } = useLocalGame(controllers);
+  const { game, selected, moves, animating, notice, aiThinking, tap, animationEnd, reset } = useLocalGame(
+    controllers,
+    mutators,
+  );
 
   // La partie n'existe que dans l'état de cet écran : le quitter la supprime.
   // Tant qu'elle est en cours, on demande d'abord confirmation (voir useLeaveGuard).
@@ -57,11 +63,7 @@ function GameView() {
       ? 'L’IA réfléchit…'
       : animating
         ? ' '
-        : selected
-          ? moves.length > 0
-            ? 'Touche une case en pointillés pour jouer.'
-            : 'Ce pion ne peut pas bouger.'
-          : 'Touche un de tes pions.';
+        : selectionHint({ selected, moves, notice, mutators, idle: 'Touche un de tes pions.' });
 
   return (
     <GameLayout
@@ -90,10 +92,12 @@ function GameView() {
         />
       }
       frameTint={finished ? undefined : playerColor(game.currentPlayer).tint}
+      badges={<MutatorBadges value={mutators} />}
       board={{
         game,
         selected,
-        moves,
+        // Sans « Clairvoyance », les cases atteignables ne sont pas dessinées (le réducteur les connaît toujours).
+        moves: mutators.clairvoyance ? moves : [],
         animating,
         goal: goalPlayer(game),
         onCellPress: tap,
