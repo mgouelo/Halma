@@ -2,9 +2,21 @@ import { memo, useMemo, useRef } from 'react';
 import { View, type GestureResponderEvent } from 'react-native';
 import Svg, { Circle, G, Polygon } from 'react-native-svg';
 
-import { Colors, playerColor, Shadow, Stroke } from '@/constants/theme';
-import { ALL_CELLS, cellKey, cornerOf, parseCellKey, type Cell, type GameState, type Move, type Player } from '@/game';
+import { Colors, GoalTintOpacity, playerColor, Shadow, Stroke } from '@/constants/theme';
+import {
+  ALL_CELLS,
+  cellKey,
+  cornerCells,
+  cornerOf,
+  parseCellKey,
+  type Cell,
+  type GameState,
+  type Move,
+  type Player,
+  type PlayerId,
+} from '@/game';
 
+import { GoalMarker } from './goal-marker';
 import { cellAt, type BoardLayout } from './layout';
 import { MovingPiece } from './moving-piece';
 
@@ -16,6 +28,11 @@ interface BoardProps {
   moves?: Move[];
   /** Coup à animer ; son pion est caché sur le plateau pendant l'animation. */
   animating?: { move: Move; player: number; turn: number } | null;
+  /**
+   * Joueur dont la branche d'arrivée est mise en évidence (voir `goalPlayer`) :
+   * teinte plus marquée, contour en pointillés et drapeau. Affichage seulement.
+   */
+  goal?: PlayerId | null;
   onCellPress?: (cell: Cell) => void;
   onAnimationEnd?: () => void;
 }
@@ -75,7 +92,7 @@ const BoardBackground = memo(
 );
 
 /** Plateau en étoile dessiné en SVG. Affichage seulement : aucune règle ici. */
-export function Board({ game, layout, selected, moves = [], animating, onCellPress, onAnimationEnd }: BoardProps) {
+export function Board({ game, layout, selected, moves = [], animating, goal = null, onCellPress, onAnimationEnd }: BoardProps) {
   const { width, height, spacing, toPoint } = layout;
   const holeRadius = spacing * 0.17;
   const pieceRadius = spacing * 0.36;
@@ -89,10 +106,26 @@ export function Board({ game, layout, selected, moves = [], animating, onCellPre
     [animating, toPoint],
   );
 
+  const goalCorner = goal === null ? null : (game.players.find((player) => player.id === goal)?.target ?? null);
+  const goalColor = goal === null ? null : playerColor(goal);
+
   return (
     <View style={{ width, height }}>
       <Svg width={width} height={height}>
         <BoardBackground layout={layout} players={game.players} />
+
+        {goalCorner !== null &&
+          goalColor &&
+          cornerCells(goalCorner).map((cell) => {
+            const { x, y } = toPoint(cell);
+            // Teinte par-dessus celle du fond, puis le trou redessiné par-dessus la teinte.
+            return (
+              <G key={`goal-${cellKey(cell)}`}>
+                <Circle cx={x} cy={y} r={spacing * 0.48} fill={goalColor.piece} fillOpacity={GoalTintOpacity} />
+                <Circle cx={x} cy={y} r={holeRadius} fill={Colors.paper} stroke={Colors.ink} strokeWidth={Stroke.thin} />
+              </G>
+            );
+          })}
 
         {Object.entries(game.board).map(([key, player]) => {
           if (key === hiddenKey) return null;
@@ -132,6 +165,8 @@ export function Board({ game, layout, selected, moves = [], animating, onCellPre
           );
         })}
       </Svg>
+
+      {goalCorner !== null && goal !== null && <GoalMarker layout={layout} corner={goalCorner} player={goal} />}
 
       {animating && onAnimationEnd && (
         <MovingPiece

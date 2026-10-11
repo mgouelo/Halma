@@ -1,17 +1,20 @@
 import { router } from 'expo-router';
+import Head from 'expo-router/head';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Notice } from '@/components/auth-screen';
 import { DrawnButton } from '@/components/drawn-button';
+import { goalPlayer } from '@/components/board/goal';
 import { GameLayout, TurnStatus } from '@/components/game-layout';
 import { PlayerChip } from '@/components/player-chip';
 import { VictoryOverlay } from '@/components/victory-overlay';
-import { Colors, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
+import { Colors, playerColor, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
 import { participantOfPlayer, type StoredGame } from '@/online';
 import { participantAvatar, participantName } from '@/rooms/names';
 import { secondsBeforeForfeit } from '@/rooms/presence';
 import { describeOnlineError, type RoomSnapshot } from '@/rooms/room-service';
+import { isMyTurn, onlineTabTitle, WAITING_LEAD, type OnlineTurn } from '@/rooms/turn-display';
 import { useOnlineGame } from '@/rooms/use-online-game';
 
 interface OnlineGameViewProps {
@@ -43,6 +46,14 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
   const finished = game.status === 'finished';
   const current = playerAt(game.currentPlayer);
   const currentAway = current ? secondsBeforeForfeit(current, now) : null;
+  const turn: OnlineTurn = {
+    finished,
+    me,
+    forfeited: server.forfeited,
+    currentPlayer: game.currentPlayer,
+    currentName: nameOf(game.currentPlayer),
+  };
+  const myTurn = isMyTurn(turn);
 
   const hint = finished
     ? 'Partie terminée.'
@@ -52,17 +63,17 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
         ? 'Envoi du coup…'
         : animating
           ? ' '
-          : game.currentPlayer === me
+          : myTurn
             ? selected
               ? moves.length > 0
                 ? 'Touche une case en pointillés pour jouer.'
                 : 'Ce pion ne peut pas bouger.'
-              : 'À toi ! Touche un de tes pions.'
+              : 'Touche un de tes pions. Vise le drapeau !'
             : current?.aiLevel
               ? 'L’IA réfléchit…'
               : currentAway !== null
                 ? `Déconnecté : forfait dans ${currentAway} s s’il ne revient pas.`
-                : 'En attente de son coup…';
+                : 'Réflexion en cours…';
 
   const doResign = async () => {
     setResigning(true);
@@ -97,6 +108,12 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
     <GameLayout
       header={
         <View style={styles.header}>
+          {/* Titre de l'onglet (web seulement) : « À toi de jouer ! » ou « En attente de … ». */}
+          {Platform.OS === 'web' && (
+            <Head>
+              <title>{onlineTabTitle(turn)}</title>
+            </Head>
+          )}
           <DrawnButton label="‹ Accueil" size="small" onPress={goHome} />
           <Text style={Typography.caption}>
             Room {room.code} · Coup {game.turn + 1}
@@ -111,6 +128,8 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
             const away = participant && participant.userId !== userId ? secondsBeforeForfeit(participant, now) : null;
             const status = server.forfeited.includes(player.id) ? 'parti' : away !== null ? 'déconnecté' : null;
             const isCurrent = player.id === game.currentPlayer && !finished;
+            // Le joueur courant est écrit (« joue ») et entouré, pas seulement coloré.
+            const detail = status ?? (isCurrent ? 'joue' : undefined);
             return (
               <View
                 key={player.id}
@@ -124,8 +143,9 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
                   player={player.id}
                   size={30}
                   label={nameOf(player.id)}
-                  detail={status ?? undefined}
+                  detail={detail}
                   avatar={avatarOf(player.id)}
+                  turn={finished ? undefined : isCurrent ? 'active' : 'waiting'}
                 />
               </View>
             );
@@ -137,6 +157,8 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
           turnKey={game.turn}
           thinking={thinking}
           hint={hint}
+          lead={WAITING_LEAD}
+          mine={myTurn ? { color: playerColor(game.currentPlayer).piece } : undefined}
           player={
             finished ? null : (
               <PlayerChip
@@ -144,6 +166,7 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
                 size={40}
                 label={nameOf(game.currentPlayer)}
                 avatar={avatarOf(game.currentPlayer)}
+                turn="active"
               />
             )
           }
@@ -156,7 +179,16 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
           </Pressable>
         )
       }
-      board={{ game, selected, moves, animating, onCellPress: tap, onAnimationEnd: animationEnd }}
+      frameTint={finished ? undefined : playerColor(game.currentPlayer).tint}
+      board={{
+        game,
+        selected,
+        moves,
+        animating,
+        goal: goalPlayer(game, { me, forfeited: server.forfeited }),
+        onCellPress: tap,
+        onAnimationEnd: animationEnd,
+      }}
       footer={
         !finished &&
         !iLeft &&

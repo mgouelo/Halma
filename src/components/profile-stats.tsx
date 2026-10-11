@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-context';
@@ -8,14 +8,21 @@ import { fetchMyStats, type PlayerStats } from '@/stats/stats-service';
 import { displayedStreak, parisDay } from '@/stats/streak';
 
 import { DrawnCard } from './drawn-card';
+import { BestFlameIcon, FlameIcon, StartFlagIcon, TrophyIcon } from './stat-icons';
 import { ErrorState, LoadingState } from './state-view';
 
 type Load = { status: 'loading' } | { status: 'error' } | { status: 'ready'; stats: PlayerStats };
 
-function Tile({ value, label }: { value: number; label: string }) {
+const ICON_SIZE = 34;
+
+/** Une statistique : icône décorative et valeur, puis son libellé (seul le libellé et la valeur sont lus). */
+function Tile({ value, label, Icon }: { value: number; label: string; Icon: ComponentType<{ size: number }> }) {
   return (
     <View style={styles.tile} accessible accessibilityLabel={`${label} : ${value}`}>
-      <Text style={styles.value}>{value}</Text>
+      <View style={styles.valueRow}>
+        <Icon size={ICON_SIZE} />
+        <Text style={styles.value}>{value}</Text>
+      </View>
       <Text style={styles.label}>{label}</Text>
     </View>
   );
@@ -61,10 +68,10 @@ export function ProfileStats({ userId }: { userId: string }) {
         Statistiques
       </Text>
       <View style={styles.grid}>
-        <Tile value={stats.wins} label="Victoires" />
-        <Tile value={stats.gamesStarted} label="Parties lancées" />
-        <Tile value={displayedStreak(stats, parisDay(new Date()))} label="Série actuelle (jours)" />
-        <Tile value={stats.bestStreak} label="Meilleure série (jours)" />
+        <Tile value={stats.wins} label="Victoires" Icon={TrophyIcon} />
+        <Tile value={stats.gamesStarted} label="Parties lancées" Icon={StartFlagIcon} />
+        <Tile value={displayedStreak(stats, parisDay(new Date()))} label="Série actuelle (jours)" Icon={FlameIcon} />
+        <Tile value={stats.bestStreak} label="Meilleure série (jours)" Icon={BestFlameIcon} />
       </View>
       <Text style={Typography.caption}>Parties en ligne seulement.</Text>
     </DrawnCard>
@@ -89,6 +96,11 @@ const styles = StyleSheet.create({
     borderWidth: Stroke.regular,
     borderColor: Colors.ink,
     borderRadius: Radius.medium,
+  },
+  valueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
   },
   value: {
     ...Typography.title,
