@@ -55,6 +55,12 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
-    "description": "Dames chinoises (Halma) de 2 à 6 joueurs : contre l'IA, entre amis ou en ligne."
+    "description": "Dames chinoises (Halma) de 2 à 6 joueurs : contre l'IA, entre amis ou en ligne.",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5621bc07-7b0a-41fb-8563-deafeb87b09c"
+      }
+    }
   }
 }
