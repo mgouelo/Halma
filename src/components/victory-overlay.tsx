@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
@@ -24,6 +25,8 @@ interface VictoryOverlayProps {
   onHome: () => void;
   /** Avatar du vainqueur, affiché à la place de la médaille. */
   winnerAvatar?: { value: AvatarConfig | string | null; seed: string };
+  /** Sous le message : points gagnés ou perdus (parties en ligne classées). */
+  extra?: ReactNode;
 }
 
 /** Écran de victoire, affiché par-dessus le plateau en fin de partie. */
@@ -36,6 +39,7 @@ export function VictoryOverlay({
   onReplay,
   onHome,
   winnerAvatar,
+  extra,
 }: VictoryOverlayProps) {
   const color = winner === null ? null : playerColor(winner);
   return (
@@ -54,6 +58,7 @@ export function VictoryOverlay({
             {message ??
               `${color?.name ?? ''}${winnerDetail ? ` (${winnerDetail})` : ''} a rempli la branche d’en face en ${moveCount} coups.`}
           </Text>
+          {extra}
           <View style={styles.actions}>
             {onReplay && <DrawnButton label="Rejouer" onPress={onReplay} color={color?.piece} />}
             <DrawnButton label="Accueil" onPress={onHome} />

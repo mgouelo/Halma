@@ -498,7 +498,8 @@ double grâce au verrou de version.
 | ----------- | ----- | ------- |
 | Parties lancées (profil seulement, pas de classement) | +1 pour chaque joueur humain de la room quand l'hôte lance une partie en ligne | `begin_game` (appelée par l'Edge Function), dans la transaction du lancement |
 | Victoires (toutes confondues) | un humain gagne une partie en ligne en remplissant sa branche (`end_reason = 'win'`) | `record_game_win` (appelée par l'Edge Function après l'écriture de la partie) |
-| Victoires contre une IA facile, moyenne, difficile | même victoire, si la partie contenait au moins une IA : rangée au niveau de l'**IA la plus forte** présente (et comptée aussi dans « toutes victoires ») | idem |
+| Victoires contre une IA facile, moyenne, difficile (comptées, plus de classement depuis la migration `rating`) | même victoire, si la partie contenait au moins une IA : rangée au niveau de l'**IA la plus forte** présente (et comptée aussi dans « toutes victoires ») | idem |
+| Points (MMR) | après chaque partie en ligne **classée** (voir « Points (MMR) ») | `record_game_rating` (appelée par l'Edge Function, montants calculés par `src/online/rating.ts`) |
 | Série de connexion, meilleure série | à l'ouverture de l'application (et au retour au premier plan), une fois par jour | `record_daily_login`, appelée par l'application |
 
 - **Ne comptent pas** : une victoire par forfait ou abandon des autres joueurs (`end_reason = 'forfeit'`), une partie
@@ -526,11 +527,9 @@ double grâce au verrou de version.
   simplement réessayé au prochain retour dans l'application.
 - **Parties lancées** : toujours comptées et affichées sur le profil, mais sans classement (retiré par simplicité,
   migration `20261004120000_leaderboards_without_games_started.sql`).
-- **Limite assumée** : les classements ne sont pas protégés contre les scripts (un joueur qui automatise des
-  parties en ligne contre des IA faciles) ni contre les comptes qui s'entraident (des amis, ou plusieurs comptes
-  d'une même personne, qui se laissent gagner à tour de rôle). Il n'y a ni nombre minimal de coups pour qu'une
-  victoire compte, ni plafond de victoires par jour. C'est un choix assumé pour cette version : le serveur garantit
-  seulement que chaque victoire comptée est une vraie partie en ligne, jouée coup par coup et validée par le moteur.
+- **Limite assumée** (victoires et séries) : ces classements ne sont pas protégés contre les scripts ni contre les
+  comptes qui s'entraident. Les **points** ont, eux, des garde-fous (10 coups d'humains au moins, 3 parties classées
+  par jour au plus entre deux mêmes comptes) : voir « Points (MMR) ».
 
 ### Intégrité
 
@@ -538,11 +537,12 @@ double grâce au verrou de version.
   `insert`, `update` ni `delete`, et ne lisent que leur propre ligne (profil). `stats_wins` leur est invisible.
 - `record_game_win` et `advance_login_streak` ne sont pas appelables par les clients (seulement la clé
   `service_role` de l'Edge Function pour la première, rien pour la seconde).
-- `get_leaderboards()` (comptes e-mail seulement) renvoie, pour chacun des 5 classements, les
+- `get_leaderboards()` (comptes e-mail seulement) renvoie, pour chacun des 3 classements (points, victoires, série), les
   50 premiers et la ligne du joueur lui-même, même plus loin : **pseudo, avatar, score, rang** et `is_me`, rien
   d'autre. L'avatar est `profiles.avatar`, ou à défaut l'identifiant du joueur, qui sert de graine à son avatar
-  par défaut (les profils sont de toute façon lisibles par les joueurs connectés). Seuls les scores positifs
-  sont classés ; à score égal, le premier à l'avoir atteint passe devant, puis l'ordre alphabétique du pseudo.
+  par défaut (les profils sont de toute façon lisibles par les joueurs connectés). Victoires et série : seuls les
+  scores positifs sont classés ; points : tout joueur qui a joué au moins une partie classée, points négatifs
+  compris. À score égal, le premier à l'avoir atteint passe devant, puis l'ordre alphabétique du pseudo.
 - Invités (migration `20261007120000_leaderboards_without_guests.sql`) : les lignes des utilisateurs anonymes sont
   exclues de tous les classements, et un appelant anonyme est refusé avec l'erreur courte `guest_not_ranked`,
   traduite par l'application (`describeLeaderboardError`, `src/stats/leaderboard.ts`). L'application n'envoie de
@@ -550,8 +550,10 @@ double grâce au verrou de version.
 
 ### Écrans
 
-- **Classements** (`/leaderboard`) : cinq onglets (Victoires, Hall des débutants, Hall des confirmés, Hall des pros,
-  Série de connexion, la plus haute série atteinte), chargés en un seul appel et relus à chaque retour sur l'écran. Chaque ligne :
+- **Classements** (`/leaderboard`) : trois onglets, **Points** (par défaut), **Victoires** (total) et **Série** (plus
+  haute série de connexion), chargés en un seul appel et relus à chaque retour sur l'écran. Les classements par
+  niveau d'IA (débutants, confirmés, pros) ont été retirés (leurs colonnes restent comptées). Un score négatif
+  s'affiche avec son signe (« -15 »). Chaque ligne :
   rang (podium dessiné pour les trois premiers : marche de la bonne hauteur, numéro et pion), avatar, pseudo,
   score. Sa propre ligne est teintée, marquée d'un trait épais et de « C'est toi », et répétée en bas quand on est
   hors du top 50 (ou pas encore classé). États de chargement, d'erreur (« Réessayer ») et de classement vide ;
@@ -561,14 +563,81 @@ double grâce au verrou de version.
   pour apparaître dans les classements et les consulter), avec « Créer mon compte » (invité, vers `/upgrade`) ou
   « Se connecter » (non connecté), et un lien secondaire. Aucune requête de classement n'est envoyée ; la barre de
   navigation reste affichée.
-- **Profil** : victoires, parties lancées, série actuelle et meilleure série, chacune précédée d'une petite icône
-  dessinée en SVG dans la DA (`src/components/stat-icons.tsx` : coupe, drapeau de départ et pion, flamme, flamme
-  et étoile). Les icônes sont masquées aux lecteurs d'écran : chaque case est lue « Victoires : 12 ».
+- **Profil** : points et rang aux points (`get_my_rating` ; « — » pour un invité ou avant la première partie
+  classée, avec une phrase qui l'explique), victoires, parties lancées, série actuelle et meilleure série, chacune
+  précédée d'une petite icône dessinée en SVG dans la DA (`src/components/stat-icons.tsx` : pion entre deux
+  flèches, podium, coupe, drapeau de départ et pion, flamme, flamme et étoile). Les icônes sont masquées aux
+  lecteurs d'écran : chaque case est lue « Victoires : 12 ».
+- **Fin d'une partie en ligne classée** : sous le message, la variation dans une pastille au trait (« +27 points »,
+  « -15 points » ; le signe porte le sens, la couleur menthe ou rose n'est qu'un appoint) et le nouveau total.
+  Pendant le calcul : « Calcul des points… » (relecture toutes les 1,5 s par `get_game_rating`, l'écran reste
+  utilisable) ; au-delà de 45 s, « retrouve-les bientôt sur ton profil ». Une partie non classée n'affiche rien.
 
-Code : `supabase/migrations/20261003120000_player_stats.sql`, `20261004120000_leaderboards_without_games_started.sql`
-et `20261007120000_leaderboards_without_guests.sql`, `src/stats/` (appels à Supabase, mise en forme
+### Points (MMR)
+
+Chaque joueur a des **points**, 0 à la création du compte, qui peuvent devenir négatifs avec un **plancher à -999**.
+Ils évoluent après chaque partie en ligne **classée**. Les points d'avant cette version repartent de 0 (pas de
+calcul rétroactif).
+
+**Partie classée** : une partie en ligne (rooms, et plus tard matchmaking) avec **au moins 2 joueurs humains au
+lancement**, avec ou sans IA. Aucune partie hors ligne ni aucune partie avec un seul humain ne compte. Seuls les
+points des humains changent : les IA n'ont pas de points et ne comptent dans aucune moyenne. Un compte supprimé en
+cours de partie n'est plus un humain classé.
+
+| Fin de la partie | Gagnant | Humains restants | Humains partis (abandon, forfait) |
+| ---------------- | ------- | ---------------- | --------------------------------- |
+| Un humain gagne (fin par victoire) | gagne, contre la **moyenne des autres humains** | chacun perd, contre le **gagnant** | chacun perd, contre le **gagnant** |
+| Une IA gagne | — | **rien** (ni gain ni perte) | chacun perd, contre la **moyenne des autres humains** |
+| Abandons : un seul humain reste, et il gagne (victoire ou dernier en jeu) | gagne, contre la **moyenne des humains partis** | — | chacun perd, contre le **gagnant** |
+| Abandons : un seul humain reste, et il perd contre une IA | — | **rien** | chacun perd, contre la **moyenne des autres humains** |
+| Plus aucun humain en jeu (partie arrêtée, abandonnée) | partie **non classée** | | |
+
+**Formule** (variante d'Elo, `src/online/rating.ts`) : E = 1 / (1 + 10^((adversaire − moi) / S)) ;
+gain = 2 × 30 × (1 − E), perte = 2 × 15 × E, arrondis, **au moins 1 point** dans les deux cas. À niveau égal :
+**+30** et **-15**. Contre un adversaire bien plus faible, la victoire rapporte peu et la défaite coûte cher ; contre
+un adversaire bien plus fort, l'inverse. Avec plus de 2 humains, le gagnant se mesure à la moyenne des autres
+humains et chaque perdant au gagnant. Exemples avec S = 200 : contre un adversaire plus fort de 200 points, victoire
++55 et défaite -3 ; contre un adversaire plus faible de 200 points, victoire +5 et défaite -27.
+
+| Constante (`src/online/rating.ts`) | Valeur | Rôle |
+| ---------------------------------- | ------ | ---- |
+| `RATING_START` | 0 | points à la création du compte |
+| `RATING_FLOOR` | -999 | plancher (aussi dans la base : `rating_floor()`, contrainte `player_stats_mmr_floor`) |
+| `RATING_SCALE` (S) | 200 | échelle : un écart de S points donne au plus fort environ 10 chances contre 1 ; plus S est grand, moins les écarts comptent |
+| `WIN_POINTS`, `LOSS_POINTS` | 30, 15 | gain et perte à niveau égal |
+| `MIN_POINTS` | 1 | gain ou perte minimal |
+| `MIN_HUMAN_MOVES` | 10 | coups joués **par des humains** (au total, les coups d'IA ne comptent pas) pour qu'une partie soit classée (aussi `rating_min_human_moves()`) |
+| `MAX_RANKED_GAMES_PER_PAIR_PER_DAY` | 3 | parties classées par jour (jour de Paris) entre deux mêmes comptes ; une partie qui dépasserait ce plafond pour une paire de ses humains n'est pas classée (vérifié par la base, `rating_max_pair_games_per_day()`) |
+
+Pour changer une constante partagée avec la base, modifier `src/online/rating.ts` **et** ajouter une migration qui
+redéfinit la fonction SQL correspondante, puis redéployer `game-action`.
+
+**Côté serveur uniquement, idempotent** (migration `20261016120000_rating.sql`) :
+
+- l'Edge Function `game-action`, à la fin d'une partie (comme pour `record_game_win`), décide qui gagne ou perd
+  (`ratingOutcome`), lit les points actuels, calcule les variations (`ratingChanges`) et appelle
+  `record_game_rating(partie, variations)` ; une partie non classée est enregistrée avec sa raison ;
+- `record_game_rating` (rôle `service_role` seulement) ne décide **qu'une fois par partie** (table `rating_games`,
+  clé primaire), revérifie le nombre d'humains, les coups d'humains (historique de la partie), les joueurs concernés
+  et le plafond par paire, **verrouille** les lignes `player_stats` des joueurs (toujours dans le même ordre), puis
+  écrit `rating_events` (avant, après, variation ; clé unique partie + joueur) et `player_stats.mmr` ;
+- deux parties qui finissent en même temps : si les points ont changé depuis leur lecture, la fonction refuse
+  (`rating_conflict`) et l'Edge Function relit et recalcule (3 essais) ; un échec est rattrapé à la demande suivante ;
+- les clients ne peuvent rien écrire (ni `player_stats`, ni `rating_events`, ni `rating_games`) ; ils lisent le
+  résultat d'une partie (`get_game_rating`, réservé aux joueurs de la partie), leurs points et leur rang
+  (`get_my_rating`) et leurs propres variations (`rating_events`, RLS).
+
+Vérifications : `src/online/__tests__/rating.test.ts` (formule, règles, Edge Function) et
+`supabase/checks/rating-check.sql` (idempotence, conflits, garde-fous, plancher, lectures, aucune écriture par un
+client).
+
+Code : `supabase/migrations/20261003120000_player_stats.sql`, `20261004120000_leaderboards_without_games_started.sql`,
+`20261007120000_leaderboards_without_guests.sql` et `20261016120000_rating.sql`, `src/online/rating.ts`, `src/stats/` (appels à Supabase, mise en forme
 des classements, jour de Paris et séries, connexion du jour), `src/app/(main)/leaderboard.tsx`,
-`src/components/profile-stats.tsx`.
+`src/components/profile-stats.tsx`, `src/components/online/rating-result.tsx`, `src/rooms/use-game-rating.ts`.
+
+Captures : `docs/screenshots/points-1-classement.png` (classement des points, score négatif),
+`points-2-profil.png` (points et rang), `points-3-fin-victoire.png` et `points-4-fin-defaite.png` (fin de partie classée).
 
 ## Barre de navigation
 
@@ -989,7 +1058,8 @@ minimax classique.
 12. ~~Profil ouvert par l'avatar (barre Amis, Accueil, Classements), pseudos avec é, è, É, È et apostrophe,
     changement de pseudo tous les 7 jours au plus.~~ Fait.
 13. ~~Mot de passe oublié, validation d'e-mail détectée toute seule, modèles d'e-mails en français.~~ Fait.
-14. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », amis.
+14. ~~Points (MMR) des parties en ligne classées, classements Points, Victoires et Série.~~ Fait.
+15. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », amis.
 
 ## Inspiration
 

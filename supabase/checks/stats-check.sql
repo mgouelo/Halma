@@ -263,16 +263,16 @@ begin
   select string_agg(format('%s:%s=%s', rank, pseudo, score), ' ' order by rank) into rows
     from public.get_leaderboards() where board = 'wins';
   assert rows = '1:Hugo=3 2:Iris=1 3:Jules=1', format('ordre des victoires : %s', rows);
-  select string_agg(format('%s:%s=%s', rank, pseudo, score), ' ' order by rank) into rows
-    from public.get_leaderboards() where board = 'wins_hard';
-  assert rows = '1:Iris=1 2:Jules=1', format('hall des pros : %s', rows);
+  -- Les victoires par niveau d'IA restent comptées, mais n'ont plus de classement (migration rating).
+  assert not exists (select 1 from public.get_leaderboards() where board in ('wins_easy', 'wins_medium', 'wins_hard')),
+    'plus de classements par niveau d’IA';
   assert (select is_me from public.get_leaderboards() where board = 'wins' and pseudo = 'Jules'), 'ligne de Jules';
   assert (select count(*) from public.get_leaderboards() where is_me and pseudo <> 'Jules') = 0, 'une seule ligne à moi';
   -- Pas encore de score : ligne sans rang, score 0.
-  assert (select (rank is null and score = 0 and is_me) from public.get_leaderboards() where board = 'wins_easy' and is_me),
-    'Jules sans victoire contre une IA facile';
+  assert (select (rank is null and score = 0 and is_me) from public.get_leaderboards() where board = 'points' and is_me),
+    'Jules sans partie classée : pas de rang aux points';
   assert (select array_agg(distinct board order by board) from public.get_leaderboards())
-    = array['best_streak', 'wins', 'wins_easy', 'wins_hard', 'wins_medium'], 'cinq classements';
+    = array['best_streak', 'points', 'wins'], 'trois classements';
   assert not exists (select 1 from public.get_leaderboards() where board = 'games_started'),
     'plus de classement des parties lancées';
   -- Avatar par défaut : l'identifiant sert de graine.
@@ -325,8 +325,6 @@ begin
   select string_agg(format('%s:%s=%s', rank, pseudo, score), ' ' order by rank) into rows
     from public.get_leaderboards() where board = 'wins';
   assert rows = '1:Hugo=3 2:Iris=1 3:Jules=1 4:Dana=1', format('Dana classée avec sa victoire d’invitée : %s', rows);
-  assert (select rank = 3 and score = 1 and is_me from public.get_leaderboards() where board = 'wins_hard' and pseudo = 'Dana'),
-    'Dana dans le hall des pros';
   assert (select score = 1 and is_me and rank is not null from public.get_leaderboards() where board = 'best_streak' and pseudo = 'Dana'),
     'Dana garde sa série de connexion';
 end $$;

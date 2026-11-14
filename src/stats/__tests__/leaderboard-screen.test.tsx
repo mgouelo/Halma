@@ -8,6 +8,8 @@ import { Text } from 'react-native';
 import type { AuthState } from '@/auth/auth-context';
 
 const mockFetchLeaderboards = jest.fn(async () => [
+  { board: 'points', rank: 1, pseudo: 'Noé', avatar: 'Noé', score: 42, is_me: false },
+  { board: 'points', rank: 2, pseudo: 'Léa', avatar: 'Léa', score: -15, is_me: true },
   { board: 'wins', rank: 1, pseudo: 'Léa', avatar: 'Léa', score: 4, is_me: true },
 ]);
 let mockAuth: Partial<AuthState> = {};
@@ -94,7 +96,16 @@ describe('classements', () => {
   it('compte e-mail : les classements sont lus', async () => {
     mockAuth = { configured: true, loading: false, session: session(false), isGuest: false, profile: null };
     open();
-    await waitFor(() => expect(screen.getByText('Léa')).toBeTruthy());
+    // « Points » par défaut, score négatif avec son signe.
+    await waitFor(() => expect(screen.getByText('Noé')).toBeTruthy());
+    expect(screen.getByRole('tab', { name: 'Points', selected: true })).toBeTruthy();
+    expect(screen.getByText('-15')).toBeTruthy();
+    expect(screen.getByLabelText('2e place, Léa (toi), -15 points')).toBeTruthy();
+    // Trois onglets, plus de classements par niveau d'IA.
+    expect(screen.getAllByRole('tab').filter((tab) => ['Points', 'Victoires', 'Série de connexion'].includes(tab.props.accessibilityLabel))).toHaveLength(3);
+    expect(screen.queryByRole('tab', { name: 'Hall des pros' })).toBeNull();
+    fireEvent.press(screen.getByRole('tab', { name: 'Victoires' }));
+    expect(screen.getByLabelText('1er place, Léa (toi), 4 victoires')).toBeTruthy();
     expect(mockFetchLeaderboards).toHaveBeenCalled();
     expect(screen.queryByText(/en ligne|hors ligne|validées par le serveur|parties lancées/i)).toBeNull();
   });

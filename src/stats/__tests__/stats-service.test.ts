@@ -1,7 +1,14 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { EMPTY_STATS, fetchLeaderboards, fetchMyStats, recordDailyLogin } from '../stats-service';
+import {
+  EMPTY_STATS,
+  fetchGameRating,
+  fetchLeaderboards,
+  fetchMyRating,
+  fetchMyStats,
+  recordDailyLogin,
+} from '../stats-service';
 
 type Result = { data: unknown; error: unknown };
 
@@ -49,5 +56,27 @@ describe('statistiques', () => {
     const { client, asSupabase } = fakeClient({ data: rows, error: null });
     await expect(fetchLeaderboards(asSupabase)).resolves.toEqual(rows);
     expect(client.rpc).toHaveBeenCalledWith('get_leaderboards');
+  });
+});
+
+describe('points', () => {
+  it('lit ses points et son rang', async () => {
+    const { client, asSupabase } = fakeClient({ data: [{ mmr: -15, rank: 12, ranked_games: 3 }], error: null });
+    await expect(fetchMyRating(asSupabase)).resolves.toEqual({ points: -15, rank: 12, rankedGames: 3 });
+    expect(client.rpc).toHaveBeenCalledWith('get_my_rating');
+    const guest = fakeClient({ data: [{ mmr: 30, rank: null, ranked_games: 1 }], error: null });
+    await expect(fetchMyRating(guest.asSupabase)).resolves.toEqual({ points: 30, rank: null, rankedGames: 1 });
+  });
+
+  it('lit le résultat d’une partie : en attente, classée ou non', async () => {
+    const ranked = fakeClient({ data: [{ status: 'ranked', delta: 27, rating_after: 127 }], error: null });
+    await expect(fetchGameRating(ranked.asSupabase, 'g1')).resolves.toEqual({ status: 'ranked', delta: 27, ratingAfter: 127 });
+    expect(ranked.client.rpc).toHaveBeenCalledWith('get_game_rating', { p_game: 'g1' });
+    const unranked = fakeClient({ data: [{ status: 'unranked', delta: null, rating_after: null }], error: null });
+    await expect(fetchGameRating(unranked.asSupabase, 'g1')).resolves.toEqual({ status: 'unranked' });
+    const pending = fakeClient({ data: [{ status: 'pending', delta: null, rating_after: null }], error: null });
+    await expect(fetchGameRating(pending.asSupabase, 'g1')).resolves.toEqual({ status: 'pending' });
+    const failing = fakeClient({ data: null, error: new Error('down') });
+    await expect(fetchGameRating(failing.asSupabase, 'g1')).rejects.toThrow('down');
   });
 });

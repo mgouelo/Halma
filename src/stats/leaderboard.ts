@@ -1,8 +1,11 @@
-// Classements : les cinq tableaux, et la mise en forme des lignes renvoyées par
-// la fonction SQL `get_leaderboards` (migration player_stats). Logique pure.
+// Classements : les trois tableaux, et la mise en forme des lignes renvoyées par
+// la fonction SQL `get_leaderboards` (migration rating). Logique pure.
 
-// Les parties lancées sont comptées (profil) mais ne font pas l'objet d'un classement.
-export const BOARDS = ['wins', 'wins_easy', 'wins_medium', 'wins_hard', 'best_streak'] as const;
+// Dans l'ordre des onglets ; « Points » est le classement par défaut. Les parties
+// lancées et les victoires par niveau d'IA sont comptées mais n'ont pas de classement.
+export const BOARDS = ['points', 'wins', 'best_streak'] as const;
+
+export const DEFAULT_BOARD: Board = 'points';
 
 export type Board = (typeof BOARDS)[number];
 
@@ -16,22 +19,12 @@ export interface BoardInfo {
 }
 
 export const BOARD_INFO: Record<Board, BoardInfo> = {
+  points: {
+    title: 'Points',
+    tab: 'Points',
+    description: 'Gagnés et perdus au fil des parties classées.',
+  },
   wins: { title: 'Victoires', tab: 'Victoires', description: 'Toutes les victoires.' },
-  wins_easy: {
-    title: 'Hall des débutants',
-    tab: 'Débutants',
-    description: 'Victoires dont l’IA la plus forte était de niveau facile.',
-  },
-  wins_medium: {
-    title: 'Hall des confirmés',
-    tab: 'Confirmés',
-    description: 'Victoires dont l’IA la plus forte était de niveau moyen.',
-  },
-  wins_hard: {
-    title: 'Hall des pros',
-    tab: 'Pros',
-    description: 'Victoires contre au moins une IA difficile.',
-  },
   best_streak: {
     title: 'Série de connexion',
     tab: 'Série',
@@ -120,10 +113,12 @@ export function groupLeaderboards(rows: readonly LeaderboardRow[]): Record<Board
   return views;
 }
 
-/** Unité d'un score, accordée : « victoire », « victoires », « jours »… */
+/** Unité d'un score, accordée : « victoire », « victoires », « jours », « points »… */
 export function formatUnit(board: Board, score: number): string {
-  const plural = score > 1 ? 's' : '';
+  const plural = Math.abs(score) > 1 ? 's' : '';
   switch (board) {
+    case 'points':
+      return `point${plural}`;
     case 'best_streak':
       return `jour${plural}`;
     default:
@@ -131,9 +126,20 @@ export function formatUnit(board: Board, score: number): string {
   }
 }
 
-/** Score avec son unité : « 1 victoire », « 12 victoires », « 3 jours ». */
+/** Valeur du score : un score négatif garde son signe (« -15 »). */
+export function formatValue(score: number): string {
+  return score < 0 ? `-${Math.abs(score)}` : String(score);
+}
+
+/** Score avec son unité : « 1 victoire », « 12 victoires », « 3 jours », « -15 points ». */
 export function formatScore(board: Board, score: number): string {
-  return `${score} ${formatUnit(board, score)}`;
+  return `${formatValue(score)} ${formatUnit(board, score)}`;
+}
+
+/** Variation de points, toujours signée : « +27 points », « -15 points », « +1 point ». */
+export function formatPointsDelta(delta: number): string {
+  const sign = delta < 0 ? '-' : '+';
+  return `${sign}${Math.abs(delta)} point${Math.abs(delta) > 1 ? 's' : ''}`;
 }
 
 /** Rang écrit en toutes lettres : « 1er », « 2e », … ; « — » sans classement. */

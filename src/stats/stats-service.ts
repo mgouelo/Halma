@@ -43,7 +43,45 @@ export async function fetchMyStats(client: SupabaseClient, userId: string): Prom
   };
 }
 
-/** Les cinq classements (50 premiers de chacun, plus la ligne du joueur). */
+/** Points du joueur connecté et son rang au classement des points (null : invité, ou pas encore classé). */
+export interface MyRating {
+  points: number;
+  rank: number | null;
+  rankedGames: number;
+}
+
+export async function fetchMyRating(client: SupabaseClient): Promise<MyRating> {
+  const { data, error } = await client.rpc('get_my_rating');
+  if (error) throw error;
+  const row = (Array.isArray(data) ? data[0] : data) as { mmr?: number; rank?: number | null; ranked_games?: number } | null;
+  return { points: row?.mmr ?? 0, rank: row?.rank ?? null, rankedGames: row?.ranked_games ?? 0 };
+}
+
+/**
+ * Points d'une partie en ligne finie, pour le joueur connecté :
+ * - `pending` : le serveur n'a pas encore décidé ;
+ * - `unranked` : partie non classée (rien à afficher) ;
+ * - `ranked` : variation et nouveau total.
+ */
+export type GameRating =
+  | { status: 'pending' }
+  | { status: 'unranked' }
+  | { status: 'ranked'; delta: number; ratingAfter: number };
+
+export async function fetchGameRating(client: SupabaseClient, gameId: string): Promise<GameRating> {
+  const { data, error } = await client.rpc('get_game_rating', { p_game: gameId });
+  if (error) throw error;
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | { status?: string; delta?: number | null; rating_after?: number | null }
+    | null;
+  if (row?.status === 'ranked' && typeof row.delta === 'number' && typeof row.rating_after === 'number') {
+    return { status: 'ranked', delta: row.delta, ratingAfter: row.rating_after };
+  }
+  if (row?.status === 'unranked') return { status: 'unranked' };
+  return { status: 'pending' };
+}
+
+/** Les trois classements (50 premiers de chacun, plus la ligne du joueur). */
 export async function fetchLeaderboards(client: SupabaseClient): Promise<LeaderboardRow[]> {
   const { data, error } = await client.rpc('get_leaderboards');
   if (error) throw error;

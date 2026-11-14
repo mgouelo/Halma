@@ -3,6 +3,9 @@ import { describe, expect, it } from '@jest/globals';
 import {
   BOARD_INFO,
   BOARDS,
+  DEFAULT_BOARD,
+  formatPointsDelta,
+  formatValue,
   describeLeaderboardError,
   entryLabel,
   formatRank,
@@ -26,14 +29,9 @@ const row = (board: string, rank: number | null, pseudo: string, score: number, 
 });
 
 describe('classements', () => {
-  it('a cinq classements, dans l’ordre demandé (plus de « Parties lancées »)', () => {
-    expect(BOARDS.map((b) => BOARD_INFO[b].title)).toEqual([
-      'Victoires',
-      'Hall des débutants',
-      'Hall des confirmés',
-      'Hall des pros',
-      'Série de connexion',
-    ]);
+  it('a trois classements, dans l’ordre demandé, « Points » par défaut', () => {
+    expect(BOARDS.map((b) => BOARD_INFO[b].tab)).toEqual(['Points', 'Victoires', 'Série']);
+    expect(DEFAULT_BOARD).toBe('points');
   });
 
   it('range les lignes par classement, dans l’ordre des rangs', () => {
@@ -46,7 +44,7 @@ describe('classements', () => {
     expect(views.wins.top[0].isMe).toBe(true);
     expect(views.wins.me).toBeNull();
     expect(views.best_streak.top).toHaveLength(1);
-    expect(views.wins_hard).toEqual({ top: [], me: null });
+    expect(views.points).toEqual({ top: [], me: null });
   });
 
   it('met à part la ligne du joueur hors du top 50', () => {
@@ -57,28 +55,51 @@ describe('classements', () => {
   });
 
   it('garde la ligne du joueur pas encore classé (rang null, score 0)', () => {
-    const views = groupLeaderboards([row('wins_easy', null, 'Moi', 0, true)]);
-    expect(views.wins_easy.top).toEqual([]);
-    expect(views.wins_easy.me).toMatchObject({ rank: null, score: 0 });
+    const views = groupLeaderboards([row('points', null, 'Moi', 0, true)]);
+    expect(views.points.top).toEqual([]);
+    expect(views.points.me).toMatchObject({ rank: null, score: 0 });
   });
 
   it('ignore un classement inconnu', () => {
     expect(() => groupLeaderboards([row('triche', 1, 'X', 1000)])).not.toThrow();
   });
 
-  it('ignore les « parties lancées » d’un serveur pas encore migré', () => {
-    const views = groupLeaderboards([row('games_started', 1, 'Alice', 40), row('wins', 1, 'Alice', 2)]);
-    expect(Object.keys(views)).toEqual(['wins', 'wins_easy', 'wins_medium', 'wins_hard', 'best_streak']);
+  it('ignore les anciens classements (parties lancées, niveaux d’IA) d’un serveur pas encore migré', () => {
+    const views = groupLeaderboards([
+      row('games_started', 1, 'Alice', 40),
+      row('wins_hard', 1, 'Alice', 1),
+      row('wins', 1, 'Alice', 2),
+    ]);
+    expect(Object.keys(views)).toEqual(['points', 'wins', 'best_streak']);
     expect(views.wins.top).toHaveLength(1);
   });
 
   it('écrit les scores avec leur unité, au singulier et au pluriel', () => {
-    expect(formatUnit('wins_easy', 3)).toBe('victoires');
+    expect(formatUnit('wins', 3)).toBe('victoires');
     expect(formatScore('wins', 0)).toBe('0 victoire');
-    expect(formatScore('wins_hard', 1)).toBe('1 victoire');
+    expect(formatScore('wins', 1)).toBe('1 victoire');
     expect(formatScore('wins', 12)).toBe('12 victoires');
     expect(formatScore('best_streak', 1)).toBe('1 jour');
     expect(formatScore('best_streak', 30)).toBe('30 jours');
+  });
+
+  it('écrit les points avec leur signe quand ils sont négatifs', () => {
+    expect(formatScore('points', 0)).toBe('0 point');
+    expect(formatScore('points', 1)).toBe('1 point');
+    expect(formatScore('points', 128)).toBe('128 points');
+    expect(formatScore('points', -15)).toBe('-15 points');
+    expect(formatScore('points', -1)).toBe('-1 point');
+    expect(formatValue(-999)).toBe('-999');
+    expect(entryLabel('points', { rank: 7, pseudo: 'Bob', avatar: null, score: -42, isMe: false })).toBe(
+      '7e place, Bob, -42 points',
+    );
+  });
+
+  it('écrit une variation de points toujours signée', () => {
+    expect(formatPointsDelta(27)).toBe('+27 points');
+    expect(formatPointsDelta(-15)).toBe('-15 points');
+    expect(formatPointsDelta(1)).toBe('+1 point');
+    expect(formatPointsDelta(0)).toBe('+0 point');
   });
 
   it('écrit les rangs et repère le podium', () => {

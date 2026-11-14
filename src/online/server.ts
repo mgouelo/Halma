@@ -12,7 +12,8 @@ import { createGame, isPlayerCount, type AiOptions, type GameState } from '../ga
 import { FORFEIT_AFTER_MS, SERVER_AI_TIME_LIMIT_MS } from './constants.ts';
 import { ONLINE_ERROR_MESSAGES, OnlineError } from './errors.ts';
 import { parseGameRequest } from './protocol.ts';
-import { advance, resign, submitMove, type Ruling } from './referee.ts';
+import { ratingChanges, ratingOutcome, type RatingChange, type UnrankedReason } from './rating.ts';
+import { advance, isGameOver, resign, submitMove, type Ruling } from './referee.ts';
 import { winAward } from './stats.ts';
 import type { GameRequest, GameResponse, OnlineErrorCode, OnlineGame, Participant, RoomRecord, StoredGame } from './types.ts';
 
@@ -39,6 +40,19 @@ export interface GameStore {
    * n'est comptée qu'une fois. Renvoie vrai si la victoire vient d'être comptée.
    */
   recordWin(gameId: string): Promise<boolean>;
+  /** Points actuels (player_stats.mmr) des joueurs ; un joueur absent n'a pas encore de points. */
+  loadRatings(userIds: readonly string[]): Promise<Record<string, number>>;
+  /**
+   * Applique le classement d'une partie finie (fonction SQL `record_game_rating`),
+   * une seule fois par partie. `changes` vide : partie non classée (`reason`).
+   * `conflict` : les points ont changé depuis leur lecture (autre partie finie
+   * entre-temps), il faut relire et recalculer.
+   */
+  recordRating(
+    gameId: string,
+    changes: readonly RatingChange[],
+    reason: UnrankedReason | null,
+  ): Promise<'ranked' | 'unranked' | 'already' | 'conflict'>;
 }
 
 export interface ServerOptions {
@@ -94,6 +108,35 @@ async function recordWinIfAny(store: GameStore, game: StoredGame, participants: 
   }
 }
 
+/**
+ * Points de la partie si elle est finie : qui est classé, combien (src/online/rating.ts),
+ * appliqué par la base une seule fois par partie. Comme pour les victoires, une
+ * panne n'empêche pas le coup, et la prochaine demande sur la partie réessaie.
+ */
+async function recordRatingIfAny(store: GameStore, game: StoredGame, participants: Participant[]): Promise<void> {
+  if (!isGameOver(game)) return;
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const outcome = ratingOutcome(game, participants);
+      if (!outcome.ranked) {
+        await store.recordRating(game.id, [], outcome.reason);
+        return;
+      }
+      const ratings = await store.loadRatings(outcome.roles.map((role) => role.userId));
+      const result = await store.recordRating(game.id, ratingChanges(outcome.roles, ratings), null);
+      if (result !== 'conflict') return;
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+/** Tout ce qui suit la fin d'une partie : victoire au classement, puis points. */
+async function recordEndOfGame(store: GameStore, game: StoredGame, participants: Participant[]): Promise<void> {
+  await recordWinIfAny(store, game, participants);
+  await recordRatingIfAny(store, game, participants);
+}
+
 async function start(store: GameStore, loaded: LoadedRoom, userId: string): Promise<GameResponse> {
   const { room, participants } = loaded;
   if (room.hostId !== userId) return failure('not_host');
@@ -129,9 +172,9 @@ export async function handleGameRequest(
 
       const { game, participants } = loaded;
       if (!game) return failure('game_not_started');
-      // Partie déjà gagnée : on (re)compte la victoire, sans effet si c'est déjà fait
-      // (rattrapage si l'écriture des statistiques a échoué juste après le coup gagnant).
-      await recordWinIfAny(store, game, participants);
+      // Partie déjà finie : on (re)compte victoire et points, sans effet si c'est déjà fait
+      // (rattrapage si l'écriture des statistiques a échoué juste après le dernier coup).
+      await recordEndOfGame(store, game, participants);
       const ruling = decide(request, game, participants, userId, options);
       if (!ruling.ok) return ruling;
       // Rien n'a changé (par exemple un « tick » sans forfait ni IA à faire jouer).
@@ -139,7 +182,7 @@ export async function handleGameRequest(
 
       const saved = await store.save(game, ruling.game);
       if (saved) {
-        await recordWinIfAny(store, saved, participants);
+        await recordEndOfGame(store, saved, participants);
         return { ok: true, game: saved };
       }
     }

@@ -28,10 +28,12 @@ import { getSupabase } from '@/lib/supabase';
 import {
   BOARD_INFO,
   BOARDS,
+  DEFAULT_BOARD,
   describeLeaderboardError,
   entryLabel,
   formatRank,
   formatUnit,
+  formatValue,
   groupLeaderboards,
   LEADERBOARD_ERROR_MESSAGES,
   LEADERBOARD_TAGLINE,
@@ -49,14 +51,14 @@ type Load =
   | { status: 'ready'; views: Record<Board, BoardView> };
 
 /**
- * Cinq classements, choisis par onglets ; lus en un seul appel au serveur.
+ * Trois classements (points, victoires, série), choisis par onglets ; lus en un seul appel au serveur.
  * Réservés aux comptes e-mail : un invité (ou un joueur non connecté) voit une
  * invitation à se connecter, et aucune requête de classement n'est envoyée.
  */
 export default function LeaderboardScreen() {
   const edges = useScreenEdges();
   const { configured, loading, session, isGuest } = useAuth();
-  const [board, setBoard] = useState<Board>('wins');
+  const [board, setBoard] = useState<Board>(DEFAULT_BOARD);
   const access = leaderboardAccess(session && { isGuest });
 
   let body;
@@ -236,7 +238,7 @@ function Row({ board, entry, first }: { board: Board; entry: LeaderboardEntry; f
         {entry.isMe && <Text style={styles.meTag}>C’est toi</Text>}
       </View>
       <View style={styles.scoreBox}>
-        <Text style={styles.score}>{entry.score}</Text>
+        <Text style={styles.score}>{formatValue(entry.score)}</Text>
         <Text style={styles.unit}>{formatUnit(board, entry.score)}</Text>
       </View>
     </View>
@@ -280,9 +282,9 @@ const styles = StyleSheet.create({
     rowGap: Spacing.two,
     columnGap: Spacing.one,
   },
-  // Même largeur pour tous : trois onglets puis deux, centrés.
+  // Même largeur pour les trois onglets, sur une ligne.
   tabWrapper: {
-    flexBasis: '32%',
+    flex: 1,
     paddingRight: Shadow.offset,
     paddingBottom: Shadow.offset,
   },
