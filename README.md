@@ -53,7 +53,8 @@ Pour une compilation EAS, définir les mêmes variables dans l'environnement EAS
      tout de suite (sinon l'application affiche « vérifie tes e-mails ») ;
    - activer **Allow anonymous sign-ins** pour le mode invité ;
    - mettre la longueur minimale des mots de passe à 8, comme l'application.
-4. Dans *Authentication → URL Configuration*, régler *Site URL* (page ouverte par le lien de confirmation).
+4. Régler les adresses des liens envoyés par e-mail, l'envoi des e-mails et leurs modèles en français :
+   voir « E-mails d'authentification : réglages Supabase » plus bas (étape par étape).
 5. Déployer l'Edge Function du jeu en ligne, **depuis la racine du dépôt** (elle importe `src/online/` et
    `src/game/`, que la CLI embarque en suivant les imports) :
 
@@ -123,10 +124,97 @@ le joueur apparaît alors dans les classements.
 2. L'e-mail et le mot de passe sont ajoutés au compte (`supabase.auth.updateUser`).
    - Si *Confirm email* est désactivé, le compte devient aussitôt un compte e-mail.
    - Sinon, le mot de passe est enregistré mais le compte reste invité jusqu'au clic sur le lien reçu
-     (« Confirm email change »). L'accueil l'indique et propose « J'ai confirmé » ; sur mobile, le compte
-     est aussi relu au retour dans l'application. Ensuite, la connexion par e-mail et mot de passe fonctionne.
+     (« Change Email Address »), qui mène à `/auth/confirmed`. L'accueil et le profil l'indiquent, avec
+     « Renvoyer l'e-mail » ; **l'application détecte toute seule la validation** (voir « Validation de
+     l'e-mail ») et le compte devient un compte e-mail sans bouton à toucher. Ensuite, la connexion par
+     e-mail et mot de passe fonctionne.
 
-Le lien de confirmation renvoie vers la *Site URL* du projet.
+### Validation de l'e-mail
+
+À l'inscription (`signUp`) et quand un invité ajoute un e-mail (`updateUser`), l'application passe une adresse de
+redirection (`emailRedirectTo`) : `halma://auth/confirmed` sur mobile, `https://<site>/auth/confirmed` sur le web
+(`src/auth/auth-links.ts`). Le lien de l'e-mail ouvre l'écran **`/auth/confirmed`** :
+
+- **sur l'appareil de l'inscription** (il garde en mémoire locale qu'une confirmation est attendue,
+  `src/auth/pending-confirmation.ts`) : le jeton est vérifié, la session ouverte, « Compte validé ! » s'affiche et
+  l'accueil suit tout seul (environ 2 s, bouton « Jouer » en secours) ;
+- **sur un autre appareil** (ordinateur, autre navigateur) : le jeton est vérifié avec un client Supabase jetable,
+  sans ouvrir ni remplacer de session sur cet appareil ; l'écran affiche « Compte validé », puis « Retourne dans
+  l'appli » ;
+- **lien expiré ou déjà utilisé** : message clair et bouton « Se connecter ».
+
+Pendant l'attente, l'appareil d'origine **détecte la validation tout seul** : relecture du compte au retour au
+premier plan (sur le web, quand l'onglet redevient visible) et à intervalle court
+(`src/auth/confirmation-poller.ts`, `use-confirmation-watcher.ts`) :
+
+- inscription : l'écran d'attente retente la connexion avec les identifiants saisis (gardés en mémoire seulement,
+  jamais enregistrés) toutes les 15 s — Supabase limite les connexions par adresse IP — puis va à l'accueil
+  (« Compte validé ! Bienvenue dans Halma. ») ;
+- invité devenu compte e-mail : `AuthProvider` relit le compte (`getUser`) toutes les 5 s ; dès que l'e-mail est
+  confirmé, la session est renouvelée et l'application passe d'elle-même au compte e-mail.
+
+Le bouton « J'ai confirmé » a disparu ; « Renvoyer l'e-mail » reste (`auth.resend`).
+
+### Mot de passe oublié
+
+- Lien « Mot de passe oublié ? » sous le formulaire de connexion, vers **`/forgot-password`** (sans barre, bouton
+  « ‹ Retour », e-mail prérempli depuis la connexion). L'application appelle `auth.resetPasswordForEmail` avec
+  l'adresse de redirection `halma://reset-password` (mobile) ou `https://<site>/reset-password` (web).
+- Réponse **toujours neutre** : « Si un compte existe avec cette adresse, un e-mail vient d'être envoyé. » (on ne
+  révèle pas quelles adresses ont un compte). Les limites d'envoi sont traduites (« Un e-mail vient déjà d'être
+  envoyé. Réessaie dans 37 secondes. », « Trop d'e-mails envoyés… »).
+- **`/reset-password`** reçoit le lien (mobile : lien profond `halma://reset-password`, lu avec `expo-linking`
+  et la route Expo Router du même nom ; web : l'URL de la page), ouvre la session de récupération, puis demande
+  le nouveau mot de passe deux fois (8 caractères au moins, œil sur chaque champ), appelle
+  `auth.updateUser({ password })`, affiche « Mot de passe modifié » et mène à l'accueil, connecté. Lien expiré ou
+  invalide : message clair et bouton « Recevoir un nouveau lien ».
+- Pas de « changer mon mot de passe » sur le profil : « mot de passe oublié » est la seule voie.
+
+**Choix du flux.** Les modèles d'e-mails de `docs/emails/` mènent directement à l'application avec
+`token_hash` et `type` ; l'application vérifie le jeton (`auth.verifyOtp`), une seule fois même si l'écran est
+rouvert, puis retire les jetons de la barre d'adresse sur le web. Le flux PKCE n'est pas utilisé : son `code` ne
+s'échange que sur l'appareil (et le navigateur) qui a fait la demande, or on ouvre souvent l'e-mail ailleurs ; et
+un jeton vérifié par l'application n'est pas consommé par les antivirus de messagerie qui visitent les liens. Les
+liens des modèles par défaut de Supabase (flux implicite, jetons après « # ») restent acceptés (`setSession`). Le
+client garde `detectSessionInUrl: false` : c'est l'écran du lien qui ouvre la session, sur mobile comme sur le web.
+
+### E-mails d'authentification : réglages Supabase
+
+À faire une fois dans le tableau de bord du projet (rien de secret dans le dépôt).
+
+1. **Adresses des liens** : *Authentication → URL Configuration*.
+   - *Site URL* : l'adresse du site web, par exemple `https://halma.example.fr` (adresse de secours quand une
+     redirection n'est pas autorisée).
+   - *Redirect URLs*, ajouter :
+     - `halma://**` (application mobile : `halma://auth/confirmed`, `halma://reset-password`) ;
+     - `https://halma.example.fr/**` (site web) ;
+     - en développement : `http://localhost:8081/**` (web local) et, avec Expo Go, `exp://**`.
+2. **Service d'envoi d'e-mails** : *Authentication → Emails → SMTP Settings* (ou *Project Settings →
+   Authentication*). Le service par défaut de Supabase ne sert qu'aux essais : très peu d'e-mails par heure, et
+   seulement vers les adresses des membres de l'équipe du projet. Brancher un service d'envoi, par exemple
+   [Resend](https://resend.com) :
+   1. créer un compte, ajouter et vérifier son domaine (enregistrements DNS SPF et DKIM fournis par Resend) ;
+   2. créer une clé d'API (envoi seulement) ;
+   3. dans Supabase, activer *Enable Custom SMTP* : hôte `smtp.resend.com`, port `465`, utilisateur `resend`,
+      mot de passe = la clé d'API, expéditeur `Halma <no-reply@halma.example.fr>`.
+
+   Autres services possibles avec les mêmes champs : Brevo (`smtp-relay.brevo.com`, port `587`), Postmark,
+   Amazon SES. La clé reste dans Supabase, jamais dans le dépôt ni dans `.env`. Ensuite, ajuster *Authentication
+   → Rate Limits → emails sent per hour*.
+3. **Modèles en français** : *Authentication → Email Templates*, coller le sujet et le HTML de `docs/emails/`
+   (voir `docs/emails/README.md`) dans *Confirm signup*, *Change Email Address* et *Reset Password*.
+4. **Durée des liens** : *Authentication → Providers → Email*, *Email OTP Expiration* à `3600` secondes (une heure,
+   comme l'annoncent les e-mails).
+5. **Essai** : s'inscrire sur le téléphone et ouvrir le lien sur l'ordinateur (l'appli doit avancer seule),
+   puis « Mot de passe oublié ? » sur le téléphone et ouvrir le lien sur le téléphone.
+
+Captures : `docs/screenshots/auth-13-…` à `auth-22-…` (lien « Mot de passe oublié ? », demande et réponse
+neutre, nouveau mot de passe, « Mot de passe modifié », lien expiré, « Compte validé ! », autre appareil, attente à
+l'inscription, invité en attente de confirmation).
+
+Limite connue : certaines messageries (Gmail sur le web, notamment) ne rendent pas cliquables les liens
+`halma://`. Ouvrir alors l'e-mail sur le téléphone, dans l'application de messagerie ; une solution plus
+solide serait d'activer les liens universels (iOS) et App Links (Android) sur le domaine du site.
 
 ### Changer de pseudo
 
@@ -508,7 +596,8 @@ entre amis (local), amis et classements (le layout empile une pile Expo Router a
 est dans la pile principale, **par-dessus** le groupe, donc sans barre (rien à maintenir pour la masquer) :
 
 - les parties (`/game`) et les rooms (`/room/[id]`), avec leurs propres boutons ;
-- le profil (`/profile`), les écrans de compte (`/sign-in`, `/sign-up`, `/upgrade`), l'éditeur d'avatar
+- le profil (`/profile`), les écrans de compte (`/sign-in`, `/sign-up`, `/upgrade`, `/forgot-password`,
+  `/reset-password`, et `/auth/confirmed` sans bouton de retour), l'éditeur d'avatar
   (`/avatar`) et les pages d'information (`/credits`, `/privacy`, `/terms`) : **un seul bouton, « ‹ Retour »**
   (`src/components/back-button.tsx`).
 
@@ -899,7 +988,8 @@ minimax classique.
 11. ~~Mutateurs de partie : « Toucher c'est jouer » et « Clairvoyance » (local et en ligne).~~ Fait.
 12. ~~Profil ouvert par l'avatar (barre Amis, Accueil, Classements), pseudos avec é, è, É, È et apostrophe,
     changement de pseudo tous les 7 jours au plus.~~ Fait.
-13. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », amis.
+13. ~~Mot de passe oublié, validation d'e-mail détectée toute seule, modèles d'e-mails en français.~~ Fait.
+14. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », amis.
 
 ## Inspiration
 

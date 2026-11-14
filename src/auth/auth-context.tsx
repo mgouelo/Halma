@@ -6,7 +6,12 @@ import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { createDailyLoginTracker } from '@/stats/daily-login';
 import { recordDailyLogin } from '@/stats/stats-service';
 
-import { fetchProfile, refreshAccount, type Profile } from './auth-service';
+import { setFlashNotice } from '@/lib/flash-notice';
+
+import { fetchProfile, guestEmailConfirmed, type Profile } from './auth-service';
+import { CONFIRMED_NOTICE, GUEST_POLL_MS } from './confirmation-timing';
+import { forgetPendingConfirmation } from './pending-confirmation';
+import { useConfirmationWatcher } from './use-confirmation-watcher';
 
 export interface AuthState {
   /** Faux si les variables d'environnement Supabase manquent : l'app reste jouable hors ligne. */
@@ -79,16 +84,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.remove();
   }, []);
 
-  // Invité en attente de confirmation d'e-mail : au retour dans l'app (souvent
-  // après avoir cliqué le lien dans sa messagerie), on relit le compte.
+  // Invité en attente de confirmation d'e-mail : le lien peut être ouvert sur un
+  // autre appareil. On relit le compte à intervalle court et au retour au
+  // premier plan ; une fois l'e-mail validé, la session est renouvelée et le
+  // compte devient un compte e-mail, sans bouton à toucher.
   const pendingEmail = session?.user.is_anonymous ? (session.user.new_email ?? null) : null;
-  useEffect(() => {
-    if (!pendingEmail || Platform.OS === 'web') return;
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') refreshAccount(getSupabase()).catch(() => {});
-    });
-    return () => subscription.remove();
-  }, [pendingEmail]);
+  useConfirmationWatcher(
+    Boolean(pendingEmail),
+    () => guestEmailConfirmed(getSupabase()),
+    () => {
+      void forgetPendingConfirmation();
+      setFlashNotice(CONFIRMED_NOTICE);
+      setProfileVersion((v) => v + 1);
+    },
+    GUEST_POLL_MS,
+  );
 
   // Profil du joueur connecté.
   const userId = session?.user.id ?? null;

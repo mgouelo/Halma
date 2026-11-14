@@ -35,3 +35,15 @@ export function getSupabase(): SupabaseClient {
   });
   return client;
 }
+
+/**
+ * Client Supabase jetable, sans session enregistrée : sert à valider un lien
+ * de confirmation ouvert sur un autre appareil que celui de l'inscription,
+ * sans remplacer la session de cet appareil (ni en ouvrir une).
+ */
+export function createEphemeralSupabase(): SupabaseClient {
+  if (!supabaseUrl || !supabaseAnonKey) return getSupabase();
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+}

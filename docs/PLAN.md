@@ -215,6 +215,17 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
   `profiles.pseudo_changed_at`), colonne `pseudo` retirée des droits de modification des clients. Le premier
   choix d'un invité (`upgradeGuest`) passe par la même fonction, sans délai.
 
+## Étape 15 : mot de passe oublié et validation d'e-mail automatique (fait)
+
+- « Mot de passe oublié ? » sous la connexion : `/forgot-password` (réponse neutre, limites d'envoi traduites),
+  puis `/reset-password` ouvert par le lien (mobile `halma://reset-password`, web `/reset-password`) : jeton vérifié
+  par l'application (`verifyOtp`, pas de PKCE), nouveau mot de passe confirmé, « Mot de passe modifié », accueil.
+- Inscription et invité vers compte e-mail : `emailRedirectTo` vers `/auth/confirmed` (« Compte validé ! » puis
+  l'accueil, ou « retourne dans l'appli » sur un autre appareil, validé avec un client jetable).
+- L'appareil en attente détecte seul la validation (premier plan et intervalle court) ; « J'ai confirmé » retiré,
+  « Renvoyer l'e-mail » ajouté.
+- README : réglages Supabase pas à pas (URL, SMTP, modèles) ; modèles français dans `docs/emails/`.
+
 ## Plus tard : amis
 
 - Table `friendships` (demande, acceptation), liste d'amis, invitation directe dans une room.

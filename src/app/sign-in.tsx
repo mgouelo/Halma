@@ -78,6 +78,12 @@ export default function SignInScreen() {
               onPress={submit}
               color={playerColor(0).piece}
             />
+            <Link
+              href={{ pathname: '/forgot-password', params: email.trim() ? { email: email.trim() } : {} }}
+              style={authStyles.link}
+              accessibilityHint="Reçois un lien par e-mail pour choisir un nouveau mot de passe">
+              Mot de passe oublié ?
+            </Link>
           </DrawnCard>
 
           <View style={authStyles.links}>

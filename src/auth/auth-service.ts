@@ -1,8 +1,9 @@
 // Opérations d'authentification et de profil, au-dessus d'un client Supabase
 // passé en paramètre (le vrai en production, un faux dans les tests).
 
-import { FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js';
+import { FunctionsHttpError, isAuthApiError, type Session, type SupabaseClient } from '@supabase/supabase-js';
 
+import { linkErrorMessage, type AuthLink } from './auth-links';
 import { AuthFailure } from './errors';
 import { PSEUDO_ERROR_MESSAGES, tooSoonMessage } from './pseudo-change';
 import { normalizePseudo, type SignInFields, type SignUpFields } from './validation';
@@ -21,8 +22,15 @@ export interface SignUpResult {
   needsEmailConfirmation: boolean;
 }
 
-/** Inscription par e-mail ; le profil (avec le pseudo) est créé par la base. */
-export async function signUpWithEmail(client: SupabaseClient, fields: SignUpFields): Promise<SignUpResult> {
+/**
+ * Inscription par e-mail ; le profil (avec le pseudo) est créé par la base.
+ * `emailRedirectTo` : adresse ouverte par le lien de confirmation (/auth/confirmed).
+ */
+export async function signUpWithEmail(
+  client: SupabaseClient,
+  fields: SignUpFields,
+  emailRedirectTo?: string,
+): Promise<SignUpResult> {
   const pseudo = normalizePseudo(fields.pseudo);
   const { data: available, error: rpcError } = await client.rpc('is_pseudo_available', { candidate: pseudo });
   if (rpcError) throw rpcError;
@@ -31,7 +39,7 @@ export async function signUpWithEmail(client: SupabaseClient, fields: SignUpFiel
   const { data, error } = await client.auth.signUp({
     email: fields.email.trim(),
     password: fields.password,
-    options: { data: { pseudo } },
+    options: { data: { pseudo }, ...(emailRedirectTo ? { emailRedirectTo } : {}) },
   });
   if (error) throw error;
   return { needsEmailConfirmation: data.session === null };
@@ -95,12 +103,89 @@ export async function changePseudo(client: SupabaseClient, pseudo: string): Prom
  *    reçu (le mot de passe est déjà enregistré) ; sinon il devient aussitôt un
  *    compte e-mail.
  */
-export async function upgradeGuest(client: SupabaseClient, fields: SignUpFields): Promise<SignUpResult> {
+export async function upgradeGuest(
+  client: SupabaseClient,
+  fields: SignUpFields,
+  emailRedirectTo?: string,
+): Promise<SignUpResult> {
   await changePseudo(client, fields.pseudo);
 
-  const { data, error } = await client.auth.updateUser({ email: fields.email.trim(), password: fields.password });
+  const { data, error } = await client.auth.updateUser(
+    { email: fields.email.trim(), password: fields.password },
+    emailRedirectTo ? { emailRedirectTo } : undefined,
+  );
   if (error) throw error;
   return { needsEmailConfirmation: data.user.is_anonymous === true || Boolean(data.user.new_email) };
+}
+
+/**
+ * « Mot de passe oublié » : envoie le lien de réinitialisation. Supabase répond
+ * de la même façon que l'adresse ait un compte ou non : l'écran reste neutre.
+ */
+export async function requestPasswordReset(client: SupabaseClient, email: string, redirectTo: string): Promise<void> {
+  const { error } = await client.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+  if (error) throw error;
+}
+
+/** Nouveau mot de passe, une fois la session de récupération ouverte par le lien. */
+export async function updatePassword(client: SupabaseClient, password: string): Promise<void> {
+  const { error } = await client.auth.updateUser({ password });
+  if (error) throw error;
+}
+
+/** Renvoie l'e-mail de confirmation (inscription, ou e-mail ajouté par un invité). */
+export async function resendConfirmation(
+  client: SupabaseClient,
+  type: 'signup' | 'email_change',
+  email: string,
+  emailRedirectTo: string,
+): Promise<void> {
+  const { error } = await client.auth.resend({ type, email: email.trim(), options: { emailRedirectTo } });
+  if (error) throw error;
+}
+
+/**
+ * Ouvre la session portée par un lien reçu par e-mail : vérifie le jeton
+ * (`verifyOtp`) ou reprend les jetons du flux implicite (`setSession`).
+ * Un lien sans jeton, expiré ou déjà utilisé donne une AuthFailure `link_invalid`.
+ */
+export async function sessionFromLink(client: SupabaseClient, link: AuthLink): Promise<Session | null> {
+  if (link.kind === 'none') throw new AuthFailure('link_invalid', linkErrorMessage(null));
+  if (link.kind === 'error') throw new AuthFailure('link_invalid', linkErrorMessage(link.code));
+  const { data, error } =
+    link.kind === 'otp'
+      ? await client.auth.verifyOtp({ token_hash: link.tokenHash, type: link.type })
+      : await client.auth.setSession({ access_token: link.accessToken, refresh_token: link.refreshToken });
+  if (error) {
+    // Jeton refusé par le serveur (expiré, déjà utilisé, inconnu).
+    if (isAuthApiError(error) && error.status < 500) throw new AuthFailure('link_invalid', linkErrorMessage(error.code));
+    throw error;
+  }
+  return data.session;
+}
+
+/**
+ * Inscription en attente de confirmation : tente la connexion avec les
+ * identifiants saisis. Vrai si elle réussit (l'e-mail a été validé, sur cet
+ * appareil ou un autre) ; faux tant que l'e-mail n'est pas confirmé.
+ */
+export async function signInIfConfirmed(client: SupabaseClient, fields: SignInFields): Promise<boolean> {
+  const { error } = await client.auth.signInWithPassword({ email: fields.email.trim(), password: fields.password });
+  if (!error) return true;
+  if (isAuthApiError(error) && error.code === 'email_not_confirmed') return false;
+  throw error;
+}
+
+/**
+ * Invité qui a ajouté un e-mail : relit le compte (sans renouveler le jeton) et,
+ * si l'e-mail a été confirmé, renouvelle la session pour que l'application le
+ * voie comme compte e-mail. Vrai quand c'est fait.
+ */
+export async function guestEmailConfirmed(client: SupabaseClient): Promise<boolean> {
+  const { data, error } = await client.auth.getUser();
+  if (error) throw error;
+  if (data.user.is_anonymous || data.user.new_email) return false;
+  return !(await refreshAccount(client));
 }
 
 /**

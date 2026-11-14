@@ -12,6 +12,7 @@ import { SignOutDialog } from '@/components/sign-out-dialog';
 import { DeleteAccount } from '@/components/delete-account';
 import { DrawnCard } from '@/components/drawn-card';
 import { ProfileStats } from '@/components/profile-stats';
+import { ResendEmailButton } from '@/components/resend-email-button';
 import { ErrorState, LoadingState } from '@/components/state-view';
 import { playerColor, Typography } from '@/constants/theme';
 
@@ -75,9 +76,13 @@ export default function ProfileScreen() {
             Conserve ta progression
           </Text>
           {pendingEmail ? (
-            <Text style={Typography.body}>
-              Confirmation envoyée à {pendingEmail} : clique sur le lien reçu pour terminer la création de ton compte.
-            </Text>
+            <>
+              <Text style={Typography.body}>
+                Confirmation envoyée à {pendingEmail} : clique sur le lien reçu pour terminer la création de ton
+                compte. L’appli s’en apercevra toute seule.
+              </Text>
+              <ResendEmailButton type="email_change" email={pendingEmail} />
+            </>
           ) : (
             <>
               <Text style={Typography.body}>
