@@ -129,3 +129,34 @@ export function BestFlameIcon({ size }: IconProps) {
     </IconFrame>
   );
 }
+
+/** Points : un pion pastel entre deux flèches, l'une qui monte, l'autre qui descend. */
+export function PointsIcon({ size }: IconProps) {
+  const stroke = strokeFor(Stroke.regular, size);
+  const shadow = strokeFor(2, size);
+  return (
+    <IconFrame size={size}>
+      <Path d="M9 30 V12 M4 17 L9 11 L14 17" fill="none" stroke={Colors.ink} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M39 18 V36 M34 31 L39 37 L44 31" fill="none" stroke={Colors.ink} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx={24 + shadow} cy={24 + shadow} r={9} fill={Colors.ink} />
+      <Circle cx={24} cy={24} r={9} fill={playerColor(1).piece} stroke={Colors.ink} strokeWidth={stroke} />
+      <Circle cx={24} cy={24} r={3.2} fill={Colors.paper} stroke={Colors.ink} strokeWidth={stroke * 0.8} />
+    </IconFrame>
+  );
+}
+
+/** Rang : un podium à trois marches, un pion pastel sur la plus haute. */
+export function PodiumIcon({ size }: IconProps) {
+  const stroke = strokeFor(Stroke.regular, size);
+  const shadow = strokeFor(2, size);
+  return (
+    <IconFrame size={size}>
+      <Shape d="M4 30 H17 V42 H4 Z" fill={Colors.paper} stroke={stroke} shadow={shadow} />
+      <Shape d="M31 34 H44 V42 H31 Z" fill={Colors.paper} stroke={stroke} shadow={shadow} />
+      <Shape d="M17 22 H31 V42 H17 Z" fill={Colors.paper} stroke={stroke} shadow={shadow} />
+      <Path d="M24 27 V37" stroke={Colors.ink} strokeWidth={stroke * 0.9} strokeLinecap="round" />
+      <Circle cx={24 + shadow / 2} cy={13 + shadow / 2} r={5.5} fill={Colors.ink} />
+      <Circle cx={24} cy={13} r={5.5} fill={playerColor(4).piece} stroke={Colors.ink} strokeWidth={stroke} />
+    </IconFrame>
+  );
+}

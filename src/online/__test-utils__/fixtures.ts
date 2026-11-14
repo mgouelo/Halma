@@ -1,5 +1,6 @@
 import { createGame, getAllLegalMoves, type AiLevel, type GameState, type Move, type PlayerId } from '@/game';
 
+import type { RatingChange, UnrankedReason } from '../rating';
 import { newOnlineGame } from '../referee';
 import type { GameStore, LoadedRoom } from '../server';
 import { winAward } from '../stats';
@@ -92,6 +93,39 @@ export class MemoryStore implements GameStore {
     this.game = { ...clone(next), id: current.id, roomId: current.roomId, version: current.version + 1 };
     if (next.endReason) this.room = { ...this.room, status: 'finished' };
     return clone(this.game);
+  }
+
+  /** Points des joueurs (comme player_stats.mmr). */
+  ratings = new Map<string, number>();
+  /** Décisions de classement par partie (comme rating_games et rating_events). */
+  ratingDecisions = new Map<string, { ranked: boolean; reason: string | null; changes: RatingChange[] }>();
+  recordRatingCalls = 0;
+  /** Exécuté juste avant la prochaine application des points (pour simuler une autre partie finie entre-temps). */
+  beforeRecordRating: (() => void) | null = null;
+
+  async loadRatings(userIds: readonly string[]): Promise<Record<string, number>> {
+    return Object.fromEntries(userIds.filter((id) => this.ratings.has(id)).map((id) => [id, this.ratings.get(id)!]));
+  }
+
+  /** Comme la fonction SQL record_game_rating : une fois par partie, refus si les points ont changé entre-temps. */
+  async recordRating(
+    gameId: string,
+    changes: readonly RatingChange[],
+    reason: UnrankedReason | null,
+  ): Promise<'ranked' | 'unranked' | 'already' | 'conflict'> {
+    this.recordRatingCalls++;
+    const hook = this.beforeRecordRating;
+    this.beforeRecordRating = null;
+    hook?.();
+    if (this.ratingDecisions.has(gameId)) return 'already';
+    if (changes.length === 0) {
+      this.ratingDecisions.set(gameId, { ranked: false, reason: reason ?? 'unranked', changes: [] });
+      return 'unranked';
+    }
+    if (changes.some((c) => (this.ratings.get(c.userId) ?? 0) !== c.before)) return 'conflict';
+    for (const c of changes) this.ratings.set(c.userId, Math.max(-999, c.before + c.delta));
+    this.ratingDecisions.set(gameId, { ranked: true, reason: null, changes: [...changes] });
+    return 'ranked';
   }
 
   /** Comme la fonction SQL record_game_win : relit la partie enregistrée, une seule fois par partie. */

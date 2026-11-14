@@ -58,6 +58,30 @@ export function createSupabaseStore(admin: SupabaseClient): GameStore {
       return data ? storedGameFromRow(data) : null;
     },
 
+    async loadRatings(userIds) {
+      if (userIds.length === 0) return {};
+      const { data, error } = await admin
+        .from('player_stats')
+        .select('user_id, mmr')
+        .in('user_id', [...userIds])
+        .returns<{ user_id: string; mmr: number }[]>();
+      if (error) throw error;
+      return Object.fromEntries((data ?? []).map((row) => [row.user_id, row.mmr]));
+    },
+
+    async recordRating(gameId, changes, reason) {
+      const { data, error } = await admin.rpc('record_game_rating', {
+        p_game: gameId,
+        p_changes: changes.map((c) => ({ user_id: c.userId, before: c.before, delta: c.delta })),
+        p_reason: reason,
+      });
+      if (error) {
+        if (error.message === 'rating_conflict') return 'conflict';
+        throw error;
+      }
+      return data as 'ranked' | 'unranked' | 'already';
+    },
+
     async recordWin(gameId) {
       // La fonction SQL relit la partie et ne la compte qu'une fois.
       const { data, error } = await admin.rpc('record_game_win', { p_game: gameId });

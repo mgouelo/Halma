@@ -12,12 +12,15 @@ import { PlayerChip } from '@/components/player-chip';
 import { VictoryOverlay } from '@/components/victory-overlay';
 import { Colors, playerColor, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
 import { selectionHint } from '@/mutators/mutators';
-import { participantOfPlayer, type StoredGame } from '@/online';
+import { participantOfPlayer, ratingOutcome, type StoredGame } from '@/online';
 import { participantAvatar, participantName } from '@/rooms/names';
 import { secondsBeforeForfeit } from '@/rooms/presence';
 import { describeOnlineError, type RoomSnapshot } from '@/rooms/room-service';
 import { isMyTurn, onlineTabTitle, WAITING_LEAD, type OnlineTurn } from '@/rooms/turn-display';
+import { useGameRating } from '@/rooms/use-game-rating';
 import { useOnlineGame } from '@/rooms/use-online-game';
+
+import { RatingResult } from './rating-result';
 
 interface OnlineGameViewProps {
   snapshot: RoomSnapshot & { game: StoredGame };
@@ -104,6 +107,13 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
 
   const winner = game.winner;
   const showEnd = finished && !animating;
+  // Partie classée (au moins deux humains, assez de coups…) : on attend les points du serveur.
+  // Sinon, rien n'est demandé ni affiché.
+  const rankable =
+    server.endReason !== null &&
+    players.some((p) => p.userId === userId && p.playerIndex !== null) &&
+    ratingOutcome(server, players).ranked;
+  const rating = useGameRating(server.id, rankable);
   const winnerMoves = winner === null ? 0 : game.history.filter((entry) => entry.player === winner).length;
   const endTitle = server.endReason === 'abandoned' ? 'Partie arrêtée' : winner === me ? 'Victoire !' : 'Perdu !';
   const endMessage =
@@ -236,6 +246,7 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
             winnerAvatar={winner === null ? undefined : avatarOf(winner)}
             moveCount={winnerMoves}
             message={endMessage}
+            extra={<RatingResult view={rating} />}
             onHome={goHome}
           />
         )

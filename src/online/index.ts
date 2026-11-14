@@ -7,3 +7,4 @@ export * from './protocol.ts';
 export * from './referee.ts';
 export * from './server.ts';
 export * from './stats.ts';
+export * from './rating.ts';

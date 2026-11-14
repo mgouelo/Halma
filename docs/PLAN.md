@@ -226,6 +226,15 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
   « Renvoyer l'e-mail » ajouté.
 - README : réglages Supabase pas à pas (URL, SMTP, modèles) ; modèles français dans `docs/emails/`.
 
+## Étape 16 : points (MMR) et nouveaux classements (fait)
+
+- Points des parties en ligne classées (au moins 2 humains) : variante d'Elo (+30 / -15 à niveau égal, échelle
+  S = 200, au moins 1 point, plancher -999), calculée en TypeScript (`src/online/rating.ts`) et appliquée par
+  `record_game_rating` (idempotente, verrouillage, `rating_events`), appelée par `game-action` en fin de partie.
+- Garde-fous : 10 coups d'humains au moins, 3 parties classées par jour au plus entre deux mêmes comptes.
+- Classements : Points (par défaut), Victoires, Série ; les halls par niveau d'IA sont retirés.
+- Profil : points et rang ; écran de fin : « +27 points » et le nouveau total dès que le serveur l'a calculé.
+
 ## Plus tard : amis
 
 - Table `friendships` (demande, acceptation), liste d'amis, invitation directe dans une room.
