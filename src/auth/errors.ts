@@ -13,7 +13,8 @@ export class AuthFailure extends Error {
       | 'not_configured'
       | 'profile_missing'
       | 'not_confirmed'
-      | 'delete_failed',
+      | 'delete_failed'
+      | 'link_invalid',
     message: string,
   ) {
     super(message);
@@ -33,7 +34,20 @@ const MESSAGES: Record<string, string> = {
   anonymous_provider_disabled: 'Le mode invité n’est pas activé sur le serveur.',
   over_request_rate_limit: 'Trop de tentatives. Réessaie dans quelques minutes.',
   over_email_send_rate_limit: 'Trop d’e-mails envoyés. Réessaie dans quelques minutes.',
+  same_password: 'Choisis un mot de passe différent de l’ancien.',
+  otp_expired: 'Ce lien a expiré ou a déjà servi.',
 };
+
+/**
+ * Supabase limite l'envoi d'e-mails à une demande toutes les N secondes par
+ * adresse (« you can only request this after 37 seconds ») : on donne le délai.
+ */
+function rateLimitMessage(message: string): string | null {
+  const match = /after (\d+) seconds?/i.exec(message);
+  if (!match) return null;
+  const seconds = Number(match[1]);
+  return `Un e-mail vient déjà d’être envoyé. Réessaie dans ${seconds} seconde${seconds > 1 ? 's' : ''}.`;
+}
 
 /** Le trigger de création de profil a échoué : en pratique, le pseudo a été pris entre-temps. */
 export const PROFILE_CREATION_ERROR =
@@ -51,7 +65,12 @@ export function describeAuthError(error: unknown): string {
     if (/database error saving new user/i.test(error.message)) return PROFILE_CREATION_ERROR;
     return SERVER_ERROR;
   }
-  if (isAuthError(error) && error.code && MESSAGES[error.code]) return MESSAGES[error.code];
+  if (isAuthError(error)) {
+    const wait = rateLimitMessage(error.message);
+    if (wait) return wait;
+    if (error.code && MESSAGES[error.code]) return MESSAGES[error.code];
+    if (error.status === 429) return MESSAGES.over_request_rate_limit;
+  }
   if (error instanceof FunctionsFetchError) return NETWORK_ERROR;
   if (error instanceof TypeError && /fetch|network/i.test(error.message)) return NETWORK_ERROR;
   return GENERIC_ERROR;

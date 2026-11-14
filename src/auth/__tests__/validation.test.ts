@@ -10,6 +10,7 @@ import {
   validatePassword,
   validatePseudo,
   validateSignIn,
+  validateNewPassword,
   validateSignUp,
 } from '../validation';
 
@@ -136,5 +137,21 @@ describe('validation', () => {
   it('à la connexion, ne vérifie pas la longueur du mot de passe', () => {
     expect(validateSignIn({ email: 'a@b.fr', password: '123' })).toEqual({ email: null, password: null });
     expect(validateSignIn({ email: 'a@b.fr', password: '' }).password).not.toBeNull();
+  });
+
+  it('nouveau mot de passe : 8 caractères au moins et confirmation identique', () => {
+    expect(validateNewPassword({ password: 'motdepasse', confirmation: 'motdepasse' })).toEqual({
+      password: null,
+      confirmation: null,
+    });
+    expect(validateNewPassword({ password: '1234567', confirmation: '1234567' }).password).toBe(
+      'Le mot de passe doit faire au moins 8 caractères.',
+    );
+    expect(validateNewPassword({ password: 'motdepasse', confirmation: '' }).confirmation).toBe(
+      'Confirme ton nouveau mot de passe.',
+    );
+    expect(validateNewPassword({ password: 'motdepasse', confirmation: 'motdepasse!' }).confirmation).toBe(
+      'Les deux mots de passe ne sont pas identiques.',
+    );
   });
 });

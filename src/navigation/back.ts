@@ -10,6 +10,8 @@ const PROFILE_FALLBACK_PATHS: readonly string[] = [
   '/sign-in',
   '/sign-up',
   '/upgrade',
+  '/forgot-password',
+  '/reset-password',
   '/credits',
   '/privacy',
   '/terms',

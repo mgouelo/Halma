@@ -41,8 +41,10 @@
 - [ ] *Authentication* : e-mail activé avec *Confirm email*, connexion invité activée, mots de passe de 8
       caractères au moins, *Site URL* réglée, limites de débit revues (surtout les connexions invité), captcha
       décidé (voir README, « Limites d'abus » : l'activer demande d'ajouter le widget dans l'application).
-- [ ] Modèles d'e-mails d'authentification traduits en français (*Authentication → Emails*) et expéditeur SMTP
-      personnalisé (l'expéditeur par défaut de Supabase est très limité en nombre d'envois).
+- [ ] *Redirect URLs* : `halma://**` et l'adresse du site web (README, « E-mails d'authentification : réglages
+      Supabase »).
+- [ ] Modèles d'e-mails en français collés depuis `docs/emails/` et expéditeur SMTP personnalisé (l'expéditeur
+      par défaut de Supabase est très limité en nombre d'envois).
 - [ ] Sauvegardes : vérifier ce que l'offre Supabase choisie inclut.
 
 ## 4. Variables EAS

@@ -40,6 +40,9 @@ export default function RootLayout() {
         <Stack.Screen name="sign-in" options={{ title: 'Connexion' }} />
         <Stack.Screen name="sign-up" options={{ title: 'Inscription' }} />
         <Stack.Screen name="upgrade" options={{ title: 'Créer mon compte' }} />
+        <Stack.Screen name="forgot-password" options={{ title: 'Mot de passe oublié' }} />
+        <Stack.Screen name="reset-password" options={{ title: 'Nouveau mot de passe' }} />
+        <Stack.Screen name="auth/confirmed" options={{ title: 'Validation du compte' }} />
         <Stack.Screen name="avatar" options={{ title: 'Ton avatar' }} />
         <Stack.Screen name="credits" options={{ title: 'Crédits et licences' }} />
         <Stack.Screen name="privacy" options={{ title: 'Politique de confidentialité' }} />

@@ -120,6 +120,23 @@ export function validateSignIn(fields: SignInFields): Record<keyof SignInFields,
   };
 }
 
+export interface NewPasswordFields {
+  password: string;
+  confirmation: string;
+}
+
+/** Nouveau mot de passe (réinitialisation) : longueur minimale et confirmation identique. */
+export function validateNewPassword(fields: NewPasswordFields): Record<keyof NewPasswordFields, FieldError> {
+  return {
+    password: validatePassword(fields.password),
+    confirmation: !fields.confirmation
+      ? 'Confirme ton nouveau mot de passe.'
+      : fields.confirmation !== fields.password
+        ? 'Les deux mots de passe ne sont pas identiques.'
+        : null,
+  };
+}
+
 export function hasErrors(errors: Record<string, FieldError>): boolean {
   return Object.values(errors).some((error) => error !== null);
 }

@@ -2,22 +2,18 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-context';
-import { refreshAccount } from '@/auth/auth-service';
-import { AuthFailure } from '@/auth/errors';
-import { useAuthAction } from '@/auth/use-auth-action';
 import { useSignOut } from '@/auth/use-sign-out';
 import { playerColor, Spacing, Typography } from '@/constants/theme';
-import { getSupabase } from '@/lib/supabase';
 
 import { Avatar } from './avatar';
 import { DrawnButton } from './drawn-button';
+import { ResendEmailButton } from './resend-email-button';
 import { SignOutDialog } from './sign-out-dialog';
 import { ThinkingDots } from './state-view';
 
 /** Compte du joueur sur l'accueil : bouton de connexion, ou pseudo et actions du compte. */
 export function AccountBar() {
   const { configured, loading, session, profile, isGuest, pendingEmail, profileError, refreshProfile } = useAuth();
-  const { error, run } = useAuthAction();
   const signOut = useSignOut(isGuest);
 
   if (!configured) return null;
@@ -37,13 +33,6 @@ export function AccountBar() {
       </View>
     );
   }
-
-  const checkConfirmation = () =>
-    run(async () => {
-      if (await refreshAccount(getSupabase())) {
-        throw new AuthFailure('not_confirmed', 'Pas encore confirmé : clique sur le lien reçu par e-mail.');
-      }
-    });
 
   return (
     <View style={styles.account}>
@@ -83,11 +72,14 @@ export function AccountBar() {
         </View>
       )}
       {isGuest && pendingEmail && (
-        <View style={styles.row}>
-          <Text style={[Typography.caption, styles.flex]}>
-            Confirmation envoyée à {pendingEmail}. Clique sur le lien reçu.
-          </Text>
-          <DrawnButton label="J’ai confirmé" size="small" onPress={checkConfirmation} />
+        <View style={styles.pending}>
+          <View style={styles.row}>
+            <ThinkingDots />
+            <Text style={[Typography.caption, styles.flex]}>
+              Clique sur le lien envoyé à {pendingEmail} : l’appli s’en apercevra toute seule.
+            </Text>
+          </View>
+          <ResendEmailButton type="email_change" email={pendingEmail} />
         </View>
       )}
       {profileError && (
@@ -96,7 +88,7 @@ export function AccountBar() {
           <DrawnButton label="Réessayer" size="small" onPress={refreshProfile} />
         </View>
       )}
-      {(error ?? signOut.error) && <Text style={Typography.caption}>{error ?? signOut.error}</Text>}
+      {signOut.error && <Text style={Typography.caption}>{signOut.error}</Text>}
       <SignOutDialog controller={signOut} />
     </View>
   );
@@ -110,6 +102,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
+  },
+  pending: {
+    gap: Spacing.two,
   },
   placeholder: {
     minHeight: 48,

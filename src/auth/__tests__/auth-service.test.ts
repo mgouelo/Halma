@@ -4,6 +4,12 @@ import { AuthApiError, AuthRetryableFetchError, type SupabaseClient } from '@sup
 import {
   changePseudo,
   fetchProfile,
+  guestEmailConfirmed,
+  requestPasswordReset,
+  resendConfirmation,
+  sessionFromLink,
+  signInIfConfirmed,
+  updatePassword,
   updateAvatar,
   refreshAccount,
   signInAsGuest,
@@ -46,6 +52,11 @@ function fakeClient(overrides: Partial<Record<string, Result>> = {}) {
       signOut: respond('signOut', { data: null, error: null }),
       updateUser: respond('updateUser', ok({ user: { id: 'u1', is_anonymous: false, email: 'a@b.fr' } })),
       refreshSession: respond('refreshSession', ok({ session: {}, user: { id: 'u1', is_anonymous: false } })),
+      resetPasswordForEmail: respond('resetPasswordForEmail', ok({})),
+      resend: respond('resend', ok({})),
+      verifyOtp: respond('verifyOtp', ok({ session: { access_token: 't' }, user: { id: 'u1' } })),
+      setSession: respond('setSession', ok({ session: { access_token: 't' }, user: { id: 'u1' } })),
+      getUser: respond('getUser', ok({ user: { id: 'u1', is_anonymous: false, new_email: null } })),
     },
   };
   return { client, query, asSupabase: client as unknown as SupabaseClient };
@@ -160,7 +171,7 @@ describe('upgradeGuest', () => {
     await expect(upgradeGuest(asSupabase, fields)).resolves.toEqual({ needsEmailConfirmation: false });
     expect(client.rpc).toHaveBeenCalledWith('change_pseudo', { new_pseudo: 'Jean.Dupont' });
     expect(query.update).not.toHaveBeenCalled();
-    expect(client.auth.updateUser).toHaveBeenCalledWith({ email: 'jean@example.com', password: 'motdepasse' });
+    expect(client.auth.updateUser).toHaveBeenCalledWith({ email: 'jean@example.com', password: 'motdepasse' }, undefined);
   });
 
   it('signale une confirmation d’e-mail en attente (compte encore invité)', async () => {
@@ -247,5 +258,138 @@ describe('describeAuthError', () => {
   it('a un message par défaut', () => {
     expect(describeAuthError(new AuthApiError('x', 500, 'bad_jwt'))).toBe(GENERIC_ERROR);
     expect(describeAuthError('bizarre')).toBe(GENERIC_ERROR);
+  });
+});
+
+describe('liens de confirmation : adresse de redirection', () => {
+  it('inscription : emailRedirectTo vers /auth/confirmed', async () => {
+    const { client, asSupabase } = fakeClient();
+    await signUpWithEmail(asSupabase, { pseudo: 'Alice', email: 'a@b.fr', password: 'motdepasse' }, 'halma://auth/confirmed');
+    expect(client.auth.signUp).toHaveBeenCalledWith(
+      expect.objectContaining({ options: { data: { pseudo: 'Alice' }, emailRedirectTo: 'halma://auth/confirmed' } }),
+    );
+  });
+
+  it('invité vers compte e-mail : emailRedirectTo passé à updateUser', async () => {
+    const { client, asSupabase } = fakeClient({ rpc: ok('Jean') });
+    await upgradeGuest(asSupabase, { pseudo: 'Jean', email: 'j@b.fr', password: 'motdepasse' }, 'https://h.example/auth/confirmed');
+    expect(client.auth.updateUser).toHaveBeenCalledWith(
+      { email: 'j@b.fr', password: 'motdepasse' },
+      { emailRedirectTo: 'https://h.example/auth/confirmed' },
+    );
+  });
+
+  it('renvoie l’e-mail de confirmation', async () => {
+    const { client, asSupabase } = fakeClient();
+    await resendConfirmation(asSupabase, 'email_change', ' j@b.fr ', 'halma://auth/confirmed');
+    expect(client.auth.resend).toHaveBeenCalledWith({
+      type: 'email_change',
+      email: 'j@b.fr',
+      options: { emailRedirectTo: 'halma://auth/confirmed' },
+    });
+  });
+});
+
+describe('mot de passe oublié', () => {
+  it('demande le lien avec l’adresse de redirection', async () => {
+    const { client, asSupabase } = fakeClient();
+    await requestPasswordReset(asSupabase, ' a@b.fr ', 'halma://reset-password');
+    expect(client.auth.resetPasswordForEmail).toHaveBeenCalledWith('a@b.fr', { redirectTo: 'halma://reset-password' });
+  });
+
+  it('traduit la limite d’envoi, avec le délai', async () => {
+    const error = new AuthApiError('For security purposes, you can only request this after 37 seconds.', 429, 'over_email_send_rate_limit');
+    const { asSupabase } = fakeClient({ resetPasswordForEmail: { data: {}, error } });
+    await expect(requestPasswordReset(asSupabase, 'a@b.fr', 'x')).rejects.toBe(error);
+    expect(describeAuthError(error)).toBe('Un e-mail vient déjà d’être envoyé. Réessaie dans 37 secondes.');
+    const quota = new AuthApiError('Email rate limit exceeded', 429, 'over_email_send_rate_limit');
+    expect(describeAuthError(quota)).toBe('Trop d’e-mails envoyés. Réessaie dans quelques minutes.');
+    expect(describeAuthError(new AuthApiError('Too many requests', 429, undefined))).toBe(
+      'Trop de tentatives. Réessaie dans quelques minutes.',
+    );
+  });
+
+  it('enregistre le nouveau mot de passe', async () => {
+    const { client, asSupabase } = fakeClient();
+    await updatePassword(asSupabase, 'nouveau-mdp');
+    expect(client.auth.updateUser).toHaveBeenCalledWith({ password: 'nouveau-mdp' });
+  });
+
+  it('traduit un mot de passe identique à l’ancien', async () => {
+    const error = new AuthApiError('New password should be different from the old password.', 422, 'same_password');
+    const { asSupabase } = fakeClient({ updateUser: { data: { user: null }, error } });
+    await expect(updatePassword(asSupabase, 'ancien-mdp')).rejects.toBe(error);
+    expect(describeAuthError(error)).toBe('Choisis un mot de passe différent de l’ancien.');
+  });
+});
+
+describe('session ouverte par un lien', () => {
+  it('jeton à vérifier (verifyOtp)', async () => {
+    const { client, asSupabase } = fakeClient();
+    await expect(sessionFromLink(asSupabase, { kind: 'otp', tokenHash: 'h', type: 'recovery' })).resolves.toEqual({
+      access_token: 't',
+    });
+    expect(client.auth.verifyOtp).toHaveBeenCalledWith({ token_hash: 'h', type: 'recovery' });
+  });
+
+  it('jetons du flux implicite (setSession)', async () => {
+    const { client, asSupabase } = fakeClient();
+    await sessionFromLink(asSupabase, { kind: 'session', accessToken: 'a', refreshToken: 'r', type: 'recovery' });
+    expect(client.auth.setSession).toHaveBeenCalledWith({ access_token: 'a', refresh_token: 'r' });
+  });
+
+  it('lien sans jeton ou en erreur : lien invalide, sans appel au serveur', async () => {
+    const { client, asSupabase } = fakeClient();
+    await expect(sessionFromLink(asSupabase, { kind: 'none' })).rejects.toMatchObject({ code: 'link_invalid' });
+    await expect(
+      sessionFromLink(asSupabase, { kind: 'error', code: 'otp_expired', description: null }),
+    ).rejects.toMatchObject({ code: 'link_invalid', message: 'Ce lien a expiré ou a déjà servi.' });
+    expect(client.auth.verifyOtp).not.toHaveBeenCalled();
+  });
+
+  it('jeton refusé (expiré ou déjà utilisé) : lien invalide', async () => {
+    const error = new AuthApiError('Token has expired or is invalid', 403, 'otp_expired');
+    const { asSupabase } = fakeClient({ verifyOtp: { data: { session: null, user: null }, error } });
+    const failure = await sessionFromLink(asSupabase, { kind: 'otp', tokenHash: 'h', type: 'email' }).catch((e: unknown) => e);
+    expect(failure).toBeInstanceOf(AuthFailure);
+    expect(describeAuthError(failure)).toBe('Ce lien a expiré ou a déjà servi.');
+  });
+
+  it('coupure réseau : l’erreur reste une erreur réseau (on pourra réessayer)', async () => {
+    const error = new AuthRetryableFetchError('Failed to fetch', 0);
+    const { asSupabase } = fakeClient({ verifyOtp: { data: { session: null, user: null }, error } });
+    await expect(sessionFromLink(asSupabase, { kind: 'otp', tokenHash: 'h', type: 'email' })).rejects.toBe(error);
+    expect(describeAuthError(error)).toBe(NETWORK_ERROR);
+  });
+});
+
+describe('détection de la validation', () => {
+  it('inscription : connexion refusée tant que l’e-mail n’est pas confirmé', async () => {
+    const error = new AuthApiError('Email not confirmed', 400, 'email_not_confirmed');
+    const waiting = fakeClient({ signInWithPassword: { data: {}, error } });
+    await expect(signInIfConfirmed(waiting.asSupabase, { email: 'a@b.fr', password: 'motdepasse' })).resolves.toBe(false);
+    const confirmed = fakeClient();
+    await expect(signInIfConfirmed(confirmed.asSupabase, { email: ' a@b.fr ', password: 'motdepasse' })).resolves.toBe(true);
+    expect(confirmed.client.auth.signInWithPassword).toHaveBeenCalledWith({ email: 'a@b.fr', password: 'motdepasse' });
+  });
+
+  it('inscription : un autre refus (mot de passe changé…) est remonté', async () => {
+    const error = new AuthApiError('Invalid login credentials', 400, 'invalid_credentials');
+    const { asSupabase } = fakeClient({ signInWithPassword: { data: {}, error } });
+    await expect(signInIfConfirmed(asSupabase, { email: 'a@b.fr', password: 'x' })).rejects.toBe(error);
+  });
+
+  it('invité : toujours invité, rien ne change', async () => {
+    const { client, asSupabase } = fakeClient({
+      getUser: ok({ user: { id: 'u1', is_anonymous: true, new_email: 'j@b.fr' } }),
+    });
+    await expect(guestEmailConfirmed(asSupabase)).resolves.toBe(false);
+    expect(client.auth.refreshSession).not.toHaveBeenCalled();
+  });
+
+  it('invité : e-mail validé ailleurs, la session est renouvelée (compte e-mail)', async () => {
+    const { client, asSupabase } = fakeClient();
+    await expect(guestEmailConfirmed(asSupabase)).resolves.toBe(true);
+    expect(client.auth.refreshSession).toHaveBeenCalledTimes(1);
   });
 });

@@ -33,7 +33,7 @@ describe('retour des écrans sans barre', () => {
     expect(mockRouter.replace).toHaveBeenLastCalledWith('/');
   });
 
-  it.each(['/avatar', '/sign-in', '/sign-up', '/upgrade', '/credits', '/privacy', '/terms', '/terms/'])(
+  it.each(['/avatar', '/sign-in', '/sign-up', '/upgrade', '/forgot-password', '/reset-password', '/credits', '/privacy', '/terms', '/terms/'])(
     'le secours de %s est le profil',
     (path) => {
       expect(backFallback(path)).toBe('/profile');

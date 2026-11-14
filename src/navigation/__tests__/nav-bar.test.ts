@@ -108,7 +108,7 @@ describe('écrans avec ou sans la barre', () => {
     );
   });
 
-  it.each(['profile', 'sign-in', 'sign-up', 'upgrade', 'avatar', 'credits', 'privacy', 'terms'])(
+  it.each(['profile', 'sign-in', 'sign-up', 'upgrade', 'forgot-password', 'reset-password', 'auth/confirmed', 'avatar', 'credits', 'privacy', 'terms'])(
     '%s est par-dessus le groupe : pas de barre, un bouton « ‹ Retour »',
     (screen) => {
       expect(SCREENS_WITHOUT_NAV_BAR).toContain(screen);

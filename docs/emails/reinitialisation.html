@@ -1,0 +1,15 @@
+<!-- Supabase > Authentication > Email Templates > Reset Password. Sujet : « Ton nouveau mot de passe Halma » -->
+<div style="margin:0;padding:24px 12px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+  <div style="max-width:480px;margin:0 auto;border:3px solid #111111;border-radius:24px;padding:28px 24px;background:#ffffff;box-shadow:4px 4px 0 #111111;">
+    <p style="margin:0 0 4px;font-size:28px;font-weight:bold;letter-spacing:-0.5px;">Halma</p>
+    <p style="margin:0 0 24px;font-size:13px;color:#555555;">Dames chinoises</p>
+    <p style="margin:0 0 12px;font-size:20px;font-weight:bold;">Mot de passe oublié ?</p>
+    <p style="margin:0;font-size:16px;line-height:1.5;">Quelqu’un (sans doute toi) a demandé à changer le mot de passe du compte Halma lié à {{ .Email }}. Touche le bouton pour en choisir un nouveau. Le lien ne sert qu’une fois et expire au bout d’une heure.</p>
+    <p style="margin:24px 0;">
+      <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=recovery" style="display:inline-block;padding:14px 24px;border:3px solid #111111;border-radius:999px;background:#F6B8C8;color:#111111;font-size:17px;font-weight:bold;text-decoration:none;">Choisir un nouveau mot de passe</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:13px;color:#555555;">Le bouton ne marche pas ? Copie ce lien dans ton navigateur ou sur ton téléphone :<br>
+      <span style="word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=recovery</span></p>
+    <p style="margin:16px 0 0;font-size:13px;color:#555555;">Tu n’as rien demandé ? Ignore cet e-mail : ton mot de passe reste le même.</p>
+  </div>
+</div>
