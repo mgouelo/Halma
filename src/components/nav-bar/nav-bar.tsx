@@ -3,8 +3,6 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useAuth } from '@/auth/auth-context';
-import { Avatar } from '@/components/avatar';
 import {
   Colors,
   Fonts,
@@ -18,15 +16,15 @@ import {
 } from '@/constants/theme';
 import { activeTab, navAction, navHref, NAV_LABELS, type NavTab } from '@/navigation/nav-bar';
 
-import { MountainIcon, Silhouette, StarLogo } from './icons';
+import { FriendsIcon, MountainIcon, StarLogo } from './icons';
 
 /** Largeur maximale de la barre sur grand écran (elle reste centrée en bas). */
 const MAX_BAR_WIDTH = 440;
 const SIDE_ICON = 32;
 const CENTER_SIZE = 64;
 
-function go(pathname: string, tab: NavTab, signedIn: boolean) {
-  const action = navAction(pathname, navHref(tab, signedIn));
+function go(pathname: string, tab: NavTab) {
+  const action = navAction(pathname, navHref(tab));
   if (action.type === 'none') return;
   router[action.type](action.href);
 }
@@ -50,17 +48,15 @@ interface ItemProps {
   tab: NavTab;
   active: boolean;
   onPress: () => void;
-  hint?: string;
   children: ReactNode;
 }
 
-function SideItem({ tab, active, onPress, hint, children }: ItemProps) {
+function SideItem({ tab, active, onPress, children }: ItemProps) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="tab"
       accessibilityLabel={NAV_LABELS[tab]}
-      accessibilityHint={hint}
       accessibilityState={{ selected: active }}
       style={styles.item}>
       {({ pressed }) => (
@@ -98,37 +94,28 @@ function CenterItem({ active, onPress }: Omit<ItemProps, 'tab' | 'children'>) {
 }
 
 /**
- * Barre de navigation du bas : profil, accueil (logo, au centre), classements.
- * Affichée par le layout du groupe (main) : absente des parties, des rooms et
- * des écrans de connexion, qui sont empilés par-dessus.
+ * Barre de navigation du bas : amis, accueil (logo, au centre), classements.
+ * Affichée par le layout du groupe (main) : absente des parties, des rooms, du
+ * profil et des écrans de connexion, qui sont empilés par-dessus. Le profil
+ * s'ouvre par l'avatar en haut à droite (`ProfileButton`).
  */
 export function NavBar() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const keyboardOpen = useKeyboardOpen();
-  const { session, profile } = useAuth();
   if (keyboardOpen) return null;
 
   const current = activeTab(pathname);
-  const signedIn = Boolean(session);
   return (
     <View style={[styles.outer, { paddingBottom: Math.max(insets.bottom, Spacing.two) }]}>
       <View style={styles.bar} accessibilityRole="tablist">
         <View style={styles.barShadow} />
         <View style={styles.barFace}>
-          <SideItem
-            tab="profile"
-            active={current === 'profile'}
-            onPress={() => go(pathname, 'profile', signedIn)}
-            hint={signedIn ? undefined : 'Ouvre la connexion'}>
-            {session ? (
-              <Avatar value={profile?.avatar} seed={session.user.id} size={SIDE_ICON} />
-            ) : (
-              <Silhouette size={SIDE_ICON} />
-            )}
+          <SideItem tab="friends" active={current === 'friends'} onPress={() => go(pathname, 'friends')}>
+            <FriendsIcon size={SIDE_ICON} />
           </SideItem>
-          <CenterItem active={current === 'home'} onPress={() => go(pathname, 'home', signedIn)} />
-          <SideItem tab="leaderboard" active={current === 'leaderboard'} onPress={() => go(pathname, 'leaderboard', signedIn)}>
+          <CenterItem active={current === 'home'} onPress={() => go(pathname, 'home')} />
+          <SideItem tab="leaderboard" active={current === 'leaderboard'} onPress={() => go(pathname, 'leaderboard')}>
             <MountainIcon size={SIDE_ICON} />
           </SideItem>
         </View>

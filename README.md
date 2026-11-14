@@ -85,17 +85,29 @@ Pour une compilation EAS, définir les mêmes variables dans l'environnement EAS
   navigation, avec un seul bouton « ‹ Retour » (voir « Barre de navigation »). Les champs de mot de passe ont
   un œil pour afficher ou masquer la saisie (voir « Champ de mot de passe »). L'accueil affiche le pseudo du joueur connecté, ou « Connecte-toi pour conserver ta progression »
   et un bouton « Se connecter ».
-- **Profil d'un invité** (`/profile`, entrée « Profil » de la barre) : son pseudo `invite-xxxxxx`, son avatar, ses
+- **Profil d'un invité** (`/profile`, en touchant son avatar en haut à droite) : son pseudo `invite-xxxxxx`, son avatar, ses
   statistiques et une carte « Conserve ta progression » avec le bouton « Créer mon compte » (vers `/upgrade`).
 - Table `profiles` (`id`, `pseudo`, `avatar`, `created_at`), remplie automatiquement à l'inscription par un
   trigger : le pseudo vient du formulaire, ou `invite-xxxxxx` pour un invité.
-- Pseudos : 3 à 20 caractères parmi les lettres sans accent, les chiffres, « _ », « - » et « . », dont
-  au moins 3 lettres (par exemple `Jean.Dupont-2` ; `...` ou `12345` sont refusés). Uniques sans tenir
-  compte de la casse : `Jean.Dupont` et `jean.dupont` sont le même pseudo. La même règle est vérifiée par
-  l'application et imposée par la base.
-- Row Level Security : les joueurs connectés (invités compris) lisent les profils ; chacun ne modifie que
-  son pseudo et son avatar ; personne ne crée ni ne supprime de profil directement (la suppression suit
-  celle du compte). La fonction `is_pseudo_available` permet de tester un pseudo avant l'inscription.
+- Pseudos : 3 à 20 caractères parmi les lettres sans accent, les quatre lettres « é », « è », « É », « È »,
+  les chiffres, « _ », « - », « . » et l'apostrophe droite « ' », dont au moins 3 lettres (é, è, É et È
+  comptent). Aucun autre accent (`Zoë`, `Ça` refusés). L'apostrophe n'est ni la première, ni la dernière, ni
+  doublée. Le préfixe `invite-` est réservé aux invités. Exemples : `Jean.Dupont-2`, `Zoé`, `d'Artagnan` ;
+  `...`, `12345`, `'Dan` ou `Da''n` sont refusés. La même règle est vérifiée par l'application
+  (`src/auth/validation.ts`) et imposée par la base (`is_valid_pseudo`, liste de caractères écrite en
+  entier : indépendante de la locale).
+- Saisie normalisée : unicode NFC (un clavier peut envoyer « e » suivi d'un accent séparé) et apostrophe
+  courbe « ’ » convertie en « ' », par l'application pendant la frappe et par la base (`clean_pseudo`).
+- Unicité sans tenir compte de la casse, des accents ni des apostrophes, contre l'usurpation d'identité :
+  `Zoé` et `zoe`, `Élodie` et `elodie`, `Dan'` et `Dan` sont le même pseudo. La clé (`pseudo_key`, index
+  unique) est construite avec `translate()` et une table de correspondance explicite (A-Z, é, è, É, È ; les
+  apostrophes sont retirées), pas avec `lower()`, dont le résultat dépend de la locale de la base (en locale C,
+  `lower('É')` vaut `É`).
+- Row Level Security : les joueurs connectés (invités compris) lisent les profils ; chacun ne modifie
+  directement que son avatar ; le pseudo ne change que par `change_pseudo` (voir « Changer de pseudo ») ;
+  personne ne crée ni ne supprime de profil directement (la suppression suit celle du compte). La fonction
+  `is_pseudo_available` permet de tester un pseudo avant l'inscription (le joueur connecté ne se gêne pas
+  lui-même : `Zoe` peut devenir `Zoé`).
 - Le code : `src/lib/supabase.ts` (client, session enregistrée avec AsyncStorage), `src/auth/`
   (validation, appels à Supabase, messages d'erreur en français, contexte `useAuth()`).
 
@@ -106,7 +118,8 @@ profil ou l'onglet Classements, « Créer mon compte » (écran `/upgrade`) le t
 changer d'identifiant** : le profil et toute la progression (statistiques, série de connexion) sont conservés, et
 le joueur apparaît alors dans les classements.
 
-1. Le pseudo choisi remplace `invite-xxxxxx` (mise à jour du profil ; l'index unique refuse un pseudo pris).
+1. Le pseudo choisi remplace `invite-xxxxxx`, par la fonction `change_pseudo` (format et unicité vérifiés ;
+   le premier choix d'un invité n'est pas soumis au délai de 7 jours et n'est pas daté).
 2. L'e-mail et le mot de passe sont ajoutés au compte (`supabase.auth.updateUser`).
    - Si *Confirm email* est désactivé, le compte devient aussitôt un compte e-mail.
    - Sinon, le mot de passe est enregistré mais le compte reste invité jusqu'au clic sur le lien reçu
@@ -115,10 +128,32 @@ le joueur apparaît alors dans les classements.
 
 Le lien de confirmation renvoie vers la *Site URL* du projet.
 
+### Changer de pseudo
+
+Sur le profil, « Changer mon pseudo » ouvre un champ dans la carte (prérempli avec le pseudo actuel, vide pour
+un invité). Mêmes règles et messages qu'à l'inscription, plus « déjà pris », « interdit » et le délai ; une
+confirmation s'affiche (« C'est fait : ton pseudo est maintenant « Zoé ». ») et le profil est relu : le nouveau
+pseudo apparaît partout (accueil, profil, classements, rooms, qui lisent `profiles`).
+
+- **Délai de 7 jours** entre deux changements, imposé par la base : colonne `profiles.pseudo_changed_at` et
+  fonction `change_pseudo(new_pseudo)` (`security definer`), qui nettoie, valide le format, refuse le préfixe
+  `invite-`, vérifie l'unicité et le délai. Erreurs : `pseudo_invalid`, `pseudo_reserved`, `pseudo_taken`,
+  `pseudo_too_soon` (le détail donne la date du prochain changement possible), traduites en français par
+  `src/auth/auth-service.ts`. Redonner son pseudo actuel ne change rien et n'est pas daté.
+- Un pseudo jamais changé depuis l'inscription peut l'être tout de suite ; le premier choix d'un invité
+  (pseudo actuel `invite-…`) n'est pas soumis au délai.
+- Pendant le délai, le bouton est désactivé et le profil annonce la date du prochain changement possible
+  (`src/auth/pseudo-change.ts`) ; c'est seulement un affichage, la base tranche.
+- Les clients n'ont plus le droit de modifier la colonne `pseudo` directement (l'avatar, si).
+
+Code : `supabase/migrations/20261014120000_pseudo_accents_and_change.sql`, `src/components/change-pseudo.tsx`.
+
 ### Vérifier les migrations sans Supabase
 
 `scripts/check-db.sh` applique les migrations sur un Postgres local (avec une imitation minimale du
-schéma `auth` de Supabase) et vérifie le trigger, le format et l'unicité des pseudos et la RLS. La base
+schéma `auth` de Supabase) et vérifie le trigger, le format et l'unicité des pseudos (accents, apostrophes,
+normalisation, unicité sans casse, accents ni apostrophes, en locale C), le changement de pseudo (délai,
+premier choix d'un invité) et la RLS. La base
 temporaire utilise la locale `C`, la plus stricte :
 
 ```bash
@@ -451,34 +486,39 @@ des classements, jour de Paris et séries, connexion du jour), `src/app/(main)/l
 
 Une barre dessinée en bas de l'écran, dans la DA (trait noir épais, ombre franche) :
 
-- à gauche **Profil** : l'avatar du joueur, ou une silhouette dessinée s'il n'est pas connecté (l'entrée mène alors
-  à la connexion) ; un invité arrive sur sa page de profil ;
+- à gauche **Amis** : deux silhouettes au trait noir, épaule contre épaule, têtes en pions pastel ; l'écran
+  `/friends` est provisoire (« Les amis arrivent bientôt ») en attendant le système d'amis ;
 - au milieu **Accueil** : le logo (l'étoile de `assets/icon-source/icon.svg`, redessinée en SVG avec un pion pastel
   par branche), un peu plus grand et qui dépasse de la barre ;
 - à droite **Classements** : une montagne au trait noir, un pion pastel sur chaque sommet.
 
 L'entrée active a son icône entourée d'un trait et son libellé en gras souligné : elle se repère sans la couleur.
-Zones touchables d'au moins 44 points, libellés « Profil », « Accueil », « Classements » (rôle « onglet » et état
+Zones touchables d'au moins 44 points, libellés « Amis », « Accueil », « Classements » (rôle « onglet » et état
 « sélectionné »), zone sûre du bas prise en compte (la barre la gère, les écrans au-dessus ne la comptent pas). Sur
 grand écran, la barre reste en bas, centrée, 440 points au plus. Sur Android, elle se cache clavier ouvert.
 
+**Profil par l'avatar** : la barre n'a plus d'entrée Profil. En haut à droite de l'accueil, des amis et des
+classements, l'avatar du joueur (`<Avatar />` dans un cercle au trait noir, ombre franche, zone tactile d'au
+moins 44 points, libellé « Profil » ; `src/components/profile-button.tsx`) ouvre `/profile` par-dessus ; non
+connecté, une silhouette dessinée ouvre la connexion. Un invité qui touche son avatar voit son profil (carte
+« Créer mon compte »…). Pas d'avatar pendant les parties ni dans les rooms (ni barre ni accès au profil).
+
 **Routes** : les écrans avec la barre sont dans le groupe `src/app/(main)/` : accueil, jouer en ligne, contre l'IA,
-entre amis, profil et classements (le layout empile une pile Expo Router au-dessus de la barre). Tout le reste est
-dans la pile principale, **par-dessus** le groupe, donc sans barre (rien à maintenir pour la masquer) :
+entre amis (local), amis et classements (le layout empile une pile Expo Router au-dessus de la barre). Tout le reste
+est dans la pile principale, **par-dessus** le groupe, donc sans barre (rien à maintenir pour la masquer) :
 
 - les parties (`/game`) et les rooms (`/room/[id]`), avec leurs propres boutons ;
-- les écrans de compte (`/sign-in`, `/sign-up`, `/upgrade`), l'éditeur d'avatar (`/avatar`) et les pages
-  d'information (`/credits`, `/privacy`, `/terms`) : **un seul bouton, « ‹ Retour »**
+- le profil (`/profile`), les écrans de compte (`/sign-in`, `/sign-up`, `/upgrade`), l'éditeur d'avatar
+  (`/avatar`) et les pages d'information (`/credits`, `/privacy`, `/terms`) : **un seul bouton, « ‹ Retour »**
   (`src/components/back-button.tsx`).
 
-Le bouton de retour revient à l'écran d'où l'on vient (historique de navigation). Sans historique (page rechargée,
-lien direct), `src/navigation/back.ts` utilise un écran de secours : le **profil** pour l'éditeur d'avatar, les
-écrans de compte et les pages d'information, l'accueil sinon. La page Profil, elle, garde la barre et n'a pas de
-bouton « Accueil » (l'accueil est dans la barre). L'entrée « Profil » n'est active que sur `/profile` ; toucher une
-entrée revient à l'accueil (`dismissTo`), empile depuis l'accueil, ou remplace l'écran courant d'une entrée à
-l'autre ; « Profil » d'un joueur non connecté ouvre `/sign-in` par-dessus (`push`), et son « ‹ Retour » ramène où
-il était. Un invité qui touche « Profil » voit son profil, avec la barre (`src/navigation/nav-bar.ts`, testé, avec
-des tests qui vérifient quels écrans sont dans `(main)`, lesquels sont par-dessus, et le retour de secours).
+Le bouton de retour revient à l'écran d'où l'on vient (historique de navigation, `goBack`). Sans historique (page
+rechargée, lien direct), `src/navigation/back.ts` utilise un écran de secours : le **profil** pour l'éditeur
+d'avatar, les écrans de compte et les pages d'information, l'accueil sinon (profil compris). « Amis » et
+« Classements » ne sont actives que sur leur écran ; toucher une entrée revient à l'accueil (`dismissTo`), empile
+depuis l'accueil, ou remplace l'écran courant d'une entrée à l'autre (`src/navigation/nav-bar.ts`, testé, avec des
+tests qui vérifient quels écrans sont dans `(main)`, lesquels sont par-dessus, lesquels ont l'avatar, et le retour
+de secours).
 
 ### Se déconnecter
 
@@ -527,8 +567,8 @@ Les illustrations ajoutent environ 0,8 Mo au bundle Hermes.
 
 ### Ce qui est en place
 
-- **Profil** (`/profile`, depuis la barre de navigation ou en touchant son avatar sur l'accueil) : avatar,
-  pseudo, type de compte et statistiques.
+- **Profil** (`/profile`, en touchant son avatar en haut à droite de l'accueil, des amis ou des classements) :
+  avatar, pseudo (et son changement), type de compte et statistiques.
 - **Éditeur** (`/avatar`) : coiffure, haut, accessoire, lunettes (chaque vignette montre l'option sur
   son propre avatar), couleurs de la peau, des cheveux, du haut et du fond, boutons « Au hasard » et
   « Par défaut ». Le bas (pantalons, jupes) existe dans Humation mais se trouve sous le cadrage « buste »
@@ -857,7 +897,9 @@ minimax classique.
 10. ~~Tour bien visible (halo, « À toi de jouer ! », titre de l'onglet), branche d'arrivée mise en évidence,
     icônes des statistiques du profil.~~ Fait.
 11. ~~Mutateurs de partie : « Toucher c'est jouer » et « Clairvoyance » (local et en ligne).~~ Fait.
-12. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », amis.
+12. ~~Profil ouvert par l'avatar (barre Amis, Accueil, Classements), pseudos avec é, è, É, È et apostrophe,
+    changement de pseudo tous les 7 jours au plus.~~ Fait.
+13. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », amis.
 
 ## Inspiration
 

@@ -23,7 +23,7 @@ export default function UpgradeScreen() {
     if (!session) return;
     let needsConfirmation = false;
     const ok = await run(async () => {
-      ({ needsEmailConfirmation: needsConfirmation } = await upgradeGuest(getSupabase(), session.user.id, fields));
+      ({ needsEmailConfirmation: needsConfirmation } = await upgradeGuest(getSupabase(), fields));
     });
     // Le pseudo a pu changer même si l'e-mail a échoué : on relit le profil dans tous les cas.
     refreshProfile();

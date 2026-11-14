@@ -30,12 +30,13 @@ export default function RootLayout() {
           headerShown: false,
           contentStyle: { backgroundColor: Colors.paper },
         }}>
-        {/* Accueil, jouer en ligne, profil, classements : avec la barre de navigation du bas. */}
+        {/* Accueil, jouer en ligne, amis, classements : avec la barre de navigation du bas. */}
         <Stack.Screen name="(main)" options={{ title: 'Halma' }} />
         {/* Par-dessus, sans la barre : parties et rooms. */}
         <Stack.Screen name="game" options={{ title: 'Partie' }} />
         <Stack.Screen name="room/[id]" options={{ title: 'Room' }} />
-        {/* Par-dessus aussi, sans la barre, avec un bouton « ‹ Retour » : comptes, avatar, informations. */}
+        {/* Par-dessus aussi, sans la barre, avec un bouton « ‹ Retour » : profil, comptes, avatar, informations. */}
+        <Stack.Screen name="profile" options={{ title: 'Profil' }} />
         <Stack.Screen name="sign-in" options={{ title: 'Connexion' }} />
         <Stack.Screen name="sign-up" options={{ title: 'Inscription' }} />
         <Stack.Screen name="upgrade" options={{ title: 'Créer mon compte' }} />

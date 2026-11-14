@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
@@ -8,21 +8,24 @@ import {
   navHref,
   NAV_LABELS,
   NAV_TABS,
+  PROFILE_BUTTON_LABEL,
+  profileHref,
+  SCREENS_WITH_PROFILE_BUTTON,
   SCREENS_WITHOUT_NAV_BAR,
   type NavTab,
 } from '../nav-bar';
 
 describe('barre de navigation', () => {
-  it('a trois entrées, profil à gauche, accueil au milieu, classements à droite', () => {
-    expect(NAV_TABS).toEqual(['profile', 'home', 'leaderboard']);
-    expect(NAV_TABS.map((tab) => NAV_LABELS[tab])).toEqual(['Profil', 'Accueil', 'Classements']);
+  it('a trois entrées, amis à gauche, accueil au milieu, classements à droite (plus de Profil)', () => {
+    expect(NAV_TABS).toEqual(['friends', 'home', 'leaderboard']);
+    expect(NAV_TABS.map((tab) => NAV_LABELS[tab])).toEqual(['Amis', 'Accueil', 'Classements']);
+    expect(Object.values(NAV_LABELS)).not.toContain('Profil');
   });
 
-  it('mène à la connexion depuis « Profil » quand on n’est pas connecté', () => {
-    expect(navHref('profile', true)).toBe('/profile');
-    expect(navHref('profile', false)).toBe('/sign-in');
-    expect(navHref('home', false)).toBe('/');
-    expect(navHref('leaderboard', false)).toBe('/leaderboard');
+  it('chaque entrée mène à son écran', () => {
+    expect(navHref('friends')).toBe('/friends');
+    expect(navHref('home')).toBe('/');
+    expect(navHref('leaderboard')).toBe('/leaderboard');
   });
 
   it.each([
@@ -30,8 +33,8 @@ describe('barre de navigation', () => {
     ['/online', 'home'],
     ['/ai-setup', 'home'],
     ['/local-setup', 'home'],
-    ['/profile', 'profile'],
-    ['/profile/', 'profile'],
+    ['/friends', 'friends'],
+    ['/friends/', 'friends'],
     ['/leaderboard', 'leaderboard'],
     ['/leaderboard/', 'leaderboard'],
   ] as [string, NavTab][])('entrée active sur %s : %s', (path, tab) => {
@@ -40,31 +43,47 @@ describe('barre de navigation', () => {
 
   it('ne bouge pas quand on touche l’entrée de l’écran affiché', () => {
     expect(navAction('/', '/')).toEqual({ type: 'none' });
+    expect(navAction('/friends', '/friends')).toEqual({ type: 'none' });
     expect(navAction('/leaderboard', '/leaderboard')).toEqual({ type: 'none' });
   });
 
   it('revient à l’accueil sans l’empiler une deuxième fois', () => {
     expect(navAction('/leaderboard', '/')).toEqual({ type: 'dismissTo', href: '/' });
+    expect(navAction('/friends', '/')).toEqual({ type: 'dismissTo', href: '/' });
     expect(navAction('/online', '/')).toEqual({ type: 'dismissTo', href: '/' });
   });
 
   it('empile depuis l’accueil, puis remplace d’une entrée à l’autre', () => {
+    expect(navAction('/', '/friends')).toEqual({ type: 'push', href: '/friends' });
     expect(navAction('/', '/leaderboard')).toEqual({ type: 'push', href: '/leaderboard' });
-    expect(navAction('/profile', '/leaderboard')).toEqual({ type: 'replace', href: '/leaderboard' });
-    expect(navAction('/online', '/profile')).toEqual({ type: 'replace', href: '/profile' });
+    expect(navAction('/friends', '/leaderboard')).toEqual({ type: 'replace', href: '/leaderboard' });
+    expect(navAction('/leaderboard', '/friends')).toEqual({ type: 'replace', href: '/friends' });
+    expect(navAction('/online', '/friends')).toEqual({ type: 'replace', href: '/friends' });
+  });
+});
+
+describe('profil par l’avatar', () => {
+  it('connecté (invité compris), l’avatar mène au profil ; sinon, la silhouette mène à la connexion', () => {
+    expect(profileHref(true)).toBe('/profile');
+    expect(profileHref(false)).toBe('/sign-in');
+    expect(PROFILE_BUTTON_LABEL).toBe('Profil');
   });
 
-  it('ouvre la connexion par-dessus l’écran affiché (sans barre : son retour revient là où l’on était)', () => {
-    expect(navAction('/', '/sign-in')).toEqual({ type: 'push', href: '/sign-in' });
-    expect(navAction('/leaderboard', '/sign-in')).toEqual({ type: 'push', href: '/sign-in' });
-    expect(navAction('/profile', '/sign-in')).toEqual({ type: 'push', href: '/sign-in' });
+  it('le profil n’a pas d’entrée active dans la barre : il n’a pas de barre', () => {
+    expect(SCREENS_WITHOUT_NAV_BAR).toContain('profile');
   });
 
-  it('un invité (connecté) va sur sa page de profil, pas sur la connexion', () => {
-    const href = navHref('profile', true);
-    expect(href).toBe('/profile');
-    expect(navAction('/leaderboard', href)).toEqual({ type: 'replace', href: '/profile' });
-    expect(activeTab(href)).toBe('profile');
+  it.each(SCREENS_WITH_PROFILE_BUTTON)('%s affiche l’avatar en haut à droite', (screen) => {
+    const source = readFileSync(join(__dirname, '../../app/(main)', `${screen}.tsx`), 'utf8');
+    expect(source).toContain('<ProfileButton />');
+  });
+
+  it('l’avatar est sur l’accueil, les amis et les classements', () => {
+    expect([...SCREENS_WITH_PROFILE_BUTTON].sort()).toEqual(['friends', 'index', 'leaderboard']);
+  });
+
+  it.each(['game.tsx', 'room/[id].tsx', 'profile.tsx'])('pas d’avatar de profil sur %s', (file) => {
+    expect(readFileSync(join(__dirname, '../../app', file), 'utf8')).not.toContain('ProfileButton');
   });
 });
 
@@ -75,7 +94,7 @@ describe('écrans avec ou sans la barre', () => {
       .filter((entry) => entry.isFile() && entry.name.endsWith('.tsx'))
       .map((entry) => entry.name.replace(/\.tsx$/, ''));
 
-  it.each(['index', 'online', 'profile', 'leaderboard', 'ai-setup', 'local-setup'])(
+  it.each(['index', 'online', 'friends', 'leaderboard', 'ai-setup', 'local-setup'])(
     '%s est dans le groupe (main) : la barre reste affichée',
     (screen) => {
       expect(existsSync(join(app, '(main)', `${screen}.tsx`))).toBe(true);
@@ -85,11 +104,11 @@ describe('écrans avec ou sans la barre', () => {
 
   it('le groupe (main) ne contient que les écrans avec la barre', () => {
     expect(routes(join(app, '(main)')).filter((name) => name !== '_layout').sort()).toEqual(
-      ['ai-setup', 'index', 'leaderboard', 'local-setup', 'online', 'profile'].sort(),
+      ['ai-setup', 'friends', 'index', 'leaderboard', 'local-setup', 'online'].sort(),
     );
   });
 
-  it.each(['sign-in', 'sign-up', 'upgrade', 'avatar', 'credits', 'privacy', 'terms'])(
+  it.each(['profile', 'sign-in', 'sign-up', 'upgrade', 'avatar', 'credits', 'privacy', 'terms'])(
     '%s est par-dessus le groupe : pas de barre, un bouton « ‹ Retour »',
     (screen) => {
       expect(SCREENS_WITHOUT_NAV_BAR).toContain(screen);
@@ -106,8 +125,7 @@ describe('écrans avec ou sans la barre', () => {
   });
 
   it('chaque écran sans barre est déclaré dans la pile principale', () => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const layout = require('node:fs').readFileSync(join(app, '_layout.tsx'), 'utf8') as string;
+    const layout = readFileSync(join(app, '_layout.tsx'), 'utf8');
     for (const screen of SCREENS_WITHOUT_NAV_BAR) expect(layout).toContain(`name="${screen}"`);
   });
 });

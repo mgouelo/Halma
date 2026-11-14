@@ -120,7 +120,7 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
 
 ## Étape 8 : barre de navigation, statistiques et classements (fait)
 
-- Barre de navigation du bas (profil, accueil, classements), masquée pendant les parties et sur les écrans de
+- Barre de navigation du bas (profil, accueil, classements ; devenue amis, accueil, classements à l'étape 14), masquée pendant les parties et sur les écrans de
   connexion : groupe de routes `(main)` avec un layout personnalisé.
 - Table `player_stats` écrite uniquement côté serveur : parties lancées (`begin_game`), victoires
   (`record_game_win`, appelée par l'Edge Function `game-action`), série de connexion (`record_daily_login`).
@@ -201,6 +201,19 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
   robuste. En ligne : réglés par l'hôte dans la salle d'attente (lecture seule pour les autres), stockés dans
   `rooms.settings` (migration `20261012120000_room_settings.sql`, fonction `set_room_settings`), figés au
   lancement. Badges des mutateurs actifs pendant la partie.
+
+## Étape 14 : profil par l'avatar, pseudos accentués et changement de pseudo (fait)
+
+- Barre du bas : Amis (deux silhouettes, têtes en pions pastel ; écran `/friends` provisoire), Accueil,
+  Classements. Plus d'entrée Profil : l'avatar en haut à droite de l'accueil, des amis et des classements ouvre
+  `/profile` (silhouette vers la connexion si non connecté). `/profile` sort de `(main)` : sans barre, un seul
+  « ‹ Retour ».
+- Pseudos : « é », « è », « É », « È » et l'apostrophe droite en plus (ni en tête, ni en fin, ni doublée) ;
+  saisie normalisée (NFC, « ’ » → « ' ») ; unicité sans casse, accents ni apostrophes (clé `pseudo_key` par
+  `translate()`, indépendante de la locale). Migration `20261014120000_pseudo_accents_and_change.sql`.
+- « Changer mon pseudo » sur le profil : `change_pseudo` côté serveur (format, unicité, délai de 7 jours via
+  `profiles.pseudo_changed_at`), colonne `pseudo` retirée des droits de modification des clients. Le premier
+  choix d'un invité (`upgradeGuest`) passe par la même fonction, sans délai.
 
 ## Plus tard : amis
 

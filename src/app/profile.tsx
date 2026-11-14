@@ -5,6 +5,7 @@ import { useAuth } from '@/auth/auth-context';
 import { useSignOut } from '@/auth/use-sign-out';
 import { AboutLinks } from '@/components/about-links';
 import { Avatar } from '@/components/avatar';
+import { ChangePseudo } from '@/components/change-pseudo';
 import { AuthScreen, authStyles, Notice, NotConfiguredCard } from '@/components/auth-screen';
 import { DrawnButton } from '@/components/drawn-button';
 import { SignOutDialog } from '@/components/sign-out-dialog';
@@ -15,9 +16,11 @@ import { ErrorState, LoadingState } from '@/components/state-view';
 import { playerColor, Typography } from '@/constants/theme';
 
 /**
- * Profil du joueur connecté, invité compris : avatar, pseudo, type de compte,
- * statistiques, suppression du compte. Un invité y trouve aussi l'invitation à
- * créer son compte (même identifiant : sa progression est conservée).
+ * Profil du joueur connecté, invité compris : avatar, pseudo (et son
+ * changement), type de compte, statistiques, suppression du compte. Un invité y
+ * trouve aussi l'invitation à créer son compte (même identifiant : sa
+ * progression est conservée). Ouvert par l'avatar en haut à droite des écrans
+ * de la barre : écran sans barre, avec un seul bouton « ‹ Retour ».
  */
 export default function ProfileScreen() {
   const { configured, loading, session, profile, isGuest, pendingEmail, profileError, refreshProfile } = useAuth();
@@ -25,7 +28,7 @@ export default function ProfileScreen() {
 
   if (!configured) {
     return (
-      <AuthScreen header="none" title="Profil" subtitle="Comptes indisponibles.">
+      <AuthScreen header="back" title="Profil" subtitle="Comptes indisponibles.">
         <NotConfiguredCard />
         <AboutLinks />
       </AuthScreen>
@@ -33,18 +36,19 @@ export default function ProfileScreen() {
   }
   if (!loading && !session) {
     return (
-      <AuthScreen header="none" title="Profil" subtitle="Tu n’es pas connecté.">
+      <AuthScreen header="back" title="Profil" subtitle="Tu n’es pas connecté.">
         <DrawnButton label="Se connecter" onPress={() => router.push('/sign-in')} />
         <AboutLinks />
       </AuthScreen>
     );
   }
   return (
-    <AuthScreen header="none" title="Profil" subtitle={isGuest ? 'Compte invité' : 'Compte e-mail'}>
+    <AuthScreen header="back" title="Profil" subtitle={isGuest ? 'Compte invité' : 'Compte e-mail'}>
       {profile ? (
         <DrawnCard contentStyle={[authStyles.card, styles.card]}>
           <Avatar value={profile.avatar} seed={profile.id} size={144} accessibilityLabel={`Avatar de ${profile.pseudo}`} />
           <Text style={Typography.title}>{profile.pseudo}</Text>
+          <ChangePseudo profile={profile} onChanged={refreshProfile} />
           <DrawnButton
             label={profile.avatar ? 'Modifier mon avatar' : 'Créer mon avatar'}
             onPress={() => router.push('/avatar')}

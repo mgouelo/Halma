@@ -32,7 +32,7 @@ const Stub = (label: string) =>
   };
 
 // Tous les écrans déclarés par le layout (main), remplacés par un texte, sauf les classements.
-const MAIN_SCREENS = ['index', 'online', 'ai-setup', 'local-setup', 'profile', 'avatar', 'credits', 'privacy', 'terms', 'sign-in', 'sign-up', 'upgrade'];
+const MAIN_SCREENS = ['index', 'online', 'ai-setup', 'local-setup', 'friends', 'profile', 'avatar', 'credits', 'privacy', 'terms', 'sign-in', 'sign-up', 'upgrade'];
 
 function open() {
   return renderRouter(
@@ -65,8 +65,23 @@ describe('classements', () => {
 
     fireEvent.press(screen.getByRole('button', { name: 'Créer mon compte' }));
     await waitFor(() => expect(router.getPathname()).toBe('/upgrade'));
-    expect(screen.getByRole('tab', { name: 'Profil' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Amis' })).toBeTruthy();
     expect(mockFetchLeaderboards).not.toHaveBeenCalled();
+  });
+
+  it('l’avatar en haut à droite ouvre le profil (invité compris) ; la barre n’a plus d’entrée Profil', async () => {
+    mockAuth = { configured: true, loading: false, session: session(true), isGuest: true, profile: null };
+    const router = open();
+    expect(screen.queryByRole('tab', { name: 'Profil' })).toBeNull();
+    fireEvent.press(screen.getByRole('button', { name: 'Profil' }));
+    await waitFor(() => expect(router.getPathname()).toBe('/profile'));
+  });
+
+  it('non connecté : la silhouette en haut à droite ouvre la connexion', async () => {
+    mockAuth = { configured: true, loading: false, session: null, isGuest: false, profile: null };
+    const router = open();
+    fireEvent.press(screen.getByRole('button', { name: 'Profil' }));
+    await waitFor(() => expect(router.getPathname()).toBe('/sign-in'));
   });
 
   it('non connecté : même invitation, vers la connexion, sans requête', () => {

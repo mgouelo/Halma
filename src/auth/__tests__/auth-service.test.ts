@@ -2,6 +2,7 @@ import { describe, expect, it, jest } from '@jest/globals';
 import { AuthApiError, AuthRetryableFetchError, type SupabaseClient } from '@supabase/supabase-js';
 
 import {
+  changePseudo,
   fetchProfile,
   updateAvatar,
   refreshAccount,
@@ -108,38 +109,79 @@ describe('connexion, invité, déconnexion', () => {
   });
 });
 
+describe('changePseudo', () => {
+  it('passe par change_pseudo avec le pseudo normalisé (NFC, apostrophe droite, sans espaces)', async () => {
+    const { client, query, asSupabase } = fakeClient({ rpc: ok('Zoé d\'Arc') });
+    await expect(changePseudo(asSupabase, ' Zoe\u0301 d\u2019Arc ')).resolves.toBe('Zoé d\'Arc');
+    expect(client.rpc).toHaveBeenCalledWith('change_pseudo', { new_pseudo: 'Zoé d\'Arc' });
+    expect(query.update).not.toHaveBeenCalled(); // la colonne pseudo n'est plus modifiable directement
+  });
+
+  it.each([
+    ['pseudo_taken', 'Ce pseudo est déjà pris.'],
+    ['pseudo_invalid', 'Ce pseudo n’est pas autorisé.'],
+    ['pseudo_reserved', 'Ce début de pseudo est réservé aux invités.'],
+  ])('traduit le refus %s', async (reason, message) => {
+    const { asSupabase } = fakeClient({ rpc: { data: null, error: { code: 'P0001', message: reason, details: null } } });
+    const failure = await changePseudo(asSupabase, 'Bobby').catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(AuthFailure);
+    expect(failure).toMatchObject({ code: reason, message });
+    expect(describeAuthError(failure)).toBe(message);
+  });
+
+  it('traduit une violation d’unicité (pseudo pris au même moment)', async () => {
+    const { asSupabase } = fakeClient({ rpc: { data: null, error: { code: '23505', message: 'duplicate key' } } });
+    await expect(changePseudo(asSupabase, 'Bobby')).rejects.toMatchObject({ code: 'pseudo_taken' });
+  });
+
+  it('annonce la date du prochain changement possible quand le délai n’est pas écoulé', async () => {
+    const next = new Date(2026, 10, 21, 15, 38);
+    const { asSupabase } = fakeClient({
+      rpc: { data: null, error: { code: 'P0001', message: 'pseudo_too_soon', details: next.toISOString() } },
+    });
+    const failure = await changePseudo(asSupabase, 'Bobby').catch((error: unknown) => error);
+    expect(failure).toMatchObject({ code: 'pseudo_too_soon' });
+    expect((failure as Error).message).toContain('une fois tous les 7 jours');
+    expect((failure as Error).message).toContain('21 novembre à 15 h 38');
+  });
+
+  it('remonte les autres erreurs telles quelles', async () => {
+    const error = { code: 'PGRST301', message: 'JWT expired' };
+    const { asSupabase } = fakeClient({ rpc: { data: null, error } });
+    await expect(changePseudo(asSupabase, 'Bobby')).rejects.toBe(error);
+  });
+});
+
 describe('upgradeGuest', () => {
   const fields = { pseudo: ' Jean.Dupont ', email: ' jean@example.com ', password: 'motdepasse' };
 
-  it('change le pseudo du profil, puis ajoute e-mail et mot de passe au même compte', async () => {
-    const { client, query, asSupabase } = fakeClient();
-    await expect(upgradeGuest(asSupabase, 'u1', fields)).resolves.toEqual({ needsEmailConfirmation: false });
-    expect(client.from).toHaveBeenCalledWith('profiles');
-    expect(query.update).toHaveBeenCalledWith({ pseudo: 'Jean.Dupont' });
-    expect(query.eq).toHaveBeenCalledWith('id', 'u1');
+  it('change le pseudo par change_pseudo, puis ajoute e-mail et mot de passe au même compte', async () => {
+    const { client, query, asSupabase } = fakeClient({ rpc: ok('Jean.Dupont') });
+    await expect(upgradeGuest(asSupabase, fields)).resolves.toEqual({ needsEmailConfirmation: false });
+    expect(client.rpc).toHaveBeenCalledWith('change_pseudo', { new_pseudo: 'Jean.Dupont' });
+    expect(query.update).not.toHaveBeenCalled();
     expect(client.auth.updateUser).toHaveBeenCalledWith({ email: 'jean@example.com', password: 'motdepasse' });
-    expect(client.rpc).not.toHaveBeenCalled(); // l'index unique tranche, pas de vérification préalable
   });
 
   it('signale une confirmation d’e-mail en attente (compte encore invité)', async () => {
     const { asSupabase } = fakeClient({
       updateUser: ok({ user: { id: 'u1', is_anonymous: true, email: '', new_email: 'jean@example.com' } }),
     });
-    await expect(upgradeGuest(asSupabase, 'u1', fields)).resolves.toEqual({ needsEmailConfirmation: true });
+    await expect(upgradeGuest(asSupabase, fields)).resolves.toEqual({ needsEmailConfirmation: true });
   });
 
-  it('traduit un pseudo déjà pris (violation d’unicité) sans toucher à l’e-mail', async () => {
+  it('traduit un pseudo déjà pris sans toucher à l’e-mail', async () => {
     const { client, asSupabase } = fakeClient({
-      update: { data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint' } },
+      rpc: { data: null, error: { code: 'P0001', message: 'pseudo_taken' } },
     });
-    await expect(upgradeGuest(asSupabase, 'u1', fields)).rejects.toMatchObject({ code: 'pseudo_taken' });
+    await expect(upgradeGuest(asSupabase, fields)).rejects.toMatchObject({ code: 'pseudo_taken' });
     expect(client.auth.updateUser).not.toHaveBeenCalled();
   });
 
   it('remonte un e-mail déjà utilisé', async () => {
     const error = new AuthApiError('A user with this email address has already been registered', 422, 'email_exists');
     const { asSupabase } = fakeClient({ updateUser: { data: { user: null }, error } });
-    await expect(upgradeGuest(asSupabase, 'u1', fields)).rejects.toBe(error);
+    await expect(upgradeGuest(asSupabase, fields)).rejects.toBe(error);
     expect(describeAuthError(error)).toBe('Un compte existe déjà avec cette adresse e-mail.');
   });
 });

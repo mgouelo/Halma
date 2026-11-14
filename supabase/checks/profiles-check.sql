@@ -4,6 +4,24 @@
 
 \set ON_ERROR_STOP on
 
+-- Vérifie qu'une instruction échoue avec le message ou le code attendu.
+create function pg_temp.expect_error(statement text, expected text)
+returns void
+language plpgsql
+as $$
+begin
+  execute statement;
+  raise exception 'aurait dû échouer (%) : %', expected, statement;
+exception when others then
+  if sqlerrm like 'aurait dû échouer%' then
+    raise;
+  end if;
+  if sqlerrm <> expected and sqlstate <> expected then
+    raise exception 'erreur inattendue pour « % » : % (%), attendu %', statement, sqlerrm, sqlstate, expected;
+  end if;
+end;
+$$;
+
 -- Deux comptes e-mail et un invité.
 insert into auth.users (id, email, raw_user_meta_data) values
   ('11111111-1111-1111-1111-111111111111', 'alice@example.com', '{"pseudo": "Alice"}'),
@@ -68,11 +86,12 @@ begin
   end loop;
 end $$;
 
--- Accents, espaces, émojis et autre ponctuation refusés.
+-- Autres accents, espaces, émojis et autre ponctuation refusés (é, è, É, È et
+-- l'apostrophe sont vérifiés plus bas).
 do $$
 declare bad text;
 begin
-  foreach bad in array array['Élodie', 'Zoë', 'emoji😀', 'deux mots', 'point!', 'a,b', 'ab', repeat('a', 21)] loop
+  foreach bad in array array['Zoë', 'Agnès-ê', 'emoji😀', 'deux mots', 'point!', 'a,b', 'ab', repeat('a', 21)] loop
     begin
       insert into auth.users (email, raw_user_meta_data) values (md5(bad) || '@example.com', jsonb_build_object('pseudo', bad));
       raise exception 'le pseudo « % » aurait dû être refusé', bad;
@@ -108,13 +127,28 @@ declare n int;
 begin
   assert (select count(*) from public.profiles) = 5, 'un joueur connecté lit tous les profils';
 
-  update public.profiles set pseudo = 'Alice2', avatar = 'seed-123' where id = '11111111-1111-1111-1111-111111111111';
+  update public.profiles set avatar = 'seed-123' where id = '11111111-1111-1111-1111-111111111111';
   get diagnostics n = row_count;
-  assert n = 1, 'Alice modifie son propre profil';
+  assert n = 1, 'Alice modifie son propre avatar';
 
-  update public.profiles set pseudo = 'pirate' where id = '22222222-2222-2222-2222-222222222222';
+  update public.profiles set avatar = 'pirate' where id = '22222222-2222-2222-2222-222222222222';
   get diagnostics n = row_count;
   assert n = 0, 'Alice ne modifie pas le profil de Bob';
+end $$;
+
+-- Le pseudo ne se modifie plus directement : seulement par change_pseudo().
+do $$
+begin
+  update public.profiles set pseudo = 'Alice2' where id = '11111111-1111-1111-1111-111111111111';
+  raise exception 'le pseudo ne devrait plus être modifiable directement';
+exception when insufficient_privilege then null;
+end $$;
+
+do $$
+begin
+  update public.profiles set pseudo_changed_at = null where id = '11111111-1111-1111-1111-111111111111';
+  raise exception 'pseudo_changed_at ne devrait pas être modifiable';
+exception when insufficient_privilege then null;
 end $$;
 
 do $$
@@ -138,18 +172,13 @@ begin
 exception when insufficient_privilege then null;
 end $$;
 
+select pg_temp.expect_error($$select public.change_pseudo('Alïce')$$, 'pseudo_invalid');
+select pg_temp.expect_error($$select public.change_pseudo('BOB_42')$$, 'pseudo_taken');
 do $$
 begin
-  update public.profiles set pseudo = 'Alïce' where id = '11111111-1111-1111-1111-111111111111';
-  raise exception 'un pseudo accentué ne devrait pas être accepté en modification non plus';
-exception when check_violation then null;
-end $$;
-
-do $$
-begin
-  update public.profiles set pseudo = 'BOB_42' where id = '11111111-1111-1111-1111-111111111111';
-  raise exception 'un pseudo déjà pris ne devrait pas être accepté';
-exception when unique_violation then null;
+  assert public.change_pseudo('Alice2') = 'Alice2', 'Alice change de pseudo avec change_pseudo()';
+  assert (select pseudo from public.profiles where id = '11111111-1111-1111-1111-111111111111') = 'Alice2',
+    'le nouveau pseudo est enregistré';
 end $$;
 reset role;
 
@@ -160,5 +189,164 @@ begin
   assert not exists (select 1 from public.profiles where id = '22222222-2222-2222-2222-222222222222'),
     'le profil suit la suppression du compte';
 end $$;
+
+-- é, è, É, È et apostrophe ----------------------------------------------------
+-- La base de vérification est en locale C : lower('É') y vaut 'É'. Ces
+-- vérifications montrent que format et unicité n'en dépendent pas.
+
+do $$
+begin
+  assert public.pseudo_key('ÉLODIE') = 'elodie', 'clé : É devient e sans dépendre de la locale';
+  assert public.pseudo_key('Zoè') = 'zoe' and public.pseudo_key('ZOÉ') = 'zoe', 'clé : accents ignorés';
+  assert public.pseudo_key('d''Artagnan') = 'dartagnan', 'clé : apostrophes retirées';
+  assert public.clean_pseudo(' d’Artagnan ') = 'd''Artagnan', 'apostrophe courbe convertie, espaces retirés';
+  assert public.clean_pseudo('Ze' || U&'\0301' || 'lie') = 'Zélie', 'e + accent séparé recomposé (NFC)';
+end $$;
+
+-- Acceptés à l'inscription (l'apostrophe courbe et l'accent séparé sont nettoyés).
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('a1000000-0000-0000-0000-000000000001', 'zoe@example.com', '{"pseudo": "Zoé"}'),
+  ('a1000000-0000-0000-0000-000000000002', 'elodie@example.com', '{"pseudo": "Élodie"}'),
+  ('a1000000-0000-0000-0000-000000000003', 'dan@example.com', '{"pseudo": "Dan"}'),
+  ('a1000000-0000-0000-0000-000000000004', 'dart@example.com', '{"pseudo": "d’Artagnan"}'),
+  ('a1000000-0000-0000-0000-000000000005', 'helene@example.com', '{"pseudo": "Hélène_È.2"}'),
+  ('a1000000-0000-0000-0000-000000000006', 'zelie@example.com', jsonb_build_object('pseudo', 'Ze' || U&'\0301' || 'lie')),
+  ('a1000000-0000-0000-0000-000000000007', 'eee@example.com', '{"pseudo": "éèÉ"}'),
+  ('a1000000-0000-0000-0000-000000000008', 'frank@example.com', '{"pseudo": "Frank"}');
+insert into auth.users (id, is_anonymous) values ('a1000000-0000-0000-0000-000000000009', true);
+
+do $$
+begin
+  assert (select pseudo from public.profiles where id = 'a1000000-0000-0000-0000-000000000001') = 'Zoé', 'Zoé accepté';
+  assert (select pseudo from public.profiles where id = 'a1000000-0000-0000-0000-000000000004') = 'd''Artagnan',
+    'apostrophe courbe enregistrée en apostrophe droite';
+  assert (select pseudo from public.profiles where id = 'a1000000-0000-0000-0000-000000000005') = 'Hélène_È.2', 'é, è, È acceptés';
+  assert (select pseudo from public.profiles where id = 'a1000000-0000-0000-0000-000000000006') = 'Zélie',
+    'accent séparé recomposé (NFC)';
+  assert (select pseudo_changed_at from public.profiles where id = 'a1000000-0000-0000-0000-000000000001') is null,
+    'pas de date de changement à l''inscription';
+end $$;
+
+-- Refusés : apostrophe au début, à la fin ou doublée, autres accents, moins de 3 lettres.
+do $$
+declare bad text;
+begin
+  foreach bad in array array['''Dan', 'Dan''', 'Da''''n', '''''abc', 'Zoë', 'Zoê', 'Ève-à', 'Ça va', 'é.è', 'é''1', 'Dan‘s', 'Dan`s'] loop
+    begin
+      insert into auth.users (email, raw_user_meta_data) values (md5(bad) || '@example.com', jsonb_build_object('pseudo', bad));
+      raise exception 'le pseudo « % » aurait dû être refusé', bad;
+    exception when check_violation then null;
+    end;
+  end loop;
+end $$;
+
+-- Un pseudo non NFC écrit directement (sans nettoyage) est refusé par la contrainte.
+do $$
+begin
+  update public.profiles set pseudo = 'Ze' || U&'\0301' || 'lie2' where id = 'a1000000-0000-0000-0000-000000000006';
+  raise exception 'un pseudo non NFC aurait dû être refusé';
+exception when check_violation then null;
+end $$;
+
+-- Unicité sans tenir compte de la casse, des accents ni des apostrophes.
+do $$
+declare dup text;
+begin
+  foreach dup in array array['zoe', 'ZOE', 'Zoè', 'ZOÉ', 'elodie', 'ÉLODIE', 'Èlodie', 'Da''n', 'DAN', 'dartagnan', 'D''Arta''gnan', 'helene_e.2', 'eee', 'EÈé'] loop
+    begin
+      insert into auth.users (email, raw_user_meta_data) values (md5(dup) || '@example.com', jsonb_build_object('pseudo', dup));
+      raise exception '« % » aurait dû être refusé comme déjà pris', dup;
+    exception when unique_violation then null;
+    end;
+  end loop;
+end $$;
+
+set role anon;
+do $$
+begin
+  assert not public.is_pseudo_available('zoe'), 'zoe est pris (Zoé)';
+  assert not public.is_pseudo_available('ELODIE'), 'ELODIE est pris (Élodie)';
+  assert not public.is_pseudo_available('Da''n'), 'Da''n est pris (Dan)';
+  assert not public.is_pseudo_available(' D’artagnan '), 'D’artagnan est pris (apostrophe courbe, espaces)';
+  assert public.is_pseudo_available('Zoéline'), 'Zoéline est libre';
+end $$;
+select pg_temp.expect_error($$select public.change_pseudo('Zoéline')$$, '42501');
+reset role;
+
+-- Changer de pseudo ---------------------------------------------------------------
+
+set role authenticated;
+-- Zoé : peut écrire son propre pseudo autrement (casse, accent), ce n'est pas « déjà pris ».
+set request.jwt.claim.sub = 'a1000000-0000-0000-0000-000000000001';
+do $$
+begin
+  assert public.is_pseudo_available('zoe'), 'Zoé ne se gêne pas elle-même';
+  assert public.change_pseudo('Zoé') = 'Zoé', 'redonner son pseudo ne change rien';
+  assert (select pseudo_changed_at from public.profiles where id = 'a1000000-0000-0000-0000-000000000001') is null,
+    'redonner son pseudo ne compte pas comme un changement';
+  assert public.change_pseudo('ZOE') = 'ZOE', 'Zoé devient ZOE';
+end $$;
+select pg_temp.expect_error($$select public.change_pseudo('Élodie')$$, 'pseudo_taken');
+select pg_temp.expect_error($$select public.change_pseudo('dan''')$$, 'pseudo_invalid');
+select pg_temp.expect_error($$select public.change_pseudo('Dan''s')$$, 'pseudo_too_soon');
+
+-- Frank : format, réservé, déjà pris, nettoyage, puis délai de 7 jours.
+set request.jwt.claim.sub = 'a1000000-0000-0000-0000-000000000008';
+select pg_temp.expect_error($$select public.change_pseudo('''Frank')$$, 'pseudo_invalid');
+select pg_temp.expect_error($$select public.change_pseudo('ab')$$, 'pseudo_invalid');
+select pg_temp.expect_error($$select public.change_pseudo(null)$$, 'pseudo_invalid');
+select pg_temp.expect_error($$select public.change_pseudo('Invite-Frank')$$, 'pseudo_reserved');
+select pg_temp.expect_error($$select public.change_pseudo('invi''te-x')$$, 'pseudo_reserved');
+select pg_temp.expect_error($$select public.change_pseudo('dartagnan')$$, 'pseudo_taken');
+select pg_temp.expect_error($$select public.change_pseudo('zoé')$$, 'pseudo_taken');
+do $$
+declare
+  detail text;
+begin
+  assert public.change_pseudo(' Fr’anck ') = 'Fr''anck', 'nouveau pseudo nettoyé et enregistré';
+  assert (select pseudo = 'Fr''anck' and pseudo_changed_at > now() - interval '1 minute'
+    from public.profiles where id = 'a1000000-0000-0000-0000-000000000008'), 'date du changement enregistrée';
+  assert public.change_pseudo('Fr''anck') = 'Fr''anck', 'redonner son pseudo reste permis pendant le délai';
+  begin
+    perform public.change_pseudo('Frankie');
+    raise exception 'un deuxième changement en moins de 7 jours aurait dû être refusé';
+  exception when others then
+    get stacked diagnostics detail = pg_exception_detail;
+    assert sqlerrm = 'pseudo_too_soon', format('erreur inattendue : %s', sqlerrm);
+    assert detail::timestamptz between now() + interval '7 days' - interval '1 minute' and now() + interval '7 days',
+      format('le détail donne la date du prochain changement : %s', detail);
+  end;
+  assert (select pseudo from public.profiles where id = 'a1000000-0000-0000-0000-000000000008') = 'Fr''anck',
+    'le pseudo refusé n''est pas enregistré';
+end $$;
+reset role;
+
+-- Huit jours plus tard : de nouveau permis.
+update public.profiles set pseudo_changed_at = now() - interval '8 days' where id = 'a1000000-0000-0000-0000-000000000008';
+set role authenticated;
+set request.jwt.claim.sub = 'a1000000-0000-0000-0000-000000000008';
+do $$
+begin
+  assert public.change_pseudo('Frankie') = 'Frankie', 'permis après 7 jours';
+end $$;
+
+-- Invité : le premier choix (pseudo « invite-… ») n'est pas soumis au délai et
+-- n'enregistre pas de date ; le changement suivant si.
+set request.jwt.claim.sub = 'a1000000-0000-0000-0000-000000000009';
+select pg_temp.expect_error($$select public.change_pseudo('Gaëtan')$$, 'pseudo_invalid');
+do $$
+begin
+  assert public.change_pseudo('Gaston') = 'Gaston', 'premier choix d''un invité permis';
+  assert (select pseudo_changed_at from public.profiles where id = 'a1000000-0000-0000-0000-000000000009') is null,
+    'le premier choix d''un invité n''est pas daté';
+  assert public.change_pseudo('Gaspard') = 'Gaspard', 'changement suivant permis (premier choix non daté)';
+  assert (select pseudo_changed_at from public.profiles where id = 'a1000000-0000-0000-0000-000000000009') is not null,
+    'le changement suivant est daté';
+end $$;
+select pg_temp.expect_error($$select public.change_pseudo('Gaspardo')$$, 'pseudo_too_soon');
+reset role;
+
+-- Nettoyage : les vérifications suivantes comptent les profils.
+delete from auth.users where id::text like 'a1000000-%';
 
 \echo 'profiles : toutes les vérifications sont passées.'
