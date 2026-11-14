@@ -35,6 +35,7 @@ export default function RootLayout() {
         {/* Par-dessus, sans la barre : parties et rooms. */}
         <Stack.Screen name="game" options={{ title: 'Partie' }} />
         <Stack.Screen name="room/[id]" options={{ title: 'Room' }} />
+        <Stack.Screen name="matchmaking" options={{ title: 'Trouver une partie' }} />
         {/* Par-dessus aussi, sans la barre, avec un bouton « ‹ Retour » : profil, comptes, avatar, informations. */}
         <Stack.Screen name="profile" options={{ title: 'Profil' }} />
         <Stack.Screen name="sign-in" options={{ title: 'Connexion' }} />

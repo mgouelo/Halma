@@ -242,6 +242,14 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
 - Serveur : `friend_requests`, `friendships`, `friend_request_refusals`, fonctions `security definer` seulement ;
   10 demandes reçues au plus (la plus ancienne remplacée), 20 envoyées, 24 h après un refus ; invités exclus.
 
+## Étape 18 : matchmaking (fait)
+
+- « Trouver une partie » : file d'attente (`matchmaking_queue`), appariement dès 2 joueurs (premier arrivé, premier
+  servi) dans une room de matchmaking, compte à rebours de 15 s sur l'heure du serveur pendant lequel d'autres
+  joueurs rejoignent (jusqu'à 6), départ demandé par les clients et vérifié par `game-action` et `begin_game`.
+- Robustesse : verrou global, signes de vie (retrait après 20 s), dissolution et remise en file sous 2 joueurs,
+  nettoyage des rooms jamais lancées. Pas d'IA, pas de réglages, pas d'hôte ; les points s'appliquent.
+
 ## Plus tard
 
 - Invitation directe d'un ami dans une room.

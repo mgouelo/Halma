@@ -32,6 +32,10 @@ export interface RoomRecord {
   id: string;
   hostId: string;
   status: RoomStatus;
+  /** Room créée par le matchmaking : pas d'hôte à gérer, lancement à `startsAt`. */
+  matchmaking: boolean;
+  /** Départ prévu (heure du serveur, ISO 8601) d'une room de matchmaking ; null sinon. */
+  startsAt: string | null;
 }
 
 /** Partie en ligne : l'état du moteur plus ce que le moteur ne connaît pas (forfaits, fin). */
@@ -85,4 +89,6 @@ export type OnlineErrorCode =
   | 'conflict'
   | 'too_many_attempts'
   | 'already_in_room'
+  | 'already_searching'
+  | 'start_too_early'
   | 'server_error';

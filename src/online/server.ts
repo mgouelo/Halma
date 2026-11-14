@@ -137,8 +137,37 @@ async function recordEndOfGame(store: GameStore, game: StoredGame, participants:
   await recordRatingIfAny(store, game, participants);
 }
 
-async function start(store: GameStore, loaded: LoadedRoom, userId: string): Promise<GameResponse> {
+/**
+ * Lancement d'une room de matchmaking, demandé par n'importe lequel de ses
+ * joueurs à la fin du compte à rebours. Idempotent : une room déjà lancée
+ * renvoie sa partie. L'heure prévue est vérifiée ici avec l'horloge du serveur,
+ * puis par la base (`begin_game`, qui fait foi).
+ */
+async function startMatchmaking(
+  store: GameStore,
+  loaded: LoadedRoom,
+  userId: string,
+  options: ServerOptions,
+): Promise<GameResponse> {
   const { room, participants } = loaded;
+  if (room.status !== 'waiting') return { ok: true, game: loaded.game };
+  const now = (options.now ?? Date.now)();
+  if (room.startsAt && Date.parse(room.startsAt) > now) return failure('start_too_early');
+  const count = participants.length;
+  if (!isPlayerCount(count)) return failure('not_enough_players');
+  try {
+    await store.begin(room.id, userId, createGame(count));
+  } catch (error) {
+    // Un autre joueur l'a lancée au même moment : on renvoie la partie.
+    if (!(error instanceof OnlineError && error.code === 'room_started')) throw error;
+  }
+  const after = await store.load(room.id);
+  return { ok: true, game: after?.game ?? null };
+}
+
+async function start(store: GameStore, loaded: LoadedRoom, userId: string, options: ServerOptions): Promise<GameResponse> {
+  const { room, participants } = loaded;
+  if (room.matchmaking) return startMatchmaking(store, loaded, userId, options);
   if (room.hostId !== userId) return failure('not_host');
   if (room.status !== 'waiting') return failure('room_started');
   const count = participants.length;
@@ -168,7 +197,7 @@ export async function handleGameRequest(
       const loaded = await store.load(request.roomId);
       // Une room dont on ne fait pas partie est traitée comme inexistante.
       if (!loaded || !loaded.participants.some((p) => p.userId === userId)) return failure('room_not_found');
-      if (request.action === 'start') return await start(store, loaded, userId);
+      if (request.action === 'start') return await start(store, loaded, userId, options);
 
       const { game, participants } = loaded;
       if (!game) return failure('game_not_started');

@@ -1,5 +1,6 @@
 import { createGame, getAllLegalMoves, type AiLevel, type GameState, type Move, type PlayerId } from '@/game';
 
+import { OnlineError } from '../errors';
 import type { RatingChange, UnrankedReason } from '../rating';
 import { newOnlineGame } from '../referee';
 import type { GameStore, LoadedRoom } from '../server';
@@ -61,9 +62,21 @@ export class MemoryStore implements GameStore {
   recordWinCalls = 0;
   failRecordWin: Error | null = null;
 
-  constructor(options: { participants: Participant[]; hostId?: string; game?: OnlineGame | null }) {
+  constructor(options: {
+    participants: Participant[];
+    hostId?: string;
+    game?: OnlineGame | null;
+    /** Room de matchmaking : départ prévu (ISO 8601). */
+    startsAt?: string;
+  }) {
     const started = options.game !== undefined && options.game !== null;
-    this.room = { id: ROOM_ID, hostId: options.hostId ?? ALICE, status: started ? 'playing' : 'waiting' };
+    this.room = {
+      id: ROOM_ID,
+      hostId: options.hostId ?? ALICE,
+      status: started ? 'playing' : 'waiting',
+      matchmaking: options.startsAt !== undefined,
+      startsAt: options.startsAt ?? null,
+    };
     this.participants = options.participants.map((p) => (started ? p : { ...p, playerIndex: null }));
     this.game = started ? { ...clone(options.game!), id: 'g1', roomId: ROOM_ID, version: 0 } : null;
   }
@@ -75,7 +88,10 @@ export class MemoryStore implements GameStore {
   }
 
   async begin(roomId: string, hostId: string, state: GameState): Promise<void> {
-    if (this.room.status !== 'waiting' || hostId !== this.room.hostId) throw new Error('begin refusé');
+    if (this.room.status !== 'waiting') throw new OnlineError('room_started');
+    // Room de matchmaking : n'importe lequel de ses joueurs la lance (comme begin_game).
+    const allowed = this.room.matchmaking ? this.participants.some((p) => p.userId === hostId) : hostId === this.room.hostId;
+    if (!allowed) throw new Error('begin refusé');
     if (state.players.length !== this.participants.length) throw new Error('nombre de joueurs incohérent');
     this.participants = [...this.participants]
       .sort((a, b) => a.seat - b.seat)
