@@ -7,10 +7,11 @@ import { Colors } from '@/constants/theme';
 
 /**
  * Écrans avec la barre de navigation du bas : accueil, jouer en ligne, réglage
- * des parties hors ligne, profil et classements. Les parties, les rooms, les
- * écrans de compte (connexion, inscription, création de compte, avatar) et les
- * pages d'information (crédits, confidentialité, conditions) sont dans la pile
- * principale, par-dessus : pas de barre, seulement un bouton « ‹ Retour ».
+ * des parties hors ligne, amis et classements. Les parties, les rooms, le
+ * profil, les écrans de compte (connexion, inscription, création de compte,
+ * avatar) et les pages d'information (crédits, confidentialité, conditions)
+ * sont dans la pile principale, par-dessus : pas de barre, seulement un bouton
+ * « ‹ Retour ».
  */
 export default function MainLayout() {
   return (
@@ -25,7 +26,7 @@ export default function MainLayout() {
           <Stack.Screen name="online" options={{ title: 'Jouer en ligne' }} />
           <Stack.Screen name="ai-setup" options={{ title: 'Jouer contre l’IA' }} />
           <Stack.Screen name="local-setup" options={{ title: 'Entre amis' }} />
-          <Stack.Screen name="profile" options={{ title: 'Profil' }} />
+          <Stack.Screen name="friends" options={{ title: 'Amis' }} />
           <Stack.Screen name="leaderboard" options={{ title: 'Classements' }} />
         </Stack>
       </NavBarContext.Provider>

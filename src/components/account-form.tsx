@@ -1,6 +1,14 @@
 import { useState } from 'react';
 
-import { hasErrors, PASSWORD_MIN_LENGTH, validateSignUp, type FieldError, type SignUpFields } from '@/auth/validation';
+import {
+  hasErrors,
+  normalizePseudoInput,
+  PASSWORD_MIN_LENGTH,
+  PSEUDO_HINT,
+  validateSignUp,
+  type FieldError,
+  type SignUpFields,
+} from '@/auth/validation';
 import { playerColor } from '@/constants/theme';
 
 import { authStyles, Notice } from './auth-screen';
@@ -43,9 +51,9 @@ export function AccountForm({ submitLabel, pendingLabel, pending, error, onSubmi
       <DrawnTextInput
         label="Pseudo"
         value={pseudo}
-        onChangeText={edit('pseudo', setPseudo)}
+        onChangeText={edit('pseudo', (value) => setPseudo(normalizePseudoInput(value)))}
         error={errors.pseudo}
-        hint="3 à 20 caractères, dont au moins 3 lettres : lettres sans accent, chiffres, « _ », « - » ou « . »."
+        hint={PSEUDO_HINT}
         autoCapitalize="none"
         autoComplete="username-new"
         textContentType="username"

@@ -10,6 +10,7 @@ import { DrawnCard } from '@/components/drawn-card';
 import { PodiumBadge } from '@/components/leaderboard/podium-badge';
 import { MountainIcon } from '@/components/nav-bar/icons';
 import { useScreenEdges } from '@/components/nav-bar/screen-edges';
+import { ProfileButton } from '@/components/profile-button';
 import { EmptyState, ErrorState, LoadingState } from '@/components/state-view';
 import {
   Colors,
@@ -90,11 +91,14 @@ export default function LeaderboardScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={edges}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.titles}>
-          <Text style={Typography.title} accessibilityRole="header">
-            Classements
-          </Text>
-          <Text style={styles.tagline}>{LEADERBOARD_TAGLINE}</Text>
+        <View style={styles.titleRow}>
+          <View style={styles.titles}>
+            <Text style={Typography.title} accessibilityRole="header">
+              Classements
+            </Text>
+            <Text style={styles.tagline}>{LEADERBOARD_TAGLINE}</Text>
+          </View>
+          <ProfileButton />
         </View>
         {body}
       </ScrollView>
@@ -251,7 +255,14 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     gap: Spacing.four,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.three,
+  },
   titles: {
+    flex: 1,
+    minWidth: 0,
     gap: Spacing.one,
   },
   // Phrase d'accroche : texte courant en demi-gras, comme une devise.

@@ -1,6 +1,6 @@
 // Icônes de la barre de navigation, dessinées au trait noir comme le reste de
-// l'application : logo (l'étoile de assets/icon-source/icon.svg), montagne du
-// classement et silhouette du joueur non connecté. Pions en pastel.
+// l'application : logo (l'étoile de assets/icon-source/icon.svg), deux amis,
+// montagne du classement et silhouette du joueur non connecté. Pions en pastel.
 
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, G, Path, Polygon } from 'react-native-svg';
@@ -84,6 +84,34 @@ export function MountainIcon({ size }: IconProps) {
       <Circle cx={33} cy={16.8} r={3.6} fill={playerColor(1).piece} stroke={Colors.ink} strokeWidth={stroke * 0.8} />
       <Circle cx={19 + shadow / 2} cy={9 + shadow / 2} r={4.6} fill={Colors.ink} />
       <Circle cx={19} cy={9} r={4.6} fill={playerColor(0).piece} stroke={Colors.ink} strokeWidth={stroke * 0.8} />
+    </Svg>
+  );
+}
+
+// Deux silhouettes côte à côte (boîte 48 × 48) : celle de derrière, plus petite, à droite.
+const FRIEND_BACK = { head: { cx: 31, cy: 14, r: 6 }, body: 'M20 42 C20 22 42 22 42 42 Z' };
+const FRIEND_FRONT = { head: { cx: 17, cy: 20, r: 7 }, body: 'M3 42 C3 28 31 28 31 42 Z' };
+
+/**
+ * Amis : deux silhouettes au trait noir, épaule contre épaule, la tête de chacune
+ * en pion pastel (deux couleurs de joueurs), avec l'ombre franche de la DA.
+ */
+export function FriendsIcon({ size }: IconProps) {
+  const stroke = strokeFor(Stroke.regular, 48, size);
+  const shadow = strokeFor(2, 48, size);
+  const figure = (friend: typeof FRIEND_BACK, color: string) => (
+    <G>
+      <Path d={friend.body} transform={`translate(${shadow} ${shadow})`} fill={Colors.ink} />
+      <Path d={friend.body} fill={Colors.paper} stroke={Colors.ink} strokeWidth={stroke} strokeLinejoin="round" />
+      <Circle cx={friend.head.cx + shadow / 2} cy={friend.head.cy + shadow / 2} r={friend.head.r} fill={Colors.ink} />
+      <Circle cx={friend.head.cx} cy={friend.head.cy} r={friend.head.r} fill={color} stroke={Colors.ink} strokeWidth={stroke} />
+    </G>
+  );
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      {figure(FRIEND_BACK, playerColor(2).piece)}
+      {figure(FRIEND_FRONT, playerColor(4).piece)}
+      <Path d="M1.5 42 H46.5" stroke={Colors.ink} strokeWidth={stroke} strokeLinecap="round" />
     </Svg>
   );
 }

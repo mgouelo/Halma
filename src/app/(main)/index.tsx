@@ -11,6 +11,7 @@ import { FlashNoticeBanner } from '@/components/flash-notice-banner';
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
 import { useScreenEdges } from '@/components/nav-bar/screen-edges';
+import { ProfileButton } from '@/components/profile-button';
 import { Colors, MaxContentWidth, MaxWideContentWidth, playerColor, Spacing, Typography } from '@/constants/theme';
 import { createGame } from '@/game';
 import { useMeasuredSize } from '@/hooks/use-measured-size';
@@ -33,7 +34,11 @@ export default function HomeScreen() {
           </Text>
           <Text style={Typography.caption}>Dames chinoises</Text>
         </View>
-        <CreditsLink />
+        {/* En haut à droite : crédits, puis l'avatar du joueur (ouvre le profil). */}
+        <View style={styles.corner}>
+          <CreditsLink />
+          <ProfileButton />
+        </View>
       </View>
       <FlashNoticeBanner />
       <AccountBar />
@@ -134,7 +139,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   titles: {
+    flex: 1,
+    minWidth: 0,
     gap: Spacing.one,
+  },
+  corner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
   },
   preview: {
     flex: 1,

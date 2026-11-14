@@ -40,7 +40,7 @@ describe('retour des écrans sans barre', () => {
     },
   );
 
-  it.each(['/', '/online', '/leaderboard', '/inconnu'])('le secours de %s est l’accueil', (path) => {
+  it.each(['/', '/online', '/leaderboard', '/friends', '/profile', '/profile/', '/inconnu'])('le secours de %s est l’accueil', (path) => {
     expect(backFallback(path)).toBe('/');
   });
 });

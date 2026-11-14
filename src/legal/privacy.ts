@@ -28,7 +28,7 @@ export const PRIVACY: LegalDocument = {
       paragraphs: ['Seulement si vous créez un compte (e-mail ou invité) et jouez en ligne :'],
       bullets: [
         'Compte e-mail : votre adresse e-mail et votre mot de passe (conservé haché par notre hébergeur, jamais en clair). Compte invité : aucun e-mail, seulement un identifiant technique lié à votre appareil.',
-        'Profil : votre pseudo, votre avatar (les choix faits dans l’éditeur) et la date de création du compte.',
+        'Profil : votre pseudo, votre avatar (les choix faits dans l’éditeur), la date de création du compte et celle du dernier changement de pseudo.',
         'Parties en ligne : les rooms que vous créez ou rejoignez (code, hôte, participants), l’état des parties et tous les coups joués, les abandons et forfaits.',
         'Signes de vie : tant qu’une room est ouverte, l’application envoie toutes les 10 secondes l’heure de votre dernier passage, pour savoir si vous êtes encore connecté (au bout de 2 minutes sans signe de vie, vous êtes déclaré forfait).',
         'Statistiques : nombre de victoires en ligne (par niveau d’IA), de parties lancées, et votre série de jours de connexion (le jour de votre dernière ouverture de l’application).',

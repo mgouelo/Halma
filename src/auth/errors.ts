@@ -5,7 +5,15 @@ import { FunctionsFetchError, isAuthError, isAuthRetryableFetchError } from '@su
 /** Échec connu côté application (avant même d'appeler Supabase). */
 export class AuthFailure extends Error {
   constructor(
-    readonly code: 'pseudo_taken' | 'not_configured' | 'profile_missing' | 'not_confirmed' | 'delete_failed',
+    readonly code:
+      | 'pseudo_taken'
+      | 'pseudo_invalid'
+      | 'pseudo_reserved'
+      | 'pseudo_too_soon'
+      | 'not_configured'
+      | 'profile_missing'
+      | 'not_confirmed'
+      | 'delete_failed',
     message: string,
   ) {
     super(message);

@@ -15,7 +15,7 @@ const PROFILE_FALLBACK_PATHS: readonly string[] = [
   '/terms',
 ];
 
-/** Écran de secours du bouton de retour : le profil pour les écrans de compte et d'information, l'accueil sinon. */
+/** Écran de secours du bouton de retour : le profil pour les écrans de compte et d'information, l'accueil sinon (profil compris). */
 export function backFallback(pathname: string): '/' | '/profile' {
   const path = pathname.replace(/\/+$/, '') || '/';
   return PROFILE_FALLBACK_PATHS.includes(path) ? '/profile' : '/';

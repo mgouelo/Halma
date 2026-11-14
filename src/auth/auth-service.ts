@@ -4,6 +4,7 @@
 import { FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js';
 
 import { AuthFailure } from './errors';
+import { PSEUDO_ERROR_MESSAGES, tooSoonMessage } from './pseudo-change';
 import { normalizePseudo, type SignInFields, type SignUpFields } from './validation';
 
 export interface Profile {
@@ -11,6 +12,8 @@ export interface Profile {
   pseudo: string;
   avatar: string | null;
   created_at: string;
+  /** Dernier changement de pseudo (ISO 8601), ou null s'il n'a jamais changé depuis l'inscription. */
+  pseudo_changed_at: string | null;
 }
 
 export interface SignUpResult {
@@ -53,25 +56,47 @@ export async function signOut(client: SupabaseClient): Promise<void> {
 /** Code Postgres d'une violation d'unicité (pseudo déjà pris). */
 const UNIQUE_VIOLATION = '23505';
 
+/** Traduit un refus de change_pseudo en AuthFailure ; les autres erreurs sont renvoyées telles quelles. */
+function pseudoFailure(error: { code?: string; message?: string; details?: string | null }): unknown {
+  const reason = error.message ?? '';
+  if (reason === 'pseudo_taken' || error.code === UNIQUE_VIOLATION) {
+    return new AuthFailure('pseudo_taken', PSEUDO_ERROR_MESSAGES.pseudo_taken);
+  }
+  if (reason === 'pseudo_invalid' || reason === 'pseudo_reserved') {
+    return new AuthFailure(reason, PSEUDO_ERROR_MESSAGES[reason]);
+  }
+  if (reason === 'pseudo_too_soon') {
+    const next = error.details ? new Date(error.details) : null;
+    return new AuthFailure('pseudo_too_soon', tooSoonMessage(next && !Number.isNaN(next.getTime()) ? next : null));
+  }
+  return error;
+}
+
+/**
+ * Change le pseudo du joueur connecté (fonction change_pseudo de la base, qui
+ * vérifie format, unicité et délai de 7 jours). Renvoie le pseudo enregistré.
+ */
+export async function changePseudo(client: SupabaseClient, pseudo: string): Promise<string> {
+  const { data, error } = await client.rpc('change_pseudo', { new_pseudo: normalizePseudo(pseudo) });
+  if (error) throw pseudoFailure(error);
+  return data as string;
+}
+
 /**
  * Transforme le compte invité connecté en compte e-mail, sans changer
  * d'identifiant : le profil (et plus tard les parties) sont conservés.
  *
- * 1. Le pseudo choisi remplace « invite-xxxxxx ». On passe directement par la
- *    mise à jour : l'index unique tranche, et retenter avec son propre nouveau
- *    pseudo ne compte pas comme « déjà pris ».
+ * 1. Le pseudo choisi remplace « invite-xxxxxx », par change_pseudo : le
+ *    premier choix d'un invité n'est pas soumis au délai, et retenter avec son
+ *    propre nouveau pseudo (si l'étape 2 a échoué) ne compte ni comme « déjà
+ *    pris » ni comme un nouveau changement.
  * 2. L'e-mail et le mot de passe sont ajoutés au compte. Si le projet exige la
  *    confirmation des e-mails, le compte reste invité jusqu'au clic sur le lien
  *    reçu (le mot de passe est déjà enregistré) ; sinon il devient aussitôt un
  *    compte e-mail.
  */
-export async function upgradeGuest(client: SupabaseClient, userId: string, fields: SignUpFields): Promise<SignUpResult> {
-  const pseudo = normalizePseudo(fields.pseudo);
-  const { error: profileError } = await client.from('profiles').update({ pseudo }).eq('id', userId);
-  if (profileError) {
-    if (profileError.code === UNIQUE_VIOLATION) throw new AuthFailure('pseudo_taken', 'Ce pseudo est déjà pris.');
-    throw profileError;
-  }
+export async function upgradeGuest(client: SupabaseClient, fields: SignUpFields): Promise<SignUpResult> {
+  await changePseudo(client, fields.pseudo);
 
   const { data, error } = await client.auth.updateUser({ email: fields.email.trim(), password: fields.password });
   if (error) throw error;
@@ -92,7 +117,7 @@ export async function refreshAccount(client: SupabaseClient): Promise<boolean> {
 export async function fetchProfile(client: SupabaseClient, userId: string): Promise<Profile> {
   const { data, error } = await client
     .from('profiles')
-    .select('id, pseudo, avatar, created_at')
+    .select('id, pseudo, avatar, created_at, pseudo_changed_at')
     .eq('id', userId)
     .maybeSingle();
   if (error) throw error;

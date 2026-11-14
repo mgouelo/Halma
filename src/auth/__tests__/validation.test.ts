@@ -2,6 +2,10 @@ import { describe, expect, it } from '@jest/globals';
 
 import {
   hasErrors,
+  normalizePseudo,
+  normalizePseudoInput,
+  pseudoKey,
+  samePseudo,
   validateEmail,
   validatePassword,
   validatePseudo,
@@ -31,7 +35,7 @@ describe('validation', () => {
     },
   );
 
-  it.each(['', 'ab', 'a'.repeat(21), 'avec espace', 'Élodie', 'Zoë', 'point!', 'a,b', 'emoji😀', 'invite-abc', 'INVITE-x1'])(
+  it.each(['', 'ab', 'a'.repeat(21), 'avec espace', 'Zoë', 'point!', 'a,b', 'emoji😀', 'invite-abc', 'INVITE-x1'])(
     'refuse le pseudo « %s »',
     (pseudo) => {
       expect(validatePseudo(pseudo)).not.toBeNull();
@@ -40,6 +44,85 @@ describe('validation', () => {
 
   it.each(['...', '---', '12345', 'a1b2', 'x.y.1', '__a_b__'])('exige au moins 3 lettres : refuse « %s »', (pseudo) => {
     expect(validatePseudo(pseudo)).toBe('Le pseudo doit contenir au moins 3 lettres.');
+  });
+
+  describe('é, è, É, È et apostrophe', () => {
+    it.each(['Zoé', 'Élodie', 'Hélène', 'ÈÉée', 'éèÉ', "d'Artagnan", "L'Été", "Dan's", "O'Neil-2", "a'b'c", 'Zoe\u0301', 'd\u2019Artagnan'])(
+      'accepte « %s »',
+      (pseudo) => {
+        expect(validatePseudo(pseudo)).toBeNull();
+      },
+    );
+
+    it.each(['Zoë', 'Zoê', 'Ève-à', 'Ça va', 'naïve', 'Ñandú', 'Dan‘s', 'Dan`s', 'Dan"s'])('refuse les autres accents et signes : « %s »', (pseudo) => {
+      expect(validatePseudo(pseudo)).toBe(
+        'Seulement des lettres (accents permis : é, è, É, È), des chiffres, « _ », « - », « . » et l’apostrophe.',
+      );
+    });
+
+    it.each(["'Dan", "Dan'", "'Dan'", " Dan' ", 'Dan\u2019'])('refuse l’apostrophe au début ou à la fin : « %s »', (pseudo) => {
+      expect(validatePseudo(pseudo)).toBe('Le pseudo ne peut ni commencer ni finir par une apostrophe.');
+    });
+
+    it.each(["Da''n", 'Da\u2019\u2019n', "Da'\u2019n"])('refuse l’apostrophe doublée : « %s »', (pseudo) => {
+      expect(validatePseudo(pseudo)).toBe('Le pseudo ne peut pas contenir deux apostrophes de suite.');
+    });
+
+    it('compte é, è, É et È comme des lettres, pas l’apostrophe', () => {
+      expect(validatePseudo('é.è')).toBe('Le pseudo doit contenir au moins 3 lettres.');
+      expect(validatePseudo("a'b")).toBe('Le pseudo doit contenir au moins 3 lettres.');
+      expect(validatePseudo('é1è2É')).toBeNull();
+    });
+
+    it('refuse aussi le préfixe des invités écrit avec un accent ou une apostrophe', () => {
+      for (const pseudo of ['invité-x', 'INVITÉ-bob', "invi'te-x"]) {
+        expect(validatePseudo(pseudo)).toBe('Ce début de pseudo est réservé aux invités.');
+      }
+    });
+  });
+
+  describe('normalisation', () => {
+    it('recompose les accents (NFC) et convertit l’apostrophe courbe pendant la saisie', () => {
+      expect(normalizePseudoInput('Zoe\u0301')).toBe('Zoé');
+      expect(normalizePseudoInput('E\u0300ve')).toBe('Ève');
+      expect(normalizePseudoInput('d\u2019Artagnan')).toBe("d'Artagnan");
+      expect(normalizePseudoInput(' Zoé ')).toBe(' Zoé '); // les espaces restent pendant la frappe
+    });
+
+    it('retire en plus les espaces autour pour l’enregistrement', () => {
+      expect(normalizePseudo('  d\u2019Arc ')).toBe("d'Arc");
+      expect(normalizePseudo(' Zoe\u0301 ')).toBe('Zoé');
+    });
+  });
+
+  describe('unicité', () => {
+    it.each([
+      ['Zoé', 'Zoe'],
+      ['Zoé', 'ZOE'],
+      ['Zoè', 'zoé'],
+      ['Élodie', 'elodie'],
+      ['ÉLODIE', 'Èlodie'],
+      ["Dan'", 'Dan'],
+      ["d'Artagnan", 'Dartagnan'],
+      ['Jean.Dupont', 'jean.DUPONT'],
+      ['Zoe\u0301', 'zoé'],
+    ])('« %s » et « %s » sont le même pseudo', (a, b) => {
+      expect(samePseudo(a, b)).toBe(true);
+    });
+
+    it.each([
+      ['Zoé', 'Zoéline'],
+      ['Jean.Dupont', 'Jean-Dupont'],
+      ['Dan', 'Dan_'],
+    ])('« %s » et « %s » sont deux pseudos', (a, b) => {
+      expect(samePseudo(a, b)).toBe(false);
+    });
+
+    it('construit la même clé que la base', () => {
+      expect(pseudoKey('ÉLODIE')).toBe('elodie');
+      expect(pseudoKey("D'Arta'gnan")).toBe('dartagnan');
+      expect(pseudoKey('Hélène_È.2')).toBe('helene_e.2');
+    });
   });
 
   it('valide tout un formulaire', () => {
