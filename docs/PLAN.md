@@ -235,7 +235,14 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
 - Classements : Points (par défaut), Victoires, Série ; les halls par niveau d'IA sont retirés.
 - Profil : points et rang ; écran de fin : « +27 points » et le nouveau total dès que le serveur l'a calculé.
 
-## Plus tard : amis
+## Étape 17 : amis (fait)
 
-- Table `friendships` (demande, acceptation), liste d'amis, invitation directe dans une room.
+- Onglet Amis : liste triée par points (rang parmi tous les joueurs classés), ajout par pseudo (clé `pseudo_key`),
+  boîte aux lettres des demandes reçues (pastille, accepter, refuser, en direct), retrait avec confirmation.
+- Serveur : `friend_requests`, `friendships`, `friend_request_refusals`, fonctions `security definer` seulement ;
+  10 demandes reçues au plus (la plus ancienne remplacée), 20 envoyées, 24 h après un refus ; invités exclus.
+
+## Plus tard
+
+- Invitation directe d'un ami dans une room.
 - Classement entre amis.

@@ -639,12 +639,57 @@ des classements, jour de Paris et séries, connexion du jour), `src/app/(main)/l
 Captures : `docs/screenshots/points-1-classement.png` (classement des points, score négatif),
 `points-2-profil.png` (points et rang), `points-3-fin-victoire.png` et `points-4-fin-defaite.png` (fin de partie classée).
 
+## Amis
+
+Onglet **Amis** de la barre (`src/app/(main)/friends.tsx`), réservé aux **comptes e-mail**.
+
+- **Liste d'amis** (par défaut) : triée par points, le plus haut d'abord. Chaque ligne : avatar, pseudo, points
+  (avec leur signe s'ils sont négatifs) et rang parmi tous les joueurs classés (`points_ranking`) ; un ami sans
+  partie classée a un tiret. États de chargement, d'erreur (« Réessayer ») et de liste vide dans la DA.
+- **Ajouter un ami** : un champ où l'on saisit un pseudo ; il n'existe aucune liste de tous les joueurs. La recherche
+  utilise la clé d'unicité des pseudos (`pseudo_key` après `clean_pseudo`) : « zoe » trouve « Zoé ». Messages :
+  pseudo inconnu, c'est toi, déjà amis, demande déjà envoyée, joueur invité, refus récent, trop de demandes
+  envoyées. Si l'autre m'avait déjà demandé, la demande croisée nous rend amis tout de suite.
+- **Boîte aux lettres** (bouton dessiné : boîte au trait noir, drapeau pastel, enveloppe ; pastille du nombre de
+  demandes, « 9+ » au-delà) : les demandes reçues, de la plus récente à la plus ancienne, avec « Accepter » et
+  « Refuser » ; « ‹ Mes amis » revient à la liste. Une nouvelle demande, ou une demande acceptée par l'autre,
+  apparaît **sans recharger** (Realtime sur `friend_requests` et `friendships`, filtré par la RLS), et tout est relu
+  au retour sur l'écran.
+- **Retirer un ami** : bouton « × » de la ligne, confirmation avec `ConfirmDialog`.
+- **Invité** : « Tes amis t'attendent » et « Créer mon compte » (vers `/upgrade`) ; aucune requête d'amis n'est
+  envoyée. Non connecté : « Se connecter ».
+
+**Serveur** (migration `20261018120000_friends.sql`) :
+
+| Règle | Où |
+| ----- | -- |
+| Comptes e-mail seulement, expéditeur et destinataire (`guest_not_allowed`, `not_eligible`) | `require_email_player`, `send_friend_request` |
+| Pas à soi-même, pas de doublon, pas entre amis | `send_friend_request` (+ contraintes `friend_requests_not_self`, `friend_requests_unique`) |
+| Demande croisée : amitié | `send_friend_request` (renvoie `accepted`) |
+| **10** demandes en attente au plus par destinataire : la plus ancienne est supprimée, la nouvelle arrive en tête | `send_friend_request`, avec verrou des deux profils (`friend_max_pending_received()`) |
+| **20** demandes envoyées en attente au plus par joueur (`too_many_sent`) | `send_friend_request` (`friend_max_pending_sent()`) |
+| Après un refus, **24 heures** avant de redemander la même personne (`recently_refused`) | `respond_friend_request` note le refus (`friend_request_refusals`), `send_friend_request` le vérifie (`friend_refusal_cooldown()`) |
+| Amitié : une ligne par paire, dans l'ordre canonique (`user_a < user_b`) | `friendships` |
+
+- **Lecture** (RLS) : chacun lit les demandes et amitiés qui le concernent ; les refus ne sont lisibles par personne.
+  **Aucune écriture directe** : tout passe par `send_friend_request(pseudo)`, `respond_friend_request(id, accepter)`,
+  `remove_friend(id)`, `get_friends()` et `get_friend_requests()` (`security definer`, identité vérifiée).
+- `get_friends` renvoie l'identifiant de l'amitié (pour la retirer), pseudo, avatar, points et rang : jamais
+  l'e-mail ni l'identifiant de compte. `get_friend_requests` : identifiant de la demande, pseudo, avatar, date.
+- Suppression du compte : amitiés, demandes et refus suivent (cascade depuis `profiles`).
+
+Code : `src/friends/` (appels, messages, tri, données en direct), `src/components/friends/mailbox-button.tsx`.
+Vérifications : `src/friends/__tests__/`, `src/components/__tests__/friends-screen.test.tsx` et
+`supabase/checks/friends-check.sql` (RLS, aucune écriture directe, invités refusés, recherche sans accents,
+demande croisée, limite de 10 et remplacement, limite de 20, délai après refus, suppression du compte).
+Captures : `docs/screenshots/amis-1-liste.png`, `amis-2-demandes.png`, `amis-3-ajout.png`, `amis-4-invite.png`.
+
 ## Barre de navigation
 
 Une barre dessinée en bas de l'écran, dans la DA (trait noir épais, ombre franche) :
 
 - à gauche **Amis** : deux silhouettes au trait noir, épaule contre épaule, têtes en pions pastel ; l'écran
-  `/friends` est provisoire (« Les amis arrivent bientôt ») en attendant le système d'amis ;
+  `/friends` est décrit dans « Amis » ;
 - au milieu **Accueil** : le logo (l'étoile de `assets/icon-source/icon.svg`, redessinée en SVG avec un pion pastel
   par branche), un peu plus grand et qui dépasse de la barre ;
 - à droite **Classements** : une montagne au trait noir, un pion pastel sur chaque sommet.
@@ -1059,7 +1104,9 @@ minimax classique.
     changement de pseudo tous les 7 jours au plus.~~ Fait.
 13. ~~Mot de passe oublié, validation d'e-mail détectée toute seule, modèles d'e-mails en français.~~ Fait.
 14. ~~Points (MMR) des parties en ligne classées, classements Points, Victoires et Série.~~ Fait.
-15. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », amis.
+15. ~~Amis : demandes par pseudo, boîte aux lettres, liste triée par points avec le rang.~~ Fait.
+16. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », invitation d'un
+    ami dans une room, classement entre amis.
 
 ## Inspiration
 
