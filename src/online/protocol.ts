@@ -62,6 +62,8 @@ export interface RoomRow {
   host_id: string;
   status: RoomStatus;
   created_at: string;
+  matchmaking?: boolean | null;
+  starts_at?: string | null;
 }
 
 export interface RoomPlayerRow {
@@ -86,7 +88,7 @@ export interface GameRow {
 }
 
 /** Colonnes à lire pour chaque table. */
-export const ROOM_COLUMNS = 'id, code, host_id, status, created_at';
+export const ROOM_COLUMNS = 'id, code, host_id, status, created_at, matchmaking, starts_at';
 export const ROOM_PLAYER_COLUMNS = 'id, room_id, seat, user_id, ai_level, player_index, last_seen_at';
 export const GAME_COLUMNS = 'id, room_id, state, version, forfeited, status, winner, end_reason';
 

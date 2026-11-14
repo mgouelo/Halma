@@ -382,7 +382,7 @@ classements »).
 ### Parcours
 
 - **Accueil → Jouer en ligne** (`/online`) : il faut être connecté (un compte invité suffit). Sans room active,
-  on en crée une ou on en rejoint une avec son code. Avec une room active, l'écran la montre (« Ta room » :
+  on **trouve une partie** (matchmaking, voir plus bas), on crée une room ou on en rejoint une avec son code. Avec une room active, l'écran la montre (« Ta room » :
   « Ouvrir » ou « Reprendre », et « Quitter la room » dans une salle d'attente) et ne propose ni création ni
   jointure : voir « Une seule room active ».
 - **Salle d'attente** (`/room/[id]`) : code à 6 caractères (sans I, L, O, 0 ni 1) à partager, liste des
@@ -395,6 +395,60 @@ classements »).
   joueur ne peut toucher que ses pions pendant son tour ; le coup s'affiche aussitôt puis est confirmé (ou
   annulé) par le serveur. Les coups des autres arrivent par Realtime et sont animés. Bouton « Abandonner » (en
   partie, on ne « quitte » pas).
+
+### Matchmaking (« Trouver une partie »)
+
+Bouton **« Trouver une partie »** sur « Jouer en ligne » → écran `/matchmaking` (sans barre). Connecté (invité
+compris) et sans room active ; **être en file compte comme être dans une room active** : pas de room en parallèle.
+
+1. **Recherche** : « Recherche d'un adversaire… », durée de la recherche, bouton « Annuler ». Après une minute,
+   une fenêtre propose « Continuer d'attendre » (la question revient une minute plus tard) ou « Annuler la
+   recherche ». Quitter l'écran sans partie annule aussi la recherche.
+2. **Appariement** : dès que 2 joueurs cherchent, le serveur les place dans une même room (créée en attente,
+   `rooms.matchmaking`), **premier arrivé, premier servi**. Départ prévu **15 s** plus tard (`rooms.starts_at`,
+   heure du serveur) : « Adversaire trouvé ! », compte à rebours dans un grand pion pastel, liste des joueurs.
+   Pendant ces 15 s, les joueurs qui arrivent en file rejoignent cette room, jusqu'à **6**. Le compte à rebours
+   suit l'heure du serveur (chaque réponse donne `server_now` : l'écart avec l'horloge du téléphone est corrigé).
+3. **Départ** : à la fin du compte à rebours, chaque client demande le départ à `game-action` (action `start`) ;
+   le serveur refuse avant l'heure prévue (`start_too_early`, l'application redemande une seconde plus tard),
+   lance la partie une seule fois (de 2 à 6 participants) et renvoie la même partie aux demandes suivantes. Tous
+   les joueurs passent alors sur `/room/[id]`.
+4. Pas d'IA, pas de réglage des mutateurs (valeurs par défaut) et pas d'hôte à gérer : `add_ai`, `set_ai_level`,
+   `remove_ai` et `set_room_settings` refusent (`not_host`), et une room de matchmaking ne se rejoint pas par son
+   code. Les **points** s'appliquent comme pour toute partie en ligne avec au moins 2 humains (les invités ont
+   leurs points, mais n'apparaissent au classement qu'avec un compte e-mail).
+
+**Départs et absences** : un joueur qui quitte pendant le compte à rebours (« Annuler », `leave_matchmaking` ou
+`leave_room`) sort de la room ; s'il reste **moins de 2 joueurs**, la room est dissoute et les restants sont
+**remis en file automatiquement**, à leur rang. Un joueur sans signe de vie depuis **20 s** (en file ou en compte à
+rebours) est retiré ; l'application envoie `matchmaking_heartbeat` toutes les 4 s.
+
+**Serveur** (migration `20261020120000_matchmaking.sql`) :
+
+| Élément | Rôle |
+| ------- | ---- |
+| `matchmaking_queue` (joueur, arrivée, dernier signe de vie) | file d'attente ; chacun ne lit que sa ligne (RLS), aucune écriture par les clients ; publiée pour Realtime |
+| `rooms.matchmaking`, `rooms.starts_at` | room de matchmaking et départ prévu |
+| `join_matchmaking()` | entre en file (idempotent) ; `already_in_room` si le joueur est dans une room active |
+| `leave_matchmaking()` | quitte la file ou la room en compte à rebours (dissolution sous 2 joueurs) |
+| `matchmaking_heartbeat()` | signe de vie, fait avancer les appariements, renvoie l'état |
+| `get_matchmaking_status()` | lecture seule de l'état : `idle`, `searching`, `matched` (room, départ, joueurs) ou `started`, avec `server_now` |
+| `create_room`, `join_room` | refusent pendant une recherche (`already_searching`) |
+| `begin_game` | room de matchmaking : lancée par n'importe lequel de ses joueurs, pas avant `starts_at` |
+| `cleanup_abandoned_rooms` | supprime aussi les rooms de matchmaking jamais lancées (10 min après l'heure prévue) et vide la file des absents |
+
+Tout se passe sous un **verrou global** (`pg_advisory_xact_lock`) : les appariements sont sérialisés et aucune
+course ne place un joueur dans deux rooms (verrou par joueur, puis verrou global, puis la room, toujours dans cet
+ordre). Constantes : `matchmaking_countdown()` (15 s), `matchmaking_stale_after()` (20 s),
+`matchmaking_max_players()` (6), et côté application `src/rooms/matchmaking.ts`.
+
+Côté application : `src/rooms/matchmaking.ts` (appels, compte à rebours sur l'heure du serveur, attente longue),
+`src/rooms/use-matchmaking.ts` (file, signes de vie et relecture de secours toutes les 4 s, Realtime sur sa ligne
+de file et ses places en room, départ), `src/app/matchmaking.tsx`. Une room de matchmaking ouverte avant son départ
+renvoie vers `/matchmaking`. Vérifications : `src/rooms/__tests__/matchmaking.test.ts`,
+`src/online/__tests__/matchmaking-start.test.ts`, `src/components/__tests__/matchmaking-screen.test.tsx` et
+`supabase/checks/matchmaking-check.sql`. Captures : `docs/screenshots/matchmaking-1-jouer-en-ligne.png`,
+`matchmaking-2-recherche.png`, `matchmaking-3-attente-longue.png`, `matchmaking-4-compte-a-rebours.png`.
 
 ### Une seule room active
 
@@ -928,7 +982,8 @@ npm run licenses -- --check   # échoue s'il n'est plus à jour (aussi vérifié
 
 `cleanup_abandoned_rooms()` (migration `cleanup_abandoned_rooms`) supprime les salles d'attente sans signe de vie
 d'un humain depuis 1 jour, les parties en cours sans signe de vie depuis 7 jours et les rooms finies depuis
-30 jours (les statistiques déjà comptées restent). La migration la planifie toutes les heures avec **pg_cron**
+30 jours (les statistiques déjà comptées restent). Depuis la migration `matchmaking`, elle supprime aussi les rooms
+de matchmaking jamais lancées (10 minutes après l'heure prévue) et retire de la file les joueurs absents. La migration la planifie toutes les heures avec **pg_cron**
 (tâche `halma-cleanup-abandoned-rooms`, à la minute 17). Si l'extension n'était pas disponible (message
 « pg_cron indisponible » à l'exécution), l'activer dans *Integrations → Cron* du tableau de bord, puis :
 
@@ -1105,7 +1160,8 @@ minimax classique.
 13. ~~Mot de passe oublié, validation d'e-mail détectée toute seule, modèles d'e-mails en français.~~ Fait.
 14. ~~Points (MMR) des parties en ligne classées, classements Points, Victoires et Série.~~ Fait.
 15. ~~Amis : demandes par pseudo, boîte aux lettres, liste triée par points avec le rang.~~ Fait.
-16. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », invitation d'un
+16. ~~Matchmaking : « Trouver une partie », compte à rebours de 15 s sur l'heure du serveur, 2 à 6 joueurs.~~ Fait.
+17. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », invitation d'un
     ami dans une room, classement entre amis.
 
 ## Inspiration

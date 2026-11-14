@@ -22,6 +22,7 @@ import {
   ROOM_CODE_LENGTH,
   type ActiveRoom,
 } from '@/rooms/room-service';
+import { fetchMatchmakingStatus, leaveMatchmaking, type MatchmakingStatus } from '@/rooms/matchmaking';
 import { useOnlineAction } from '@/rooms/use-online-action';
 import { ErrorState, LoadingState } from '@/components/state-view';
 
@@ -59,17 +60,21 @@ function OnlineMenu({ userId }: { userId: string }) {
   // undefined : pas encore lu ; null : aucune room active.
   const [active, setActive] = useState<ActiveRoom | null | undefined>(undefined);
   const [activeError, setActiveError] = useState<string | null>(null);
+  // Recherche en cours (file ou compte à rebours) : on la reprend ou on l'annule.
+  const [search, setSearch] = useState<MatchmakingStatus | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const create = useOnlineAction();
   const join = useOnlineAction();
   const leave = useOnlineAction();
+  const cancelSearch = useOnlineAction();
 
   // Room active, relue à chaque retour sur l'écran (et sur « Réessayer »).
   const loadActive = useCallback(() => {
     let current = true;
-    fetchActiveRoom(getSupabase())
-      .then((room) => {
+    Promise.all([fetchActiveRoom(getSupabase()), fetchMatchmakingStatus(getSupabase())])
+      .then(([room, status]) => {
         if (!current) return;
+        setSearch(status.phase === 'searching' || status.phase === 'matched' ? status : null);
         setActive(room);
         setActiveError(null);
       })
@@ -127,6 +132,33 @@ function OnlineMenu({ userId }: { userId: string }) {
   }
   if (active === undefined) return <LoadingState />;
 
+  // Recherche en cours (en file, ou compte à rebours avant le départ).
+  if (search) {
+    return (
+      <DrawnCard contentStyle={authStyles.card}>
+        <Text style={Typography.heading}>Recherche en cours</Text>
+        <Text style={Typography.caption}>
+          {search.phase === 'matched'
+            ? 'Des joueurs t’attendent : la partie va commencer.'
+            : 'Tu cherches une partie. Tu ne peux pas créer ni rejoindre de room en même temps.'}
+        </Text>
+        {cancelSearch.error && <Notice>{cancelSearch.error}</Notice>}
+        <DrawnButton label="Reprendre" color={playerColor(2).piece} onPress={() => router.push('/matchmaking')} />
+        <DrawnButton
+          label={cancelSearch.pending ? 'Annulation…' : 'Annuler la recherche'}
+          size="small"
+          busy={cancelSearch.pending}
+          onPress={async () => {
+            if (await cancelSearch.run(() => leaveMatchmaking(getSupabase()))) {
+              setSearch(null);
+              loadActive();
+            }
+          }}
+        />
+      </DrawnCard>
+    );
+  }
+
   // Une seule room à la fois : on la reprend ou on la quitte avant d'en créer ou rejoindre une autre.
   if (active) {
     const playing = active.status === 'playing';
@@ -176,6 +208,14 @@ function OnlineMenu({ userId }: { userId: string }) {
 
   return (
     <>
+      <DrawnCard contentStyle={authStyles.card}>
+        <Text style={Typography.heading}>Trouver une partie</Text>
+        <Text style={Typography.caption}>
+          Rejoins d’autres joueurs qui cherchent aussi, de 2 à 6, sans IA. La partie compte pour les points.
+        </Text>
+        <DrawnButton label="Trouver une partie" onPress={() => router.push('/matchmaking')} color={playerColor(3).piece} />
+      </DrawnCard>
+
       <DrawnCard contentStyle={authStyles.card}>
         <Text style={Typography.heading}>Créer une room</Text>
         <Text style={Typography.caption}>

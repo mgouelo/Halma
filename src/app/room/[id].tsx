@@ -74,8 +74,17 @@ function RoomView({ roomId, userId }: { roomId: string; userId: string }) {
     );
   }
   const { game } = snapshot;
+  // Room de matchmaking pas encore lancée : son compte à rebours est sur l'écran de recherche.
+  if (!game && snapshot.room.matchmaking) return <MatchmakingRedirect />;
   if (game) return <OnlineGameView snapshot={{ ...snapshot, game }} userId={userId} now={now} onGame={applyGame} />;
   return <Lobby snapshot={snapshot} userId={userId} now={now} onGame={applyGame} refresh={refresh} leavingRef={leaving} />;
+}
+
+function MatchmakingRedirect() {
+  useEffect(() => {
+    router.replace('/matchmaking');
+  }, []);
+  return <Message text="Recherche d’une partie…" />;
 }
 
 function Message({ text }: { text: string }) {

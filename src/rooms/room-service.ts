@@ -35,6 +35,10 @@ export interface RoomInfo {
   createdAt: string;
   /** Mutateurs réglés par l'hôte (colonne `settings`), figés au lancement. */
   mutators: Mutators;
+  /** Room créée par le matchmaking (compte à rebours, pas d'hôte à gérer). */
+  matchmaking: boolean;
+  /** Départ prévu d'une room de matchmaking (heure du serveur). */
+  startsAt: string | null;
 }
 
 /** Participant avec le pseudo et l'avatar du joueur (null pour une IA). */
@@ -94,6 +98,8 @@ export function roomFromRow(row: ClientRoomRow): RoomInfo {
     status: row.status,
     createdAt: row.created_at,
     mutators: mutatorsFromSettings(row.settings),
+    matchmaking: row.matchmaking === true,
+    startsAt: row.starts_at ?? null,
   };
 }
 

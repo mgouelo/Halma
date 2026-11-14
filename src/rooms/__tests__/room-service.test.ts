@@ -137,6 +137,8 @@ describe('fetchRoom', () => {
       status: 'waiting',
       createdAt: 't',
       mutators: DEFAULT_MUTATORS,
+      matchmaking: false,
+      startsAt: null,
     });
     expect(snapshot?.players.map((p) => [p.id, p.pseudo, p.avatar, p.aiLevel])).toEqual([
       ['p1', null, null, 'easy'],
@@ -186,7 +188,7 @@ describe('room fermée et sortie de la salle d’attente', () => {
   const player = (id: string, userId: string | null, seat: number) =>
     ({ id, userId, aiLevel: userId ? null : 'easy', seat, playerIndex: null, lastSeenAt: '', pseudo: null, avatar: null }) as unknown as RoomSnapshot['players'][number];
   const snapshot = (hostId: string, players: RoomSnapshot['players'], status: 'waiting' | 'playing' = 'waiting'): RoomSnapshot => ({
-    room: { id: 'r1', code: 'K7QM3X', hostId, status, createdAt: '', mutators: DEFAULT_MUTATORS },
+    room: { id: 'r1', code: 'K7QM3X', hostId, status, createdAt: '', mutators: DEFAULT_MUTATORS, matchmaking: false, startsAt: null },
     players,
     game: status === 'playing' ? ({ id: 'g1' } as unknown as RoomSnapshot['game']) : null,
   });

@@ -52,6 +52,7 @@ export const SCREENS_WITH_PROFILE_BUTTON: readonly string[] = ['index', 'friends
 export const SCREENS_WITHOUT_NAV_BAR: readonly string[] = [
   'game',
   'room/[id]',
+  'matchmaking',
   'profile',
   'sign-in',
   'sign-up',

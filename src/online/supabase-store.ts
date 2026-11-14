@@ -33,7 +33,13 @@ export function createSupabaseStore(admin: SupabaseClient): GameStore {
       if (game.error) throw game.error;
       if (!room.data) return null;
       return {
-        room: { id: room.data.id, hostId: room.data.host_id, status: room.data.status },
+        room: {
+          id: room.data.id,
+          hostId: room.data.host_id,
+          status: room.data.status,
+          matchmaking: room.data.matchmaking === true,
+          startsAt: room.data.starts_at ?? null,
+        },
         participants: participantsFromRows(players.data ?? []),
         game: game.data ? storedGameFromRow(game.data) : null,
       };

@@ -20,6 +20,8 @@ export const ONLINE_ERROR_MESSAGES: Record<OnlineErrorCode, string> = {
   conflict: 'La partie a changé en même temps. Réessaie.',
   too_many_attempts: 'Trop de codes essayés. Attends quelques minutes avant de réessayer.',
   already_in_room: 'Tu es déjà dans une room. Reprends-la ou quitte-la depuis « Jouer en ligne » avant d’en rejoindre une autre.',
+  already_searching: 'Tu cherches déjà une partie. Annule la recherche avant de créer ou rejoindre une room.',
+  start_too_early: 'La partie n’a pas encore commencé : encore quelques secondes.',
   server_error: 'Le serveur rencontre un problème. Réessaie dans un moment.',
 };
 
@@ -41,6 +43,8 @@ export const ONLINE_ERROR_STATUS: Record<OnlineErrorCode, number> = {
   conflict: 409,
   too_many_attempts: 429,
   already_in_room: 409,
+  already_searching: 409,
+  start_too_early: 425,
   server_error: 500,
 };
 
