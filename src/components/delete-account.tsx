@@ -26,10 +26,8 @@ export function DeleteAccount({ pseudo, isGuest }: { pseudo: string; isGuest: bo
     return (
       <DrawnButton
         label="Supprimer mon compte"
-        size="small"
         onPress={() => setConfirming(true)}
         accessibilityHint="Demande une confirmation avant de supprimer"
-        style={styles.start}
       />
     );
   }
@@ -59,9 +57,6 @@ export function DeleteAccount({ pseudo, isGuest }: { pseudo: string; isGuest: bo
 }
 
 const styles = StyleSheet.create({
-  start: {
-    alignSelf: 'flex-start',
-  },
   box: {
     gap: Spacing.three,
     padding: Spacing.three,

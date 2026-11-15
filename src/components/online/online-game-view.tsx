@@ -115,7 +115,9 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
     server.endReason === 'abandoned'
       ? 'Il ne reste plus aucun joueur humain dans la partie.'
       : server.endReason === 'forfeit' && winner !== null
-        ? `${nameOf(winner)} gagne : les autres joueurs ont quitté la partie.`
+        ? winner === me
+          ? 'Tu gagnes : les autres joueurs ont quitté la partie.'
+          : `${nameOf(winner)} gagne : les autres joueurs ont quitté la partie.`
         : undefined;
 
   const dismissNotice = () => {
