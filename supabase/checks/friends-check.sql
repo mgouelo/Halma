@@ -122,7 +122,8 @@ begin
   assert (
     select array_agg(name order by ordinality)
     from unnest((select proargnames from pg_proc where proname = 'get_friends')) with ordinality as a (name, ordinality)
-  ) = array['friendship_id', 'pseudo', 'avatar', 'points', 'rank'], 'get_friends : pas d’e-mail ni d’identifiant de compte';
+  ) = array['friendship_id', 'pseudo', 'avatar', 'points', 'rank', 'user_id'],
+    'get_friends : pas d’e-mail ; l’identifiant du joueur en dernier (migration public_profile)';
 end $$;
 
 -- Refus, puis délai de 24 heures -----------------------------------------------------------------------

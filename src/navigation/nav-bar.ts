@@ -46,7 +46,7 @@ export const SCREENS_WITH_PROFILE_BUTTON: readonly string[] = ['index', 'friends
 /**
  * Écrans qui ne montrent pas la barre : ils sont affichés par-dessus le groupe
  * (main) et n'ont qu'un bouton « ‹ Retour ». C'est le cas des parties, des
- * rooms, du profil, des écrans de compte (connexion, inscription, création de
+ * rooms, du profil (le sien et celui d'un autre joueur), des écrans de compte (connexion, inscription, création de
  * compte), de l'éditeur d'avatar et des pages d'information.
  */
 export const SCREENS_WITHOUT_NAV_BAR: readonly string[] = [
@@ -54,6 +54,7 @@ export const SCREENS_WITHOUT_NAV_BAR: readonly string[] = [
   'room/[id]',
   'matchmaking',
   'profile',
+  'player/[id]',
   'sign-in',
   'sign-up',
   'upgrade',

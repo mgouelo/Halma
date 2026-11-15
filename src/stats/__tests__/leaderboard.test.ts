@@ -15,6 +15,7 @@ import {
   LEADERBOARD_ERROR_MESSAGES,
   LEADERBOARD_TAGLINE,
   leaderboardAccess,
+  myPositionLabel,
   podiumPlace,
   type LeaderboardRow,
 } from '../leaderboard';
@@ -51,7 +52,7 @@ describe('classements', () => {
     const top = Array.from({ length: 50 }, (_, i) => row('best_streak', i + 1, `J${i + 1}`, 100 - i));
     const views = groupLeaderboards([...top, row('best_streak', 73, 'Moi', 4, true)]);
     expect(views.best_streak.top).toHaveLength(50);
-    expect(views.best_streak.me).toMatchObject({ rank: 73, pseudo: 'Moi', score: 4, isMe: true });
+    expect(views.best_streak.me).toMatchObject({ rank: 73, pseudo: 'Moi', score: 4, isMe: true, userId: null });
   });
 
   it('garde la ligne du joueur pas encore classé (rang null, score 0)', () => {
@@ -90,7 +91,7 @@ describe('classements', () => {
     expect(formatScore('points', -15)).toBe('-15 points');
     expect(formatScore('points', -1)).toBe('-1 point');
     expect(formatValue(-999)).toBe('-999');
-    expect(entryLabel('points', { rank: 7, pseudo: 'Bob', avatar: null, score: -42, isMe: false })).toBe(
+    expect(entryLabel('points', { rank: 7, pseudo: 'Bob', avatar: null, score: -42, isMe: false, userId: null })).toBe(
       '7e place, Bob, -42 points',
     );
   });
@@ -102,16 +103,32 @@ describe('classements', () => {
     expect(formatPointsDelta(0)).toBe('+0 point');
   });
 
+  it('garde l’identifiant de chaque joueur (null pour un serveur pas encore migré)', () => {
+    const views = groupLeaderboards([
+      { ...row('points', 1, 'Alice', 30), user_id: 'u-alice' },
+      row('points', 2, 'Bob', 10),
+      { ...row('points', 70, 'Moi', 1, true), user_id: 'u-moi' },
+    ]);
+    expect(views.points.top.map((e) => e.userId)).toEqual(['u-alice', null]);
+    expect(views.points.me?.userId).toBe('u-moi');
+  });
+
+  it('annonce la position du joueur dans le bloc « C’est toi »', () => {
+    expect(myPositionLabel(12)).toBe('Tu es 12e');
+    expect(myPositionLabel(1)).toBe('Tu es 1er');
+    expect(myPositionLabel(null)).toBeNull();
+  });
+
   it('écrit les rangs et repère le podium', () => {
     expect([1, 2, 3, 51, null].map(formatRank)).toEqual(['1er', '2e', '3e', '51e', '—']);
     expect([1, 2, 3, 4, null].map(podiumPlace)).toEqual([1, 2, 3, null, null]);
   });
 
   it('donne un libellé complet au lecteur d’écran', () => {
-    expect(entryLabel('wins', { rank: 1, pseudo: 'Alice', avatar: null, score: 5, isMe: true })).toBe(
+    expect(entryLabel('wins', { rank: 1, pseudo: 'Alice', avatar: null, score: 5, isMe: true, userId: null })).toBe(
       '1er place, Alice (toi), 5 victoires',
     );
-    expect(entryLabel('best_streak', { rank: null, pseudo: 'Bob', avatar: null, score: 0, isMe: true })).toBe(
+    expect(entryLabel('best_streak', { rank: null, pseudo: 'Bob', avatar: null, score: 0, isMe: true, userId: null })).toBe(
       'pas encore classé, Bob (toi), 0 jour',
     );
   });

@@ -35,4 +35,10 @@ describe('pages légales', () => {
     }
     expect(body).toMatch(/Supprimer mon compte/);
   });
+
+  it('la politique dit qui peut ouvrir le profil public, et ce qu’il montre', () => {
+    const body = text(PRIVACY);
+    expect(body).toMatch(/Profil public : les autres joueurs connectés avec un compte e-mail peuvent ouvrir votre profil public/);
+    expect(body).toMatch(/votre avatar, votre pseudo, vos points, votre rang, vos victoires et votre plus longue série de connexion, rien d’autre/);
+  });
 });

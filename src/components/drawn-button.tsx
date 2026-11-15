@@ -64,7 +64,7 @@ export function DrawnButton({
               pressed && !inactive && styles.facePressed,
             ]}>
             {busy ? <ActivityIndicator size="small" color={Colors.ink} /> : icon}
-            <Text style={[Typography.button, small && styles.labelSmall, disabled && styles.labelDisabled]}>
+            <Text style={[Typography.button, styles.label, small && styles.labelSmall, disabled && styles.labelDisabled]}>
               {label}
             </Text>
           </View>
@@ -110,6 +110,11 @@ const styles = StyleSheet.create({
   },
   facePressed: {
     transform: [{ translateX: Shadow.offset }, { translateY: Shadow.offset }],
+  },
+  // Un libellé trop long pour une ligne passe à la ligne, centré.
+  label: {
+    flexShrink: 1,
+    textAlign: 'center',
   },
   labelSmall: {
     fontSize: 15,

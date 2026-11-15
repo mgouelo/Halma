@@ -38,11 +38,13 @@ import {
   LEADERBOARD_ERROR_MESSAGES,
   LEADERBOARD_TAGLINE,
   leaderboardAccess,
+  myPositionLabel,
   podiumPlace,
   type Board,
   type BoardView,
   type LeaderboardEntry,
 } from '@/stats/leaderboard';
+import { playerHref, playerProfileLabel } from '@/navigation/player';
 import { fetchLeaderboards } from '@/stats/stats-service';
 
 type Load =
@@ -87,7 +89,7 @@ export default function LeaderboardScreen() {
       />
     );
   } else {
-    body = <Boards key={session.user.id} board={board} onBoard={setBoard} />;
+    body = <Boards key={session.user.id} myId={session.user.id} board={board} onBoard={setBoard} />;
   }
 
   return (
@@ -108,7 +110,7 @@ export default function LeaderboardScreen() {
   );
 }
 
-function Boards({ board, onBoard }: { board: Board; onBoard: (board: Board) => void }) {
+function Boards({ myId, board, onBoard }: { myId: string; board: Board; onBoard: (board: Board) => void }) {
   const [load, setLoad] = useState<Load>({ status: 'loading' });
   const request = useRef(0);
 
@@ -153,7 +155,7 @@ function Boards({ board, onBoard }: { board: Board; onBoard: (board: Board) => v
           onRetry={() => reload(false)}
         />
       )}
-      {load.status === 'ready' && <BoardList board={board} view={load.views[board]} />}
+      {load.status === 'ready' && <BoardList board={board} view={load.views[board]} myId={myId} />}
     </>
   );
 }
@@ -183,7 +185,7 @@ function BoardTabs({ value, onChange }: { value: Board; onChange: (board: Board)
   );
 }
 
-function BoardList({ board, view }: { board: Board; view: BoardView }) {
+function BoardList({ board, view, myId }: { board: Board; view: BoardView; myId: string }) {
   // Personne n'a de score : le serveur ne renvoie que la ligne du joueur, sans rang.
   if (view.top.length === 0 && view.me?.rank == null) {
     return (
@@ -199,7 +201,7 @@ function BoardList({ board, view }: { board: Board; view: BoardView }) {
       {view.top.length > 0 && (
         <DrawnCard contentStyle={styles.rows}>
           {view.top.map((entry, index) => (
-            <Row key={`${entry.rank}-${entry.pseudo}`} board={board} entry={entry} first={index === 0} />
+            <Row key={`${entry.rank}-${entry.pseudo}`} board={board} entry={entry} first={index === 0} myId={myId} />
           ))}
         </DrawnCard>
       )}
@@ -208,8 +210,13 @@ function BoardList({ board, view }: { board: Board; view: BoardView }) {
           <Text style={[Typography.caption, styles.center]} accessibilityElementsHidden importantForAccessibility="no">
             ⋯
           </Text>
+          {view.me.rank !== null && (
+            <Text style={[Typography.heading, styles.center]} accessibilityRole="header">
+              {myPositionLabel(view.me.rank)}
+            </Text>
+          )}
           <DrawnCard contentStyle={styles.rows}>
-            <Row board={board} entry={view.me} first />
+            <Row board={board} entry={view.me} first myId={myId} />
           </DrawnCard>
           {view.me.rank === null && (
             <Text style={[Typography.caption, styles.center]}>Tu n’es pas encore classé ici.</Text>
@@ -220,15 +227,42 @@ function BoardList({ board, view }: { board: Board; view: BoardView }) {
   );
 }
 
-function Row({ board, entry, first }: { board: Board; entry: LeaderboardEntry; first: boolean }) {
+/**
+ * Une ligne du classement : position (numéro sur chaque ligne, médaille du podium
+ * en plus pour les trois premiers), avatar, pseudo, score. Toucher la ligne
+ * ouvre le profil du joueur (le sien pour la ligne « C'est toi »).
+ */
+function Row({ board, entry, first, myId }: { board: Board; entry: LeaderboardEntry; first: boolean; myId: string }) {
+  const href = playerHref(entry.userId, myId);
+  const rowStyle = [styles.row, !first && styles.rowSeparator, entry.isMe && styles.rowMe];
+  const content = <RowContent board={board} entry={entry} />;
+  // Serveur pas encore à jour (pas d'identifiant) : ligne simple, non cliquable.
+  if (!href) {
+    return (
+      <View style={rowStyle} accessible accessibilityLabel={entryLabel(board, entry)}>
+        {content}
+      </View>
+    );
+  }
+  return (
+    <Pressable
+      onPress={() => router.push(href)}
+      accessibilityRole="button"
+      accessibilityLabel={playerProfileLabel(entry.pseudo)}
+      accessibilityValue={{ text: entryLabel(board, entry) }}
+      style={({ pressed }) => [rowStyle, pressed && styles.rowPressed]}>
+      {content}
+    </Pressable>
+  );
+}
+
+function RowContent({ board, entry }: { board: Board; entry: LeaderboardEntry }) {
   const place = podiumPlace(entry.rank);
   return (
-    <View
-      style={[styles.row, !first && styles.rowSeparator, entry.isMe && styles.rowMe]}
-      accessible
-      accessibilityLabel={entryLabel(board, entry)}>
-      <View style={styles.rank}>
-        {place ? <PodiumBadge place={place} /> : <Text style={styles.rankText}>{formatRank(entry.rank)}</Text>}
+    <>
+      <View style={styles.rank} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        {place && <PodiumBadge place={place} size={34} />}
+        <Text style={[styles.rankText, place !== null && styles.rankTextPodium]}>{formatRank(entry.rank)}</Text>
       </View>
       <Avatar value={entry.avatar} seed={entry.pseudo} size={40} />
       <View style={styles.who}>
@@ -241,7 +275,7 @@ function Row({ board, entry, first }: { board: Board; entry: LeaderboardEntry; f
         <Text style={styles.score}>{formatValue(entry.score)}</Text>
         <Text style={styles.unit}>{formatUnit(board, entry.score)}</Text>
       </View>
-    </View>
+    </>
   );
 }
 
@@ -327,6 +361,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
+    // Zone tactile : toute la ligne, au moins 56 points de haut (plus que les 44 requis).
     minHeight: 56,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
@@ -346,6 +381,16 @@ const styles = StyleSheet.create({
   rankText: {
     ...Typography.heading,
     fontSize: 16,
+  },
+  // Sous la médaille : le numéro, en gras, plus petit pour tenir dans la ligne.
+  rankTextPodium: {
+    fontFamily: Fonts.bold,
+    fontSize: 13,
+    lineHeight: 15,
+  },
+  // Ligne touchée : fond pastel pâle, comme un bouton qui s'enfonce.
+  rowPressed: {
+    backgroundColor: playerColor(3).tint,
   },
   who: {
     flex: 1,

@@ -250,6 +250,18 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
 - Robustesse : verrou global, signes de vie (retrait après 20 s), dissolution et remise en file sous 2 joueurs,
   nettoyage des rooms jamais lancées. Pas d'IA, pas de réglages, pas d'hôte ; les points s'appliquent.
 
+## Étape 19 : profil d'un autre joueur (fait)
+
+- Écran `/player/[id]` sans barre (« ‹ Retour ») : avatar, pseudo, points, rang, victoires, plus longue série, et un
+  seul bouton d'amitié selon la relation (envoyer, demande envoyée, accepter ou refuser, retirer avec confirmation).
+  Rien de privé ; son propre identifiant mène à `/profile` ; un invité est invité à créer son compte.
+- Ouvert en touchant une ligne du classement (« C'est toi » : son profil), de la liste d'amis ou des demandes reçues ;
+  croix, Accepter et Refuser inchangés.
+- Serveur : `get_public_profile(p_user)` (comptes e-mail, `player_not_found` pour un inconnu comme pour un invité,
+  aucune donnée privée, pas d'énumération) ; `user_id` ajouté en dernière colonne de `get_leaderboards`,
+  `get_friends` et `get_friend_requests` (anciennes colonnes inchangées).
+- Classement : numéro de position sur chaque ligne, podium compris ; « Tu es 61e » dans le bloc « C'est toi ».
+
 ## Plus tard
 
 - Invitation directe d'un ami dans une room.

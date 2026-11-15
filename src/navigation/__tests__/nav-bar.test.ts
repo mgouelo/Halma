@@ -83,7 +83,7 @@ describe('profil par l’avatar', () => {
     expect([...SCREENS_WITH_PROFILE_BUTTON].sort()).toEqual(['friends', 'index', 'leaderboard']);
   });
 
-  it.each(['game.tsx', 'room/[id].tsx', 'profile.tsx'])('pas d’avatar de profil sur %s', (file) => {
+  it.each(['game.tsx', 'room/[id].tsx', 'profile.tsx', 'player/[id].tsx'])('pas d’avatar de profil sur %s', (file) => {
     expect(readFileSync(join(__dirname, '../../app', file), 'utf8')).not.toContain('ProfileButton');
   });
 });
@@ -109,7 +109,7 @@ describe('écrans avec ou sans la barre', () => {
     );
   });
 
-  it.each(['profile', 'sign-in', 'sign-up', 'upgrade', 'forgot-password', 'reset-password', 'auth/confirmed', 'avatar', 'credits', 'privacy', 'terms'])(
+  it.each(['profile', 'player/[id]', 'sign-in', 'sign-up', 'upgrade', 'forgot-password', 'reset-password', 'auth/confirmed', 'avatar', 'credits', 'privacy', 'terms'])(
     '%s est par-dessus le groupe : pas de barre, un bouton « ‹ Retour »',
     (screen) => {
       expect(SCREENS_WITHOUT_NAV_BAR).toContain(screen);

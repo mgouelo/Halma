@@ -49,7 +49,8 @@ export const PRIVACY: LegalDocument = {
       title: 'Qui voit quoi',
       bullets: [
         'Les autres joueurs connectés voient votre pseudo et votre avatar (salles d’attente, parties, classements).',
-        'Les classements publics montrent votre pseudo, votre avatar, votre score et votre rang. Vos autres statistiques ne sont visibles que par vous (profil).',
+        'Les classements publics montrent votre pseudo, votre avatar, votre score et votre rang.',
+        'Profil public : les autres joueurs connectés avec un compte e-mail peuvent ouvrir votre profil public (en touchant votre ligne dans les classements, dans leur liste d’amis ou dans leurs demandes d’ami reçues) : votre avatar, votre pseudo, vos points, votre rang, vos victoires et votre plus longue série de connexion, rien d’autre. Ils y voient aussi si vous êtes amis ou si une demande d’ami est en attente entre vous. Les invités ne peuvent pas l’ouvrir. Vos autres statistiques (parties lancées, série actuelle) ne sont visibles que par vous (profil).',
         'Les joueurs d’une room voient ses participants, la partie et qui est connecté.',
         'Amis : on ne peut vous ajouter qu’en connaissant votre pseudo exact (il n’existe pas de liste de tous les joueurs). La personne à qui vous envoyez une demande voit votre pseudo, votre avatar et la date de la demande. Vos amis voient votre pseudo, votre avatar, vos points et votre rang au classement des points, rien d’autre. Un refus n’est pas notifié à l’expéditeur ; s’il réessaie dans les 24 heures, l’application lui indique que sa demande a été refusée.',
         'Votre adresse e-mail n’est jamais montrée aux autres joueurs.',

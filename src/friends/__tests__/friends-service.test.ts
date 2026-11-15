@@ -29,6 +29,7 @@ const friend = (pseudo: string, points: number, rank: number | null): Friend => 
   avatar: pseudo,
   points,
   rank,
+  userId: `u-${pseudo}`,
 });
 
 describe('appels au serveur', () => {
@@ -57,25 +58,29 @@ describe('appels au serveur', () => {
     const { asSupabase } = fakeClient({
       data: [
         { friendship_id: 'a', pseudo: 'Basile', avatar: 'x', points: -15, rank: 40 },
-        { friendship_id: 'b', pseudo: 'Zoé', avatar: 'y', points: 120, rank: 3 },
-        { friendship_id: 'c', pseudo: 'Chloé', avatar: 'z', points: 0, rank: null },
+        { friendship_id: 'b', pseudo: 'Zoé', avatar: 'y', points: 120, rank: 3, user_id: 'u-zoe' },
+        { friendship_id: 'c', pseudo: 'Chloé', avatar: 'z', points: 0, rank: null, user_id: 'u-chloe' },
       ],
       error: null,
     });
     const friends = await fetchFriends(asSupabase);
     expect(friends.map((f) => f.pseudo)).toEqual(['Zoé', 'Chloé', 'Basile']);
-    expect(friends[0]).toEqual({ friendshipId: 'b', pseudo: 'Zoé', avatar: 'y', points: 120, rank: 3 });
+    expect(friends[0]).toEqual({ friendshipId: 'b', pseudo: 'Zoé', avatar: 'y', points: 120, rank: 3, userId: 'u-zoe' });
+    // Serveur pas encore migré (pas de user_id) : la ligne reste lisible, sans identifiant.
+    expect(friends[2]).toMatchObject({ pseudo: 'Basile', userId: null });
   });
 
   it('lit les demandes, de la plus récente à la plus ancienne', async () => {
     const { asSupabase } = fakeClient({
       data: [
         { request_id: 'old', pseudo: 'A', avatar: 'a', created_at: '2026-11-10T10:00:00Z' },
-        { request_id: 'new', pseudo: 'B', avatar: 'b', created_at: '2026-11-14T10:00:00Z' },
+        { request_id: 'new', pseudo: 'B', avatar: 'b', created_at: '2026-11-14T10:00:00Z', user_id: 'u-b' },
       ],
       error: null,
     });
-    expect((await fetchFriendRequests(asSupabase)).map((r) => r.id)).toEqual(['new', 'old']);
+    const requests = await fetchFriendRequests(asSupabase);
+    expect(requests.map((r) => r.id)).toEqual(['new', 'old']);
+    expect(requests.map((r) => r.userId)).toEqual(['u-b', null]);
   });
 
   it('transmet les erreurs', async () => {
@@ -108,6 +113,7 @@ describe('messages', () => {
       'request_not_found',
       'friend_not_found',
       'guest_not_allowed',
+      'player_not_found',
     ]) {
       expect(FRIEND_ERROR_MESSAGES).toHaveProperty(code);
     }

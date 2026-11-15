@@ -72,6 +72,8 @@ export interface LeaderboardRow {
   avatar: string | null;
   score: number;
   is_me: boolean;
+  /** Identifiant du joueur (migration public_profile ; absent d'un serveur plus ancien). */
+  user_id?: string | null;
 }
 
 export interface LeaderboardEntry {
@@ -81,6 +83,8 @@ export interface LeaderboardEntry {
   avatar: string | null;
   score: number;
   isMe: boolean;
+  /** Identifiant du joueur, qui ouvre son profil ; null si le serveur ne l'envoie pas. */
+  userId: string | null;
 }
 
 export interface BoardView {
@@ -105,6 +109,7 @@ export function groupLeaderboards(rows: readonly LeaderboardRow[]): Record<Board
       avatar: row.avatar,
       score: row.score,
       isMe: row.is_me,
+      userId: row.user_id ?? null,
     };
     if (entry.rank !== null && entry.rank <= TOP_SIZE) view.top.push(entry);
     else if (entry.isMe) view.me = entry;
@@ -158,4 +163,9 @@ export function entryLabel(board: Board, entry: LeaderboardEntry): string {
   const who = entry.isMe ? `${entry.pseudo} (toi)` : entry.pseudo;
   const rank = entry.rank === null ? 'pas encore classé' : `${formatRank(entry.rank)} place`;
   return `${rank}, ${who}, ${formatScore(board, entry.score)}`;
+}
+
+/** Position du joueur, dans le bloc « C'est toi » : « Tu es 12e », « Tu es 1er » ; null s'il n'est pas classé. */
+export function myPositionLabel(rank: number | null): string | null {
+  return rank === null ? null : `Tu es ${formatRank(rank)}`;
 }

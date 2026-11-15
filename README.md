@@ -259,7 +259,9 @@ victoires (niveau de l'IA la plus forte, idempotence, forfaits et abandons exclu
 classements (cinq, sans les parties lancées ; départage, top 50, ligne du joueur ; invités exclus et refusés,
 invité devenu compte e-mail classé avec ses scores d'invité) ; enfin
 `supabase/checks/account-check.sql` : suppression de compte (hôte en pleine partie, salles d'attente,
-statistiques et classements), limite d'essais de codes, nettoyage des rooms abandonnées.
+statistiques et classements), limite d'essais de codes, nettoyage des rooms abandonnées ; et
+`supabase/checks/public-profile-check.sql` : profil public (relations, invité refusé, joueur inconnu, aucune donnée
+privée) et anciennes colonnes inchangées des classements, des amis et des demandes (voir « Profil d'un joueur »).
 
 ## Plateau : une seule zone tactile
 
@@ -592,8 +594,9 @@ double grâce au verrou de version.
 - `record_game_win` et `advance_login_streak` ne sont pas appelables par les clients (seulement la clé
   `service_role` de l'Edge Function pour la première, rien pour la seconde).
 - `get_leaderboards()` (comptes e-mail seulement) renvoie, pour chacun des 3 classements (points, victoires, série), les
-  50 premiers et la ligne du joueur lui-même, même plus loin : **pseudo, avatar, score, rang** et `is_me`, rien
-  d'autre. L'avatar est `profiles.avatar`, ou à défaut l'identifiant du joueur, qui sert de graine à son avatar
+  50 premiers et la ligne du joueur lui-même, même plus loin : **pseudo, avatar, score, rang**, `is_me` et
+  l'identifiant du joueur (`user_id`, en dernière colonne depuis la migration `public_profile` : il ouvre son
+  profil public), rien d'autre. L'avatar est `profiles.avatar`, ou à défaut l'identifiant du joueur, qui sert de graine à son avatar
   par défaut (les profils sont de toute façon lisibles par les joueurs connectés). Victoires et série : seuls les
   scores positifs sont classés ; points : tout joueur qui a joué au moins une partie classée, points négatifs
   compris. À score égal, le premier à l'avoir atteint passe devant, puis l'ordre alphabétique du pseudo.
@@ -608,9 +611,11 @@ double grâce au verrou de version.
   haute série de connexion), chargés en un seul appel et relus à chaque retour sur l'écran. Les classements par
   niveau d'IA (débutants, confirmés, pros) ont été retirés (leurs colonnes restent comptées). Un score négatif
   s'affiche avec son signe (« -15 »). Chaque ligne :
-  rang (podium dessiné pour les trois premiers : marche de la bonne hauteur, numéro et pion), avatar, pseudo,
-  score. Sa propre ligne est teintée, marquée d'un trait épais et de « C'est toi », et répétée en bas quand on est
-  hors du top 50 (ou pas encore classé). États de chargement, d'erreur (« Réessayer ») et de classement vide ;
+  numéro de position (« 1er », « 2e », « 12e »… sur **toutes** les lignes ; pour les trois premiers, au-dessous du
+  podium dessiné : marche de la bonne hauteur et pion), avatar, pseudo, score. Sa propre ligne est teintée, marquée
+  de « C'est toi », et répétée en bas quand on est hors du top 50 (ou pas encore classé) : ce bloc annonce alors la
+  position en clair (« Tu es 61e »), ou « Tu n'es pas encore classé ici. ». **Toucher une ligne ouvre le profil du
+  joueur** (`/player/[id]`, voir « Profil d'un joueur ») ; la ligne « C'est toi » ouvre son propre profil. États de chargement, d'erreur (« Réessayer ») et de classement vide ;
   message clair sans configuration Supabase. Sous le titre, une seule phrase d'accroche : « Seules les légendes
   apparaissent ici. »
 - **Invité ou non connecté** : à la place de la liste, « Rejoins les légendes » (il faut se connecter à son compte
@@ -710,6 +715,9 @@ Onglet **Amis** de la barre (`src/app/(main)/friends.tsx`), réservé aux **comp
   apparaît **sans recharger** (Realtime sur `friend_requests` et `friendships`, filtré par la RLS), et tout est relu
   au retour sur l'écran.
 - **Retirer un ami** : bouton « × » de la ligne, confirmation avec `ConfirmDialog`.
+- **Profil d'un ami** : toucher la ligne d'un ami, ou celle d'une demande reçue, ouvre le profil du joueur (voir
+  « Profil d'un joueur ») ; la croix, « Accepter » et « Refuser » sont à côté de la zone tactile et gardent leur
+  action.
 - **Invité** : « Tes amis t'attendent » et « Créer mon compte » (vers `/upgrade`) ; aucune requête d'amis n'est
   envoyée. Non connecté : « Se connecter ».
 
@@ -728,8 +736,9 @@ Onglet **Amis** de la barre (`src/app/(main)/friends.tsx`), réservé aux **comp
 - **Lecture** (RLS) : chacun lit les demandes et amitiés qui le concernent ; les refus ne sont lisibles par personne.
   **Aucune écriture directe** : tout passe par `send_friend_request(pseudo)`, `respond_friend_request(id, accepter)`,
   `remove_friend(id)`, `get_friends()` et `get_friend_requests()` (`security definer`, identité vérifiée).
-- `get_friends` renvoie l'identifiant de l'amitié (pour la retirer), pseudo, avatar, points et rang : jamais
-  l'e-mail ni l'identifiant de compte. `get_friend_requests` : identifiant de la demande, pseudo, avatar, date.
+- `get_friends` renvoie l'identifiant de l'amitié (pour la retirer), pseudo, avatar, points, rang et, depuis la
+  migration `public_profile`, l'identifiant de l'ami (`user_id`, pour ouvrir son profil) : jamais l'e-mail.
+  `get_friend_requests` : identifiant de la demande, pseudo, avatar, date et identifiant de l'expéditeur.
 - Suppression du compte : amitiés, demandes et refus suivent (cascade depuis `profiles`).
 
 Code : `src/friends/` (appels, messages, tri, données en direct), `src/components/friends/mailbox-button.tsx`.
@@ -737,6 +746,62 @@ Vérifications : `src/friends/__tests__/`, `src/components/__tests__/friends-scr
 `supabase/checks/friends-check.sql` (RLS, aucune écriture directe, invités refusés, recherche sans accents,
 demande croisée, limite de 10 et remplacement, limite de 20, délai après refus, suppression du compte).
 Captures : `docs/screenshots/amis-1-liste.png`, `amis-2-demandes.png`, `amis-3-ajout.png`, `amis-4-invite.png`.
+
+## Profil d'un joueur
+
+Écran **`/player/[id]`** (`src/app/player/[id].tsx`), par-dessus le groupe `(main)` : sans barre de navigation,
+avec un seul bouton « ‹ Retour », comme `/profile`. On l'ouvre en touchant une ligne :
+
+- du **classement** (toutes les lignes ; la ligne « C'est toi » mène directement à `/profile`) ;
+- de la **liste d'amis** et des **demandes d'ami reçues** (la croix, « Accepter » et « Refuser » gardent leur action).
+
+Chaque ligne cliquable est un bouton d'au moins 44 points de haut (toute la ligne au classement, avatar et pseudo
+chez les amis), libellé « Profil de Zoé » pour les lecteurs d'écran, suivi du détail (« 3e place, Zoé, 120 points »).
+Elle se teinte de citron pâle quand on la touche. Si le serveur n'envoie pas encore d'identifiant (migration pas
+appliquée), la ligne reste affichée mais ne s'ouvre pas. Logique : `src/navigation/player.ts`.
+
+**Contenu** (`src/components/player/public-profile-view.tsx`, mêmes cartes et cases que le profil :
+`StatsCard`, `StatTile`) : avatar, pseudo, puis **un seul** bouton d'amitié selon la relation :
+
+| Relation | Bouton | Après |
+| -------- | ------ | ----- |
+| pas amis, aucune demande | « Envoyer une demande d'ami » (`send_friend_request` avec son pseudo ; messages d'erreur habituels : refus récent de 24 h, trop de demandes…) | « Demande envoyée » (ou amis tout de suite si l'autre avait déjà demandé) |
+| demande envoyée par moi | « Demande envoyée » (désactivé) | — |
+| demande reçue de lui | « Accepter » et « Refuser » (`respond_friend_request`) | amis, ou pas amis |
+| déjà amis | « Retirer des amis », avec confirmation (`ConfirmDialog`) | pas amis |
+
+Après chaque action, le profil est relu (relation à jour, de l'autre côté aussi) ; si la relecture échoue, l'écran
+passe à l'état attendu. Puis les statistiques publiques : **points, rang aux points, victoires, plus longue série**.
+
+- **Rien de privé** : ni « Se déconnecter », ni « Supprimer mon compte », ni changement de pseudo, ni éditeur
+  d'avatar, ni « Créer mon compte », ni parties lancées ou série actuelle.
+- **Son propre identifiant** : redirection vers `/profile` (`Redirect` d'Expo Router).
+- **Invité** (par un lien) : « Crée ton compte » et le bouton « Créer mon compte » (vers `/upgrade`), sans requête ;
+  il n'a de toute façon ni classement ni amis. Non connecté : « Se connecter ».
+- **Joueur inconnu ou invité** : « Joueur introuvable ». Erreur réseau : « Réessayer ».
+
+**Serveur** (migration `20261022120000_public_profile.sql`) :
+
+- `get_public_profile(p_user uuid)` (`security definer`, réservée aux comptes e-mail connectés : `guest_not_allowed`
+  pour un invité, refusée à `anon`) renvoie pseudo, avatar, points, rang (null avant la première partie classée),
+  victoires, plus longue série et la relation : `self`, `friends` (avec `friendship_id`), `request_sent`,
+  `request_received` (avec `request_id`) ou `none`. Joueur inconnu ou invité : `player_not_found`, la même erreur
+  dans les deux cas. **Jamais** l'e-mail, les parties lancées ni aucune autre donnée privée.
+- **Pas d'énumération** : la fonction ne liste ni ne cherche de joueurs ; elle lit un identifiant déjà connu (venu
+  du classement, de la liste d'amis ou d'une demande).
+- `get_leaderboards`, `get_friends` et `get_friend_requests` renvoient en plus `user_id`, **en dernière colonne** :
+  les anciennes colonnes gardent leur nom et leur ordre, l'application déjà installée continue de fonctionner. Changer
+  le type de retour d'une fonction impose de la supprimer puis de la recréer : les `revoke` et `grant` d'origine sont
+  refaits. Les clients ne peuvent toujours rien écrire directement.
+
+Code : `src/players/` (appel à `get_public_profile`, relation, état de l'écran), `src/navigation/player.ts`.
+Vérifications : `src/components/__tests__/player-screen.test.tsx` (chaque relation, boutons privés absents,
+redirection, invité, joueur introuvable), `src/players/__tests__/`, `src/navigation/__tests__/player.test.ts`, les
+tests des écrans Amis et Classements (lignes cliquables, croix, Accepter et Refuser intacts, numéro de position) et
+`supabase/checks/public-profile-check.sql`.
+Captures : `docs/screenshots/joueur-1-profil.png` (pas amis), `joueur-2-demande-envoyee.png`,
+`joueur-3-demande-recue.png`, `joueur-4-amis-retirer.png` (confirmation), `joueur-5-classement.png` (numéro sur
+chaque ligne, podium compris), `joueur-6-classement-bas.png` (« Tu es 61e »), `joueur-7-invite.png` (invité).
 
 ## Barre de navigation
 
@@ -764,7 +829,7 @@ entre amis (local), amis et classements (le layout empile une pile Expo Router a
 est dans la pile principale, **par-dessus** le groupe, donc sans barre (rien à maintenir pour la masquer) :
 
 - les parties (`/game`) et les rooms (`/room/[id]`), avec leurs propres boutons ;
-- le profil (`/profile`), les écrans de compte (`/sign-in`, `/sign-up`, `/upgrade`, `/forgot-password`,
+- le profil (`/profile`), le profil d'un autre joueur (`/player/[id]`), les écrans de compte (`/sign-in`, `/sign-up`, `/upgrade`, `/forgot-password`,
   `/reset-password`, et `/auth/confirmed` sans bouton de retour), l'éditeur d'avatar
   (`/avatar`) et les pages d'information (`/credits`, `/privacy`, `/terms`) : **un seul bouton, « ‹ Retour »**
   (`src/components/back-button.tsx`).
@@ -1043,8 +1108,11 @@ Toujours installer les paquets Expo avec `npx expo install <paquet>` pour obteni
 
 ## Organisation
 
-- `src/app/` : routes Expo Router. Avec la barre de navigation, dans `(main)/` : `index.tsx` (accueil), `ai-setup.tsx` (réglage d'une partie contre l'IA), `local-setup.tsx` (réglage d'une partie entre amis), `online.tsx` (créer, rejoindre, reprendre ou quitter sa room), `profile.tsx` et `leaderboard.tsx` (classements). Sans la barre, par-dessus : `game.tsx` (la partie ; `/game?players=4` pour 2 à 6 amis sur le même appareil, `/game?ai=medium,hard` contre des IA, `/game` seul à deux), `room/[id].tsx` (salle d'attente puis partie en ligne), et avec un bouton « ‹ Retour » : `sign-in.tsx`, `sign-up.tsx`, `upgrade.tsx`, `avatar.tsx`, `credits.tsx`, `privacy.tsx`, `terms.tsx`.
-- `src/navigation/` : logique de la barre de navigation ; `src/components/nav-bar/` : la barre et ses icônes.
+- `src/app/` : routes Expo Router. Avec la barre de navigation, dans `(main)/` : `index.tsx` (accueil), `ai-setup.tsx` (réglage d'une partie contre l'IA), `local-setup.tsx` (réglage d'une partie entre amis), `online.tsx` (créer, rejoindre, reprendre ou quitter sa room), `profile.tsx` et `leaderboard.tsx` (classements). Sans la barre, par-dessus : `game.tsx` (la partie ; `/game?players=4` pour 2 à 6 amis sur le même appareil, `/game?ai=medium,hard` contre des IA, `/game` seul à deux), `room/[id].tsx` (salle d'attente puis partie en ligne), et avec un bouton « ‹ Retour » : `profile.tsx`, `player/[id].tsx` (profil d'un autre joueur), `sign-in.tsx`, `sign-up.tsx`, `upgrade.tsx`, `avatar.tsx`, `credits.tsx`, `privacy.tsx`, `terms.tsx`.
+- `src/navigation/` : logique de la barre de navigation et du profil ouvert depuis une ligne (`player.ts`) ;
+  `src/components/nav-bar/` : la barre et ses icônes.
+- `src/players/` : profil public d'un autre joueur (`get_public_profile`) ; `src/app/player/[id].tsx` et
+  `src/components/player/` : son écran.
 - `src/stats/` : statistiques, classements et séries de connexion (voir « Statistiques et classements »).
 - `src/credits/` : données de la page Crédits (générées par `scripts/generate-licenses.mjs`) ; `src/legal/` : textes
   de la politique de confidentialité et des conditions d'utilisation (brouillons).
@@ -1161,7 +1229,9 @@ minimax classique.
 14. ~~Points (MMR) des parties en ligne classées, classements Points, Victoires et Série.~~ Fait.
 15. ~~Amis : demandes par pseudo, boîte aux lettres, liste triée par points avec le rang.~~ Fait.
 16. ~~Matchmaking : « Trouver une partie », compte à rebours de 15 s sur l'heure du serveur, 2 à 6 joueurs.~~ Fait.
-17. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », invitation d'un
+17. ~~Profil d'un autre joueur (depuis le classement, les amis et les demandes), numéro de position sur chaque ligne
+    du classement.~~ Fait.
+18. Publication sur les stores (voir `docs/PUBLICATION.md`), notifications « c'est ton tour », invitation d'un
     ami dans une room, classement entre amis.
 
 ## Inspiration

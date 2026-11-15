@@ -1,5 +1,6 @@
 // Écran « Amis » : invité (aucune requête), liste triée par points, boîte aux
-// lettres, ajout par pseudo, retrait avec confirmation, Realtime.
+// lettres, ajout par pseudo, retrait avec confirmation, Realtime ; une ligne
+// ouvre le profil du joueur sans casser la croix, Accepter ni Refuser.
 
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
@@ -62,14 +63,15 @@ const FriendsScreen = require('@/app/(main)/friends').default;
 const mocked = <T extends (...args: never[]) => unknown>(fn: T) => fn as unknown as jest.MockedFunction<T>;
 
 const FRIENDS: Friend[] = [
-  { friendshipId: 'f1', pseudo: 'Zoé', avatar: 'z', points: 120, rank: 3 },
-  { friendshipId: 'f2', pseudo: 'Basile', avatar: 'b', points: -15, rank: 40 },
-  { friendshipId: 'f3', pseudo: 'Chloé', avatar: 'c', points: 0, rank: null },
+  { friendshipId: 'f1', pseudo: 'Zoé', avatar: 'z', points: 120, rank: 3, userId: 'u-zoe' },
+  { friendshipId: 'f2', pseudo: 'Basile', avatar: 'b', points: -15, rank: 40, userId: 'u-basile' },
+  { friendshipId: 'f3', pseudo: 'Chloé', avatar: 'c', points: 0, rank: null, userId: 'u-chloe' },
 ];
 const REQUESTS: FriendRequest[] = [
-  { id: 'r1', pseudo: 'Noé', avatar: 'n', createdAt: new Date().toISOString() },
-  { id: 'r2', pseudo: 'Iris', avatar: 'i', createdAt: '2026-01-01T00:00:00Z' },
+  { id: 'r1', pseudo: 'Noé', avatar: 'n', createdAt: new Date().toISOString(), userId: 'u-noe' },
+  { id: 'r2', pseudo: 'Iris', avatar: 'i', createdAt: '2026-01-01T00:00:00Z', userId: 'u-iris' },
 ];
+const profileOf = (id: string) => ({ pathname: '/player/[id]', params: { id } });
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -104,11 +106,12 @@ describe('liste d’amis', () => {
   it('triée par points, avec le rang (ou un tiret)', async () => {
     render(<FriendsScreen />);
     await waitFor(() => expect(screen.getByText('Zoé')).toBeTruthy());
-    const labels = screen.getAllByLabelText(/points?, /).map((node) => node.props.accessibilityLabel);
-    expect(labels).toEqual([
-      'Zoé, 120 points, 3e au classement',
-      'Chloé, 0 point, pas encore de rang',
-      'Basile, -15 points, 40e au classement',
+    const rows = screen.getAllByLabelText(/^Profil de /);
+    expect(rows.map((node) => node.props.accessibilityLabel)).toEqual(['Profil de Zoé', 'Profil de Chloé', 'Profil de Basile']);
+    expect(rows.map((node) => node.props.accessibilityValue.text)).toEqual([
+      '120 points, 3e au classement',
+      '0 point, pas encore de rang',
+      '-15 points, 40e au classement',
     ]);
     expect(screen.getByText('Rang —')).toBeTruthy();
     expect(screen.getByText('-15')).toBeTruthy();
@@ -227,5 +230,47 @@ describe('boîte aux lettres', () => {
       mockChannel.handlers[0].callback();
     });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Demandes d’ami : 1 en attente' })).toBeTruthy());
+  });
+});
+
+describe('ouvrir le profil d’un joueur', () => {
+  it('toucher un ami ouvre son profil ; la croix garde son action', async () => {
+    mocked(removeFriend).mockResolvedValue(undefined);
+    render(<FriendsScreen />);
+    await waitFor(() => expect(screen.getByText('Zoé')).toBeTruthy());
+    const row = screen.getByRole('button', { name: 'Profil de Zoé' });
+    // Zone tactile d'au moins 44 points.
+    expect(row).toHaveStyle({ minHeight: 44 });
+    fireEvent.press(row);
+    expect(router.push).toHaveBeenCalledWith(profileOf('u-zoe'));
+
+    jest.mocked(router.push).mockClear();
+    fireEvent.press(screen.getByRole('button', { name: 'Retirer Zoé de tes amis' }));
+    expect(router.push).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Retirer Zoé de tes amis ?', { hidden: true })).toBeTruthy();
+  });
+
+  it('toucher une demande reçue ouvre le profil de l’expéditeur ; Accepter et Refuser gardent leur action', async () => {
+    mocked(respondFriendRequest).mockResolvedValue(undefined);
+    render(<FriendsScreen />);
+    await waitFor(() => expect(screen.getByText('Zoé')).toBeTruthy());
+    fireEvent.press(screen.getByRole('button', { name: 'Demandes d’ami : 2 en attente' }));
+    fireEvent.press(screen.getByRole('button', { name: 'Profil de Iris' }));
+    expect(router.push).toHaveBeenCalledWith(profileOf('u-iris'));
+
+    jest.mocked(router.push).mockClear();
+    fireEvent.press(screen.getAllByRole('button', { name: 'Accepter' })[0]);
+    await waitFor(() => expect(respondFriendRequest).toHaveBeenCalledWith(mockClient, 'r1', true));
+    fireEvent.press(screen.getAllByRole('button', { name: 'Refuser' })[1]);
+    await waitFor(() => expect(respondFriendRequest).toHaveBeenCalledWith(mockClient, 'r2', false));
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it('sans identifiant (serveur pas encore migré), la ligne reste lisible mais ne s’ouvre pas', async () => {
+    mocked(fetchFriends).mockResolvedValue([{ ...FRIENDS[0], userId: null }]);
+    render(<FriendsScreen />);
+    await waitFor(() => expect(screen.getByText('Zoé')).toBeTruthy());
+    expect(screen.queryByRole('button', { name: 'Profil de Zoé' })).toBeNull();
+    expect(screen.getByLabelText('Zoé, 120 points, 3e au classement')).toBeTruthy();
   });
 });

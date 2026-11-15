@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,7 +16,17 @@ import { FriendsIcon } from '@/components/nav-bar/icons';
 import { useScreenEdges } from '@/components/nav-bar/screen-edges';
 import { ProfileButton } from '@/components/profile-button';
 import { EmptyState, ErrorState, LoadingState } from '@/components/state-view';
-import { Colors, Fonts, MaxContentWidth, playerColor, Spacing, Stroke, TouchTarget, Typography } from '@/constants/theme';
+import {
+  Colors,
+  Fonts,
+  MaxContentWidth,
+  playerColor,
+  Radius,
+  Spacing,
+  Stroke,
+  TouchTarget,
+  Typography,
+} from '@/constants/theme';
 import {
   describeFriendError,
   formatRequestAge,
@@ -29,6 +39,7 @@ import {
 } from '@/friends/friends-service';
 import { useFriends } from '@/friends/use-friends';
 import { getSupabase } from '@/lib/supabase';
+import { playerHref, playerProfileLabel } from '@/navigation/player';
 import { formatRank, formatScore, formatValue } from '@/stats/leaderboard';
 
 /**
@@ -88,6 +99,46 @@ export default function FriendsScreen() {
   );
 }
 
+/**
+ * Partie de la ligne qui ouvre le profil du joueur (avatar, pseudo, détails) ;
+ * les boutons de la ligne (croix, Accepter, Refuser) sont à côté, pas dedans,
+ * et gardent leur action. Sans identifiant (serveur pas encore à jour), la
+ * ligne n'est pas cliquable.
+ */
+function ProfileTouch({
+  userId,
+  myId,
+  pseudo,
+  details,
+  children,
+}: {
+  userId: string | null;
+  myId: string;
+  pseudo: string;
+  /** Lu après le libellé « Profil de … » (points, rang, date). */
+  details: string;
+  children: ReactNode;
+}) {
+  const href = playerHref(userId, myId);
+  if (!href) {
+    return (
+      <View style={styles.rowMain} accessible accessibilityLabel={`${pseudo}, ${details}`}>
+        {children}
+      </View>
+    );
+  }
+  return (
+    <Pressable
+      onPress={() => router.push(href)}
+      accessibilityRole="button"
+      accessibilityLabel={playerProfileLabel(pseudo)}
+      accessibilityValue={{ text: details }}
+      style={({ pressed }) => [styles.rowMain, styles.rowTouch, pressed && styles.rowPressed]}>
+      {children}
+    </Pressable>
+  );
+}
+
 function FriendsPanel({ userId }: { userId: string }) {
   const { load, reload } = useFriends(userId);
   const [view, setView] = useState<'friends' | 'requests'>('friends');
@@ -122,7 +173,7 @@ function FriendsPanel({ userId }: { userId: string }) {
             Demandes reçues
           </Text>
         </View>
-        <RequestList requests={requests} onChange={() => reload(true)} />
+        <RequestList requests={requests} myId={userId} onChange={() => reload(true)} />
       </>
     );
   }
@@ -146,7 +197,13 @@ function FriendsPanel({ userId }: { userId: string }) {
       ) : (
         <DrawnCard contentStyle={styles.rows}>
           {friends.map((friend, index) => (
-            <FriendRow key={friend.friendshipId} friend={friend} first={index === 0} onRemove={() => setRemoving(friend)} />
+            <FriendRow
+              key={friend.friendshipId}
+              friend={friend}
+              myId={userId}
+              first={index === 0}
+              onRemove={() => setRemoving(friend)}
+            />
           ))}
         </DrawnCard>
       )}
@@ -226,15 +283,26 @@ function AddFriend({ onSent }: { onSent: () => void }) {
   );
 }
 
-function FriendRow({ friend, first, onRemove }: { friend: Friend; first: boolean; onRemove: () => void }) {
+function FriendRow({
+  friend,
+  myId,
+  first,
+  onRemove,
+}: {
+  friend: Friend;
+  myId: string;
+  first: boolean;
+  onRemove: () => void;
+}) {
   const rank = friend.rank === null ? '—' : formatRank(friend.rank);
   const spokenRank = friend.rank === null ? 'pas encore de rang' : `${formatRank(friend.rank)} au classement`;
   return (
     <View style={[styles.row, !first && styles.rowSeparator]}>
-      <View
-        style={styles.rowMain}
-        accessible
-        accessibilityLabel={`${friend.pseudo}, ${formatScore('points', friend.points)}, ${spokenRank}`}>
+      <ProfileTouch
+        userId={friend.userId}
+        myId={myId}
+        pseudo={friend.pseudo}
+        details={`${formatScore('points', friend.points)}, ${spokenRank}`}>
         <Avatar value={friend.avatar} seed={friend.avatar} size={44} />
         <View style={styles.flex}>
           <Text style={[Typography.heading, styles.pseudo]} numberOfLines={1}>
@@ -246,7 +314,7 @@ function FriendRow({ friend, first, onRemove }: { friend: Friend; first: boolean
           <Text style={styles.score}>{formatValue(friend.points)}</Text>
           <Text style={styles.unit}>{Math.abs(friend.points) > 1 ? 'points' : 'point'}</Text>
         </View>
-      </View>
+      </ProfileTouch>
       <Pressable
         onPress={onRemove}
         accessibilityRole="button"
@@ -261,7 +329,15 @@ function FriendRow({ friend, first, onRemove }: { friend: Friend; first: boolean
   );
 }
 
-function RequestList({ requests, onChange }: { requests: FriendRequest[]; onChange: () => void }) {
+function RequestList({
+  requests,
+  myId,
+  onChange,
+}: {
+  requests: FriendRequest[];
+  myId: string;
+  onChange: () => void;
+}) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -293,7 +369,11 @@ function RequestList({ requests, onChange }: { requests: FriendRequest[]; onChan
       <DrawnCard contentStyle={styles.rows}>
         {requests.map((request, index) => (
           <View key={request.id} style={[styles.request, index > 0 && styles.rowSeparator]}>
-            <View style={styles.rowMain}>
+            <ProfileTouch
+              userId={request.userId}
+              myId={myId}
+              pseudo={request.pseudo}
+              details={`demande d’ami ${formatRequestAge(request.createdAt)}`}>
               <Avatar value={request.avatar} seed={request.avatar} size={44} />
               <View style={styles.flex}>
                 <Text style={[Typography.heading, styles.pseudo]} numberOfLines={1}>
@@ -301,7 +381,7 @@ function RequestList({ requests, onChange }: { requests: FriendRequest[]; onChan
                 </Text>
                 <Text style={Typography.caption}>{formatRequestAge(request.createdAt)}</Text>
               </View>
-            </View>
+            </ProfileTouch>
             <View style={styles.requestActions}>
               <DrawnButton
                 label="Accepter"
@@ -387,6 +467,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
+  },
+  // Partie cliquable d'une ligne : au moins 44 points de haut, coins arrondis quand on la touche.
+  rowTouch: {
+    minHeight: TouchTarget,
+    borderRadius: Radius.small,
+  },
+  rowPressed: {
+    backgroundColor: playerColor(3).tint,
   },
   pseudo: {
     fontSize: 16,

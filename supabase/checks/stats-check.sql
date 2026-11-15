@@ -246,11 +246,12 @@ end $$;
 update public.player_stats set wins_at = '2026-01-01' where user_id = 'b2000000-0000-0000-0000-000000000002';
 update public.player_stats set wins_at = '2026-02-01' where user_id = 'c2000000-0000-0000-0000-000000000003';
 
--- La fonction ne renvoie que pseudo, avatar, score, rang (et la ligne du joueur).
+-- La fonction ne renvoie que pseudo, avatar, score, rang (et la ligne du joueur),
+-- plus l'identifiant du joueur, en dernier (migration public_profile).
 do $$
 begin
   assert pg_get_function_result('public.get_leaderboards()'::regprocedure)
-    = 'TABLE(board text, rank integer, pseudo text, avatar text, score integer, is_me boolean)',
+    = 'TABLE(board text, rank integer, pseudo text, avatar text, score integer, is_me boolean, user_id uuid)',
     'colonnes du classement';
 end $$;
 

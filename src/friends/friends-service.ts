@@ -16,6 +16,8 @@ export interface Friend {
   points: number;
   /** Rang parmi tous les joueurs classés ; null avant la première partie classée. */
   rank: number | null;
+  /** Identifiant du joueur (ouvre son profil) ; null si le serveur ne l'envoie pas encore. */
+  userId: string | null;
 }
 
 export interface FriendRequest {
@@ -23,6 +25,8 @@ export interface FriendRequest {
   pseudo: string;
   avatar: string;
   createdAt: string;
+  /** Identifiant de l'expéditeur (ouvre son profil) ; null si le serveur ne l'envoie pas encore. */
+  userId: string | null;
 }
 
 /** Codes d'erreur courts des fonctions SQL, et leur traduction. */
@@ -37,6 +41,7 @@ export const FRIEND_ERROR_MESSAGES = {
   request_not_found: 'Cette demande n’existe plus.',
   friend_not_found: 'Cet ami n’est déjà plus dans ta liste.',
   guest_not_allowed: 'Crée ton compte pour avoir des amis.',
+  player_not_found: 'Ce joueur n’existe pas ou n’a plus de compte.',
   not_authenticated: 'Connecte-toi pour retrouver tes amis.',
 } as const;
 
@@ -74,8 +79,16 @@ export function badgeLabel(count: number): string | null {
   return count > 9 ? '9+' : String(count);
 }
 
-type FriendRow = { friendship_id: string; pseudo: string; avatar: string; points: number; rank: number | null };
-type RequestRow = { request_id: string; pseudo: string; avatar: string; created_at: string };
+// user_id : ajouté par la migration public_profile (absent d'un serveur plus ancien).
+type FriendRow = {
+  friendship_id: string;
+  pseudo: string;
+  avatar: string;
+  points: number;
+  rank: number | null;
+  user_id?: string | null;
+};
+type RequestRow = { request_id: string; pseudo: string; avatar: string; created_at: string; user_id?: string | null };
 
 export async function fetchFriends(client: SupabaseClient): Promise<Friend[]> {
   const { data, error } = await client.rpc('get_friends');
@@ -87,6 +100,7 @@ export async function fetchFriends(client: SupabaseClient): Promise<Friend[]> {
       avatar: row.avatar,
       points: row.points,
       rank: row.rank,
+      userId: row.user_id ?? null,
     })),
   );
 }
@@ -96,7 +110,13 @@ export async function fetchFriendRequests(client: SupabaseClient): Promise<Frien
   const { data, error } = await client.rpc('get_friend_requests');
   if (error) throw error;
   return ((data ?? []) as RequestRow[])
-    .map((row) => ({ id: row.request_id, pseudo: row.pseudo, avatar: row.avatar, createdAt: row.created_at }))
+    .map((row) => ({
+      id: row.request_id,
+      pseudo: row.pseudo,
+      avatar: row.avatar,
+      createdAt: row.created_at,
+      userId: row.user_id ?? null,
+    }))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
