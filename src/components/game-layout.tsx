@@ -1,19 +1,15 @@
 import { useMemo, type ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Cell, GameState, Move, PlayerId } from '@/game';
 import {
   Colors,
-  Fonts,
   MaxContentWidth,
   MaxWideContentWidth,
-  Radius,
   Shadow,
   Spacing,
   Stroke,
-  Typography,
 } from '@/constants/theme';
 import { useMeasuredSize } from '@/hooks/use-measured-size';
 import { useWideLayout } from '@/hooks/use-wide-layout';
@@ -21,7 +17,7 @@ import { useWideLayout } from '@/hooks/use-wide-layout';
 import { Board } from './board/board';
 import { computeBoardLayout } from './board/layout';
 import { DrawnCard } from './drawn-card';
-import { ThinkingDots } from './state-view';
+import { DrawnButton } from './drawn-button';
 
 /** Place prise par le cadre de la carte autour du plateau (bords, marge, ombre). */
 const CARD_INSET = (Stroke.bold + Spacing.two) * 2 + Shadow.offset;
@@ -29,13 +25,17 @@ const CARD_INSET = (Stroke.bold + Spacing.two) * 2 + Shadow.offset;
 const SIDE_PANEL_WIDTH = 340;
 
 interface GameLayoutProps {
-  /** Ligne du haut : bouton de retour et informations (numéro du coup…). */
+  /** Ligne du haut : informations discrètes (numéro du coup…). */
   header: ReactNode;
-  /** Tour en cours (voir `TurnStatus`). */
-  status: ReactNode;
-  /** Joueurs de la partie (en ligne). */
+  /**
+   * Retour à l'accueil. Affiché seulement en grand écran (tablette, ordinateur) :
+   * sur téléphone, on quitte par le geste ou le bouton « retour » du système,
+   * ou en abandonnant, et le plateau garde toute la place.
+   */
+  onHome: () => void;
+  /** Joueurs de la partie (voir `PlayersBar`). */
   players?: ReactNode;
-  /** Message d'erreur ou d'information. */
+  /** Message d'erreur ou d'information, par-dessus le bas du plateau : il ne change pas sa taille. */
   notice?: ReactNode;
   /** Badges des mutateurs actifs. */
   badges?: ReactNode;
@@ -58,13 +58,14 @@ interface GameLayoutProps {
 }
 
 /**
- * Mise en page commune des écrans de partie. Sur téléphone, tout est empilé
- * autour du plateau ; sur grand écran (tablette, ordinateur), les informations
+ * Mise en page commune des écrans de partie. Sur téléphone, les joueurs sont
+ * empilés au-dessus du plateau (leur ligne est de hauteur fixe : le plateau ne
+ * change jamais de taille) ; sur grand écran (tablette, ordinateur), les informations
  * passent dans un panneau à gauche et le plateau prend toute la hauteur.
  */
 export function GameLayout({
   header,
-  status,
+  onHome,
   players,
   notice,
   badges,
@@ -87,6 +88,11 @@ export function GameLayout({
           <Board layout={layout} {...board} />
         </DrawnCard>
       )}
+      {notice ? (
+        <View style={styles.notice} pointerEvents="box-none">
+          {notice}
+        </View>
+      ) : null}
     </View>
   );
 
@@ -95,11 +101,10 @@ export function GameLayout({
       {wide ? (
         <View style={[styles.content, styles.wideContent]}>
           <ScrollView style={styles.panel} contentContainerStyle={styles.panelContent}>
+            <DrawnButton label="‹ Accueil" size="small" onPress={onHome} style={styles.home} />
             {header}
-            {status}
-            {badges}
             {players}
-            {notice}
+            {badges}
             {footer}
           </ScrollView>
           {boardArea}
@@ -108,68 +113,13 @@ export function GameLayout({
         <View style={styles.content}>
           {header}
           {players}
-          {status}
           {badges}
-          {notice}
           {boardArea}
           {footer}
         </View>
       )}
       {overlay}
     </SafeAreaView>
-  );
-}
-
-/**
- * « Au tour de » suivi du joueur, et une consigne. Le joueur apparaît en fondu à
- * chaque changement de tour ; `thinking` ajoute l'indicateur d'attente (IA).
- * En ligne, `mine` remplace « Au tour de » par une bannière « À toi de jouer ! »
- * dans la couleur du joueur, et `lead` permet d'écrire « En attente de ».
- */
-export function TurnStatus({
-  turnKey,
-  player,
-  hint,
-  thinking = false,
-  lead = 'Au tour de',
-  mine,
-}: {
-  /** Change à chaque tour (numéro du coup), pour animer l'arrivée du joueur. */
-  turnKey: string | number;
-  /** Joueur dont c'est le tour, ou null (partie finie). */
-  player: ReactNode | null;
-  hint: string;
-  thinking?: boolean;
-  /** Texte au-dessus du joueur quand ce n'est pas à toi. */
-  lead?: string;
-  /** C'est à toi de jouer (en ligne) : couleur `piece` de la bannière. */
-  mine?: { color: string };
-}) {
-  return (
-    <View style={styles.turn} accessibilityLiveRegion="polite">
-      {player && (
-        <>
-          {mine ? (
-            <Animated.View key={`mine-${turnKey}`} entering={FadeIn.duration(220)}>
-              <DrawnCard radius={Radius.round} contentStyle={[styles.mine, { backgroundColor: mine.color }]}>
-                <Text style={styles.mineText} accessibilityRole="header">
-                  À toi de jouer !
-                </Text>
-              </DrawnCard>
-            </Animated.View>
-          ) : (
-            <Text style={Typography.caption}>{lead}</Text>
-          )}
-          <Animated.View key={turnKey} entering={FadeIn.duration(220)}>
-            {player}
-          </Animated.View>
-        </>
-      )}
-      <View style={styles.hintRow}>
-        {thinking && <ThinkingDots />}
-        <Text style={[Typography.caption, styles.hint]}>{hint}</Text>
-      </View>
-    </View>
   );
 }
 
@@ -183,9 +133,10 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-    gap: Spacing.three,
+    // Marges serrées sur téléphone : chaque point gagné agrandit le plateau.
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.two,
+    gap: Spacing.two,
   },
   wideContent: {
     maxWidth: MaxWideContentWidth,
@@ -201,18 +152,14 @@ const styles = StyleSheet.create({
   panelContent: {
     gap: Spacing.four,
   },
-  turn: {
-    alignItems: 'center',
-    gap: Spacing.one,
+  home: {
+    alignSelf: 'flex-start',
   },
-  hintRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  hint: {
-    textAlign: 'center',
-    flexShrink: 1,
+  notice: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   boardArea: {
     flex: 1,
@@ -221,15 +168,5 @@ const styles = StyleSheet.create({
   },
   boardFace: {
     padding: Spacing.two,
-  },
-  mine: {
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-  },
-  mineText: {
-    ...Typography.heading,
-    fontFamily: Fonts.bold,
-    fontSize: 22,
-    textAlign: 'center',
   },
 });

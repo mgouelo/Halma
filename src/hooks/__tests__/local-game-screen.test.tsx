@@ -47,6 +47,14 @@ function goTo(url: string) {
   });
 }
 
+// Sur téléphone, plus de bouton « Accueil » : on quitte par le retour du système.
+function goBack() {
+  act(() => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('expo-router').router.back();
+  });
+}
+
 function playOneMove() {
   fireEvent.press(screen.getByText('Choisir un pion'));
   fireEvent.press(screen.getByText('Jouer le coup'));
@@ -61,7 +69,7 @@ describe('partie locale : quitter et recommencer', () => {
     const router = start();
     expect(router.getPathname()).toBe('/game');
     expect(screen.getByText('Coup 1')).toBeTruthy();
-    fireEvent.press(screen.getByText('‹ Accueil'));
+    goBack();
     expect(screen.queryByText('Quitter la partie ?')).toBeNull();
     expect(router.getPathname()).toBe('/');
   });
@@ -71,7 +79,7 @@ describe('partie locale : quitter et recommencer', () => {
     playOneMove();
     expect(screen.getByText('Coup 2')).toBeTruthy();
 
-    fireEvent.press(screen.getByText('‹ Accueil'));
+    goBack();
     expect(screen.getByText('Quitter la partie ?')).toBeTruthy();
     expect(router.getPathname()).toBe('/game');
     fireEvent.press(screen.getByText('Continuer la partie'));
@@ -95,7 +103,7 @@ describe('partie locale : quitter et recommencer', () => {
   it('« Quitter » supprime la partie : en revenant, elle repart de zéro', () => {
     const router = start();
     playOneMove();
-    fireEvent.press(screen.getByText('‹ Accueil'));
+    goBack();
     fireEvent.press(screen.getByText('Quitter'));
     expect(router.getPathname()).toBe('/');
     // L'écran de jeu est démonté : il ne reste rien de la partie.
@@ -140,11 +148,10 @@ describe('partie locale : mutateurs reçus dans l’URL', () => {
     expect(screen.getByText('Coup 2')).toBeTruthy();
   });
 
-  it('sans Clairvoyance : le plateau ne reçoit aucune case, la consigne ne parle pas de pointillés', () => {
+  it('sans Clairvoyance : le plateau ne reçoit aucune case', () => {
     start('/game?clairvoyance=0&touch=1');
     expect(screen.getByLabelText('Mutateurs actifs : Toucher c’est jouer')).toBeTruthy();
     fireEvent.press(screen.getByText('Choisir un pion'));
-    expect(screen.getByText('Touche la case où aller.')).toBeTruthy();
     // Le faux plateau joue la première case reçue : il n'en reçoit aucune.
     fireEvent.press(screen.getByText('Jouer le coup'));
     expect(screen.getByText('Coup 1')).toBeTruthy();

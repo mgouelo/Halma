@@ -32,6 +32,8 @@ interface PlayerChipProps {
    * pâli, nom en gris). Sans valeur : affichage neutre.
    */
   turn?: 'active' | 'waiting';
+  /** Avatar seul, sans nom ni précision (barre des joueurs quand ils sont nombreux). */
+  compact?: boolean;
 }
 
 /** Écart entre l'avatar et l'anneau du joueur dont c'est le tour, en fraction de la taille de l'avatar. */
@@ -41,7 +43,7 @@ const RING_GAP = 0.14;
  * Pastille de couleur (ou avatar sur fond de couleur) d'un joueur suivie de son
  * nom, et d'une précision (ex. « IA · Moyen »).
  */
-export function PlayerChip({ player, size = 18, label, detail, avatar, turn }: PlayerChipProps) {
+export function PlayerChip({ player, size = 18, label, detail, avatar, turn, compact = false }: PlayerChipProps) {
   const color = playerColor(player);
   const face = avatar ? (
     <Avatar value={avatar.value} seed={avatar.seed} size={size} background={color.piece} />
@@ -57,10 +59,12 @@ export function PlayerChip({ player, size = 18, label, detail, avatar, turn }: P
       ) : (
         face
       )}
-      <Text style={[Typography.heading, styles.label, turn === 'waiting' && styles.waiting]} numberOfLines={1}>
-        {label ?? color.name}
-      </Text>
-      {detail && <Text style={Typography.caption}>{detail}</Text>}
+      {!compact && (
+        <Text style={[Typography.heading, styles.label, turn === 'waiting' && styles.waiting]} numberOfLines={1}>
+          {label ?? color.name}
+        </Text>
+      )}
+      {!compact && detail && <Text style={Typography.caption}>{detail}</Text>}
     </View>
   );
 }

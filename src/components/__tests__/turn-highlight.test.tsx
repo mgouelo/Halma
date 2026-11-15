@@ -1,28 +1,37 @@
-// Mise en évidence du tour et icônes des statistiques : ce qui est lu et écrit,
+// Barre des joueurs (tour mis en évidence) et icônes des statistiques : ce qui est lu et écrit,
 // pas seulement la couleur.
 
 import { describe, expect, it, jest } from '@jest/globals';
 import { render, screen } from '@testing-library/react-native';
 
-import { TurnStatus } from '../game-layout';
-import { PlayerChip } from '../player-chip';
+import { PlayersBar, type PlayersBarEntry } from '../players-bar';
 import { BestFlameIcon, FlameIcon, StartFlagIcon, TrophyIcon } from '../stat-icons';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 jest.mock('react-native-reanimated', () => require('@/hooks/__test-utils__/reanimated'));
 
-describe('TurnStatus', () => {
-  it('écrit « À toi de jouer ! » quand c’est ton tour', () => {
-    render(<TurnStatus turnKey={1} hint="Touche un de tes pions." mine={{ color: '#F6B8C8' }} player={<PlayerChip player={0} label="Toi" turn="active" />} />);
-    expect(screen.getByText('À toi de jouer !')).toBeTruthy();
-    expect(screen.queryByText('En attente de')).toBeNull();
+const entry = (player: number, current: boolean): PlayersBarEntry => ({
+  player,
+  label: `Joueur${player}`,
+  detail: current ? 'joue' : undefined,
+  turn: current ? 'active' : 'waiting',
+  accessibilityLabel: `Joueur${player}`,
+});
+
+describe('barre des joueurs', () => {
+  it('écrit le nom de chaque joueur jusqu’à trois, et « joue » pour celui dont c’est le tour', () => {
+    render(<PlayersBar entries={[entry(0, false), entry(1, true)]} />);
+    expect(screen.getByText('Joueur0')).toBeTruthy();
+    expect(screen.getByText('Joueur1')).toBeTruthy();
+    expect(screen.getByText('joue')).toBeTruthy();
   });
 
-  it('écrit « En attente de » suivi du joueur sinon', () => {
-    render(<TurnStatus turnKey={1} hint="…" lead="En attente de" player={<PlayerChip player={1} label="Camille" turn="active" />} />);
-    expect(screen.getByText('En attente de')).toBeTruthy();
-    expect(screen.getByText('Camille')).toBeTruthy();
-    expect(screen.queryByText('À toi de jouer !')).toBeNull();
+  it('à plus de trois joueurs, seul celui dont c’est le tour garde son nom (une seule ligne, hauteur fixe)', () => {
+    render(<PlayersBar entries={[0, 1, 2, 3, 4, 5].map((p) => entry(p, p === 2))} />);
+    expect(screen.getByText('Joueur2')).toBeTruthy();
+    expect(screen.queryByText('Joueur0')).toBeNull();
+    expect(screen.queryByText('Joueur5')).toBeNull();
+    expect(screen.getAllByLabelText(/^Joueur\d$/)).toHaveLength(6);
   });
 });
 

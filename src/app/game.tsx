@@ -7,10 +7,11 @@ import { useAuth } from '@/auth/auth-context';
 import { aiAvatar } from '@/avatar/avatar';
 import { goalPlayer } from '@/components/board/goal';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { Notice } from '@/components/auth-screen';
 import { DrawnButton } from '@/components/drawn-button';
-import { GameLayout, TurnStatus } from '@/components/game-layout';
+import { GameLayout } from '@/components/game-layout';
 import { MutatorBadges } from '@/components/mutator-settings';
-import { PlayerChip } from '@/components/player-chip';
+import { PlayersBar } from '@/components/players-bar';
 import { VictoryOverlay } from '@/components/victory-overlay';
 import { Colors, playerColor, Typography } from '@/constants/theme';
 import { AI_LEVEL_LABELS, parseControllers } from '@/hooks/game-setup';
@@ -19,7 +20,7 @@ import type { Controller } from '@/hooks/local-game-reducer';
 import { useIsClient } from '@/hooks/use-is-client';
 import { useLeaveGuard } from '@/hooks/use-leave-guard';
 import { useLocalGame } from '@/hooks/use-local-game';
-import { parseMutatorParams, selectionHint, type Mutators } from '@/mutators/mutators';
+import { parseMutatorParams, TAP_NOTICE_TEXTS, type Mutators } from '@/mutators/mutators';
 
 function describeController(controller: Controller, vsAi: boolean): string | undefined {
   if (controller !== 'human') return `IA · ${AI_LEVEL_LABELS[controller]}`;
@@ -44,7 +45,7 @@ function GameView() {
     controllers[player] === 'human'
       ? { value: profile?.avatar ?? null, seed: session?.user.id ?? 'joueur-local' }
       : { value: aiAvatar(`local-${player}`), seed: `local-${player}` };
-  const { game, selected, moves, animating, notice, aiThinking, tap, animationEnd, reset } = useLocalGame(
+  const { game, selected, moves, animating, notice, tap, animationEnd, reset } = useLocalGame(
     controllers,
     mutators,
   );
@@ -57,40 +58,41 @@ function GameView() {
   const winnerMoves = game.history.filter((entry) => entry.player === game.winner).length;
   const winnerIsHuman = game.winner !== null && controllers[game.winner] === 'human';
   const finished = game.status === 'finished';
-  const hint = finished
-    ? 'Partie terminée.'
-    : aiThinking
-      ? 'L’IA réfléchit…'
-      : animating
-        ? ' '
-        : selectionHint({ selected, moves, notice, mutators, idle: 'Touche un de tes pions.' });
+  // Plus de bloc d'état : seuls les retours utiles apparaissent, par-dessus le bas du plateau.
+  const info =
+    finished || animating
+      ? null
+      : notice
+        ? TAP_NOTICE_TEXTS[notice]
+        : selected && moves.length === 0
+          ? 'Ce pion ne peut pas bouger.'
+          : null;
 
   return (
     <GameLayout
+      onHome={goHome}
       header={
         <View style={styles.header}>
-          <DrawnButton label="‹ Accueil" size="small" onPress={goHome} />
           <Text style={Typography.caption}>Coup {game.turn + 1}</Text>
         </View>
       }
-      status={
-        <TurnStatus
-          turnKey={game.turn}
-          thinking={aiThinking}
-          hint={hint}
-          player={
-            finished ? null : (
-              <PlayerChip
-                player={game.currentPlayer}
-                size={vsAi ? 40 : 22}
-                detail={describeController(controllers[game.currentPlayer], vsAi)}
-                avatar={vsAi ? avatarOf(game.currentPlayer) : undefined}
-                turn="active"
-              />
-            )
-          }
+      players={
+        <PlayersBar
+          entries={game.players.map((player) => {
+            const isCurrent = player.id === game.currentPlayer && !finished;
+            const detail = describeController(controllers[player.id], vsAi);
+            return {
+              player: player.id,
+              // Contre l'IA : avatars ; entre amis sur le même écran : pastilles de couleur.
+              avatar: vsAi ? avatarOf(player.id) : undefined,
+              detail: isCurrent ? detail : undefined,
+              turn: finished ? undefined : isCurrent ? 'active' : 'waiting',
+              accessibilityLabel: `${playerColor(player.id).name}${detail ? `, ${detail}` : ''}${isCurrent ? ', à son tour' : ''}`,
+            };
+          })}
         />
       }
+      notice={info ? <Notice tone="info">{info}</Notice> : null}
       frameTint={finished ? undefined : playerColor(game.currentPlayer).tint}
       badges={<MutatorBadges value={mutators} />}
       board={{
@@ -137,9 +139,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.paper,
   },
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
   reset: {
     alignSelf: 'center',
