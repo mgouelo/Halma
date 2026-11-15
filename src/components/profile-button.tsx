@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-context';
-import { Colors, Shadow, Stroke, TouchTarget } from '@/constants/theme';
+import { Colors, Shadow, Spacing, Stroke, TouchTarget, Typography } from '@/constants/theme';
 import { PROFILE_BUTTON_LABEL, profileHref } from '@/navigation/nav-bar';
 
 import { Avatar } from './avatar';
@@ -43,7 +43,44 @@ export function ProfileButton() {
   );
 }
 
+/**
+ * Coin en haut à droite de l'accueil : le pseudo du joueur connecté, puis son
+ * avatar (le pseudo ouvre aussi le profil). Centré verticalement sur le titre.
+ */
+export function ProfileCorner() {
+  const { session, profile } = useAuth();
+  return (
+    <View style={styles.corner}>
+      {session && (
+        <Pressable
+          onPress={() => router.push(profileHref(true))}
+          accessibilityRole="button"
+          accessibilityLabel={`Profil de ${profile?.pseudo ?? 'joueur'}`}
+          style={styles.pseudoTouch}>
+          <Text style={Typography.heading} numberOfLines={1}>
+            {profile?.pseudo ?? '…'}
+          </Text>
+        </Pressable>
+      )}
+      <ProfileButton />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  corner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    // Le pseudo cède la place au titre s'il est long.
+    flexShrink: 1,
+    maxWidth: '60%',
+  },
+  pseudoTouch: {
+    flexShrink: 1,
+    minHeight: TouchTarget,
+    justifyContent: 'center',
+  },
   wrapper: {
     width: SIZE + Shadow.offset / 2,
     height: SIZE + Shadow.offset / 2,

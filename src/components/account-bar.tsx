@@ -1,30 +1,24 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-context';
-import { useSignOut } from '@/auth/use-sign-out';
 import { playerColor, Spacing, Typography } from '@/constants/theme';
 
-import { Avatar } from './avatar';
 import { DrawnButton } from './drawn-button';
 import { ResendEmailButton } from './resend-email-button';
-import { SignOutDialog } from './sign-out-dialog';
 import { ThinkingDots } from './state-view';
 
-/** Compte du joueur sur l'accueil : bouton de connexion, ou pseudo et actions du compte. */
+/**
+ * Compte du joueur sur l'accueil : bouton de connexion, ou seulement les
+ * rappels utiles (invité, e-mail en attente, profil indisponible). Le pseudo et
+ * l'avatar sont en haut à droite ; la déconnexion est sur le profil.
+ */
 export function AccountBar() {
-  const { configured, loading, session, profile, isGuest, pendingEmail, profileError, refreshProfile } = useAuth();
-  const signOut = useSignOut(isGuest);
+  const { configured, loading, session, isGuest, pendingEmail, profileError, refreshProfile } = useAuth();
 
   if (!configured) return null;
-  if (loading) {
-    // Même hauteur que la barre finale : l'accueil ne saute pas quand la session arrive.
-    return (
-      <View style={[styles.row, styles.placeholder]} accessibilityLabel="Chargement du compte">
-        <ThinkingDots />
-      </View>
-    );
-  }
+  // Pendant le chargement, rien : le pseudo et l'avatar du coin se chargent d'eux-mêmes.
+  if (loading) return null;
   if (!session) {
     return (
       <View style={styles.row}>
@@ -34,32 +28,11 @@ export function AccountBar() {
     );
   }
 
+  // Rien à dire à un joueur connecté dont tout va bien : pas de ligne vide.
+  if (!isGuest && !profileError) return null;
+
   return (
     <View style={styles.account}>
-      <View style={styles.row}>
-        <Pressable
-          style={[styles.row, styles.flex]}
-          onPress={() => router.push('/profile')}
-          accessibilityRole="button"
-          accessibilityLabel={`Profil de ${profile?.pseudo ?? 'joueur'}`}
-          accessibilityHint="Ouvre ton profil et ton avatar">
-          <Avatar value={profile?.avatar} seed={session.user.id} size={44} />
-          <View style={styles.flex}>
-            <Text style={Typography.heading} numberOfLines={1}>
-              {profile?.pseudo ?? '…'}
-            </Text>
-            <Text style={Typography.caption}>{isGuest ? 'Invité · Profil ›' : 'Profil ›'}</Text>
-          </View>
-        </Pressable>
-        <DrawnButton
-          label="Déconnexion"
-          busy={signOut.pending}
-          size="small"
-          onPress={signOut.request}
-          accessibilityHint={isGuest ? 'Un compte invité ne peut pas être retrouvé après déconnexion.' : undefined}
-        />
-      </View>
-
       {isGuest && !pendingEmail && (
         <View style={styles.row}>
           <Text style={[Typography.caption, styles.flex]}>Invité : ce compte n’existe que sur cet appareil.</Text>
@@ -88,8 +61,6 @@ export function AccountBar() {
           <DrawnButton label="Réessayer" size="small" onPress={refreshProfile} />
         </View>
       )}
-      {signOut.error && <Text style={Typography.caption}>{signOut.error}</Text>}
-      <SignOutDialog controller={signOut} />
     </View>
   );
 }
@@ -105,9 +76,6 @@ const styles = StyleSheet.create({
   },
   pending: {
     gap: Spacing.two,
-  },
-  placeholder: {
-    minHeight: 48,
   },
   flex: {
     flex: 1,

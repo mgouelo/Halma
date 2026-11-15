@@ -6,6 +6,7 @@ import { useAuth } from '@/auth/auth-context';
 import { signInAsGuest, signInWithEmail } from '@/auth/auth-service';
 import { useAuthAction } from '@/auth/use-auth-action';
 import { hasErrors, validateSignIn, type FieldError } from '@/auth/validation';
+import { AboutLinks } from '@/components/about-links';
 import { AuthScreen, authStyles, Notice, NotConfiguredCard } from '@/components/auth-screen';
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
@@ -98,6 +99,7 @@ export default function SignInScreen() {
           </View>
         </>
       )}
+      <AboutLinks />
     </AuthScreen>
   );
 }

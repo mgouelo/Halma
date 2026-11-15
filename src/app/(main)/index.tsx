@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { CreditsLink } from '@/components/about-links';
 import { AccountBar } from '@/components/account-bar';
 import { Board } from '@/components/board/board';
 import { computeBoardLayout } from '@/components/board/layout';
@@ -11,7 +10,7 @@ import { FlashNoticeBanner } from '@/components/flash-notice-banner';
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
 import { useScreenEdges } from '@/components/nav-bar/screen-edges';
-import { ProfileButton } from '@/components/profile-button';
+import { ProfileCorner } from '@/components/profile-button';
 import { Colors, MaxContentWidth, MaxWideContentWidth, playerColor, Spacing, Typography } from '@/constants/theme';
 import { createGame } from '@/game';
 import { useMeasuredSize } from '@/hooks/use-measured-size';
@@ -34,11 +33,8 @@ export default function HomeScreen() {
           </Text>
           <Text style={Typography.caption}>Dames chinoises</Text>
         </View>
-        {/* En haut à droite : crédits, puis l'avatar du joueur (ouvre le profil). */}
-        <View style={styles.corner}>
-          <CreditsLink />
-          <ProfileButton />
-        </View>
+        {/* En haut à droite : pseudo et avatar du joueur (ouvrent le profil). */}
+        <ProfileCorner />
       </View>
       <FlashNoticeBanner />
       <AccountBar />
@@ -136,17 +132,13 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    gap: Spacing.three,
   },
   titles: {
     flex: 1,
     minWidth: 0,
     gap: Spacing.one,
-  },
-  corner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
   },
   preview: {
     flex: 1,

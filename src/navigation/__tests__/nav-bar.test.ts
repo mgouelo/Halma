@@ -75,7 +75,8 @@ describe('profil par l’avatar', () => {
 
   it.each(SCREENS_WITH_PROFILE_BUTTON)('%s affiche l’avatar en haut à droite', (screen) => {
     const source = readFileSync(join(__dirname, '../../app/(main)', `${screen}.tsx`), 'utf8');
-    expect(source).toContain('<ProfileButton />');
+    // L'accueil met le pseudo à côté de l'avatar (ProfileCorner, qui contient ProfileButton).
+    expect(source).toContain(screen === 'index' ? '<ProfileCorner />' : '<ProfileButton />');
   });
 
   it('l’avatar est sur l’accueil, les amis et les classements', () => {

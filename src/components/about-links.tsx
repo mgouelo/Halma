@@ -27,23 +27,6 @@ export function AboutLinks({ exclude }: { exclude?: Href }) {
   );
 }
 
-/**
- * Lien discret vers les crédits (accueil, à côté du titre) ; la page des
- * crédits mène ensuite à la confidentialité et aux conditions.
- */
-export function CreditsLink() {
-  return (
-    <Pressable
-      onPress={() => router.push('/credits')}
-      accessibilityRole="link"
-      accessibilityLabel="Crédits et licences"
-      accessibilityHint="Crédits, licences, confidentialité et conditions d’utilisation"
-      style={styles.link}>
-      <Text style={styles.text}>Crédits</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
