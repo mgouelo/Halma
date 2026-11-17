@@ -1,0 +1,12 @@
+// Cloudflare (Workers avec fichiers statiques) : publie le dossier `dist/` produit par
+// `npx expo export --platform web`. Voir le README, « Déploiement du site ».
+{
+  "name": "halma",
+  "compatibility_date": "2026-11-17",
+  "assets": {
+    "directory": "./dist",
+    // Adresse sans page exportée (/room/ABC123, /player/<id>) : on sert l'accueil (code 200)
+    // et Expo Router affiche la bonne route une fois chargé.
+    "not_found_handling": "single-page-application"
+  }
+}

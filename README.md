@@ -1085,7 +1085,7 @@ images dans `assets/…<empreinte>.ttf|png`, et une copie du dossier `public/`. 
 | `/sign-in`, `/sign-up`, `/upgrade`, `/forgot-password` | `sign-in.html`… |
 | `/reset-password`, `/auth/confirmed` | `reset-password.html`, `auth/confirmed.html` (liens des e-mails) |
 | `/privacy`, `/terms`, `/credits` | `privacy.html`, `terms.html`, `credits.html` (pages publiques, sans compte) |
-| `/room/:id`, `/player/:id` | `room/[id].html`, `player/[id].html` (une seule page par route dynamique) |
+| `/room/:id`, `/player/:id` | l'accueil (repli monopage), puis Expo Router affiche la bonne route (`room/[id].html` et `player/[id].html` existent dans `dist/` mais ne sont pas servis à ces adresses) |
 | (route inconnue) | `+not-found.html` ; `_sitemap.html` (liste des routes, générée par Expo Router) |
 
 Cloudflare Pages sert `privacy.html` à l'adresse `/privacy` (et redirige `/privacy.html` vers `/privacy`).
@@ -1094,18 +1094,21 @@ Cloudflare Pages sert `privacy.html` à l'adresse `/privacy` (et redirige `/priv
 
 Copiés tels quels dans `dist/` par l'export, lus par Cloudflare Pages :
 
-- **`_redirects`** : `/room/:id` et `/player/:id` servent `room/[id].html` et `player/[id].html` (réécriture,
-  code 200 : l'adresse reste `/room/ABC123`, l'application lit l'identifiant une fois chargée). Sans ces règles,
-  ces adresses retomberaient sur l'accueil.
+- **Pas de `_redirects`** : une règle de réécriture vers `room/[id]` est renvoyée par Cloudflare en redirection
+  vers `/room/%5Bid%5D`, qui boucle (les crochets du nom de fichier). Les adresses dynamiques
+  (`/room/ABC123`, `/player/<id>`) passent par le repli « application monopage » de `wrangler.jsonc`.
 - **`_headers`** : pages HTML revalidées à chaque visite (`Cache-Control: no-cache`, réponse 304 si rien n'a
   changé), ressources versionnées (`/_expo/static/*`, `/assets/*`, empreinte dans le nom) en cache un an
   (`immutable`), `X-Frame-Options: DENY`, et `X-Robots-Tag: noindex` sur les adresses de prévisualisation
   `*.pages.dev`.
 
-Il n'y a pas de `404.html` à la racine : Cloudflare Pages sert alors l'accueil pour une adresse inconnue (mode
-« application monopage »), et Expo Router affiche sa page « introuvable » une fois chargé. Pour une vraie
-réponse 404, on pourra utiliser comme commande de build
-`npx expo export --platform web && cp dist/+not-found.html dist/404.html`.
+Le fichier **`wrangler.jsonc`** (à la racine) règle le déploiement : dossier `dist/`, et
+`not_found_handling: "single-page-application"` : pour une adresse sans page exportée, Cloudflare sert
+l'accueil (code 200), et Expo Router affiche la bonne route (room, joueur, ou sa page « introuvable ») une fois
+chargé. Dans Cloudflare (*Workers & Pages → halma → Settings → Build*), la commande de déploiement est
+`npx wrangler deploy`. Pour une vraie réponse 404, on pourra utiliser comme commande de build
+`npx expo export --platform web && cp dist/+not-found.html dist/404.html` et `"404-page"` à la place du mode
+monopage.
 
 ### Titre, description et aperçus de liens
 
@@ -1123,8 +1126,8 @@ npx expo export --platform web --clear
 npx expo serve
 ```
 
-Pour essayer aussi `_redirects` et `_headers` comme sur Cloudflare, l'émulateur de Cloudflare Pages :
-`npx wrangler pages dev dist`.
+Pour essayer aussi `_headers` et le repli monopage comme sur Cloudflare, l'émulateur de Cloudflare :
+`npx wrangler dev` (lit `wrangler.jsonc`).
 
 ## Production
 
@@ -1256,7 +1259,7 @@ Toujours installer les paquets Expo avec `npx expo install <paquet>` pour obteni
 - `src/auth/` et `src/lib/supabase.ts` : comptes (voir « Comptes (Supabase) »).
 - `src/avatar/` : avatars Humation (configuration, rendu SVG, libellés) ; `src/components/avatar.tsx` : composant `<Avatar />` ; `src/app/(main)/profile.tsx` et `src/app/(main)/avatar.tsx` : profil et éditeur.
 - `src/online/` : jeu en ligne partagé avec les Edge Functions (types, arbitre, traitement des demandes, suppression de compte) ; `src/rooms/` : côté application (appels à Supabase, Realtime, état de la partie en ligne) ; `src/components/online/` : salle d'attente et écran de partie.
-- `public/` : fichiers copiés tels quels dans l'export web (`_redirects`, `_headers` de Cloudflare Pages, voir « Déploiement du site ») ; `src/components/page-head.tsx` : titre, description et aperçus de liens des pages web.
+- `public/` : fichiers copiés tels quels dans l'export web (`_headers` de Cloudflare, voir « Déploiement du site ») ; `src/components/page-head.tsx` : titre, description et aperçus de liens des pages web.
 - `supabase/migrations/` : schéma SQL ; `supabase/checks/` : vérifications locales des migrations ; `supabase/functions/game-action/` : Edge Function du jeu en ligne ; `supabase/functions/delete-account/` : suppression de compte.
 - `src/game/` : moteur de règles (voir ci-dessous).
 
