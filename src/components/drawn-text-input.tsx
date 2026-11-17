@@ -11,6 +11,7 @@ import {
   type TextInputSelectionChangeEventData,
 } from 'react-native';
 
+import { useT } from '@/i18n';
 import { Colors, Fonts, Radius, Spacing, Stroke, TouchTarget, Typography } from '@/constants/theme';
 
 import { EyeIcon } from './eye-icon';
@@ -26,10 +27,6 @@ interface DrawnTextInputProps extends TextInputProps {
   revealable?: boolean;
 }
 
-/** Libellés du bouton selon l'état du champ (l'action proposée, pas l'état actuel). */
-export const SHOW_PASSWORD_LABEL = 'Afficher le mot de passe';
-export const HIDE_PASSWORD_LABEL = 'Masquer le mot de passe';
-
 /** Champ de saisie au trait noir, avec libellé, aide et message d'erreur. */
 export function DrawnTextInput({
   label,
@@ -43,6 +40,7 @@ export function DrawnTextInput({
   onSelectionChange,
   ...props
 }: DrawnTextInputProps) {
+  const t = useT();
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(true);
   const input = useRef<TextInput>(null);
@@ -102,7 +100,7 @@ export function DrawnTextInput({
           <Pressable
             onPress={toggle}
             accessibilityRole="button"
-            accessibilityLabel={hidden ? SHOW_PASSWORD_LABEL : HIDE_PASSWORD_LABEL}
+            accessibilityLabel={hidden ? t('common.showPassword') : t('common.hidePassword')}
             // Web : un clic sur le bouton ne doit pas retirer le focus du champ (ni déplacer le curseur).
             {...(Platform.OS === 'web' ? { onMouseDown: (event: { preventDefault: () => void }) => event.preventDefault() } : null)}
             style={styles.toggle}>

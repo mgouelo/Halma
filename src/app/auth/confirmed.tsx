@@ -16,12 +16,8 @@ import { StarLogo } from '@/components/nav-bar/icons';
 import { OpenAppButton } from '@/components/open-app-button';
 import { ErrorState, LoadingState } from '@/components/state-view';
 import { playerColor, Typography } from '@/constants/theme';
+import { useT } from '@/i18n';
 import { createEphemeralSupabase, getSupabase } from '@/lib/supabase';
-
-export const CONFIRMED_TITLE = 'Compte validé !';
-export const CONFIRMED_ELSEWHERE_TITLE = 'Compte validé';
-export const CONFIRMED_ELSEWHERE_BODY =
-  'Tu peux retourner dans l’application : elle s’en aperçoit toute seule en quelques secondes.';
 
 /**
  * Lien de confirmation d'e-mail (il mène au site : https://…/auth/confirmed).
@@ -32,6 +28,7 @@ export const CONFIRMED_ELSEWHERE_BODY =
  * l'ouvrir dans le navigateur d'un téléphone.
  */
 export default function ConfirmedScreen() {
+  const t = useT();
   const { configured } = useAuth();
   const link = useIncomingAuthLink(AUTH_LINK_PATHS.confirmed);
   const verification = useLinkVerification(link, (incoming) =>
@@ -49,13 +46,13 @@ export default function ConfirmedScreen() {
 
   const content = () => {
     if (!configured) return <NotConfiguredCard />;
-    if (verification.status === 'pending') return <LoadingState label="Validation du compte…" />;
+    if (verification.status === 'pending') return <LoadingState label={t('confirmed.validating')} />;
     if (verification.status === 'error') {
       if (!(verification.error instanceof AuthFailure)) {
         return (
           <ErrorState
-            title="Validation impossible"
-            message={describeAuthError(verification.error)}
+            title={t('confirmed.failed')}
+            message={describeAuthError(t, verification.error)}
             onRetry={verification.retry}
           />
         );
@@ -63,13 +60,11 @@ export default function ConfirmedScreen() {
       return (
         <DrawnCard contentStyle={authStyles.card}>
           <Text style={Typography.heading} accessibilityRole="header">
-            Lien expiré ou déjà utilisé
+            {t('confirmed.linkUsed')}
           </Text>
-          <Text style={Typography.body}>{verification.error.message}</Text>
-          <Text style={Typography.caption}>
-            Si ton compte est déjà validé, connecte-toi. Sinon, renvoie l’e-mail depuis l’application.
-          </Text>
-          <DrawnButton label="Se connecter" onPress={() => router.replace('/sign-in')} color={playerColor(0).piece} />
+          <Text style={Typography.body}>{describeAuthError(t, verification.error)}</Text>
+          <Text style={Typography.caption}>{t('confirmed.linkUsedText')}</Text>
+          <DrawnButton label={t('common.signIn')} onPress={() => router.replace('/sign-in')} color={playerColor(0).piece} />
         </DrawnCard>
       );
     }
@@ -78,10 +73,10 @@ export default function ConfirmedScreen() {
         <DrawnCard contentStyle={[authStyles.card, styles.center]}>
           <StarLogo size={96} />
           <Text style={[Typography.title, styles.text]} accessibilityRole="header" accessibilityLiveRegion="polite">
-            {CONFIRMED_TITLE}
+            {t('confirmed.done')}
           </Text>
-          <Text style={[Typography.body, styles.text]}>Bienvenue dans Halma. Place au jeu…</Text>
-          <DrawnButton label="Jouer" onPress={() => router.dismissTo('/')} color={playerColor(1).piece} />
+          <Text style={[Typography.body, styles.text]}>{t('confirmed.welcome')}</Text>
+          <DrawnButton label={t('confirmed.play')} onPress={() => router.dismissTo('/')} color={playerColor(1).piece} />
         </DrawnCard>
       );
     }
@@ -89,17 +84,17 @@ export default function ConfirmedScreen() {
       <DrawnCard contentStyle={[authStyles.card, styles.center]}>
         <StarLogo size={96} />
         <Text style={[Typography.title, styles.text]} accessibilityRole="header" accessibilityLiveRegion="polite">
-          {CONFIRMED_ELSEWHERE_TITLE}
+          {t('confirmed.elsewhereTitle')}
         </Text>
-        <Text style={[Typography.body, styles.text]}>{CONFIRMED_ELSEWHERE_BODY}</Text>
+        <Text style={[Typography.body, styles.text]}>{t('confirmed.elsewhereText')}</Text>
         <OpenAppButton />
-        {host !== 'app' && <Text style={[Typography.caption, styles.text]}>Tu peux fermer cette page.</Text>}
+        {host !== 'app' && <Text style={[Typography.caption, styles.text]}>{t('confirmed.closePage')}</Text>}
       </DrawnCard>
     );
   };
 
   return (
-    <AuthScreen header="none" title="Validation du compte" subtitle="Dernière étape avant de jouer.">
+    <AuthScreen header="none" title={t('confirmed.title')} subtitle={t('confirmed.subtitle')}>
       {content()}
     </AuthScreen>
   );

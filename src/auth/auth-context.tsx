@@ -2,13 +2,14 @@ import type { Session } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { AppState, Platform } from 'react-native';
 
+import { isLanguage, useLanguage } from '@/i18n';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { createDailyLoginTracker } from '@/stats/daily-login';
 import { recordDailyLogin } from '@/stats/stats-service';
 
 import { setFlashNotice } from '@/lib/flash-notice';
 
-import { fetchProfile, guestEmailConfirmed, type Profile } from './auth-service';
+import { fetchProfile, guestEmailConfirmed, saveAccountLanguage, type Profile } from './auth-service';
 import { CONFIRMED_NOTICE, GUEST_POLL_MS } from './confirmation-timing';
 import { forgetPendingConfirmation } from './pending-confirmation';
 import { useConfirmationWatcher } from './use-confirmation-watcher';
@@ -141,6 +142,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.remove();
     };
   }, [userId]);
+
+  // Langue du compte (e-mails d'authentification) : celle que le joueur voit,
+  // enregistrée sur son compte dès qu'elle diffère de celle du compte (choix
+  // dans le sélecteur, ou langue de l'appareil). Hors ligne ou serveur pas
+  // encore migré : on réessaie au prochain changement de session ou de langue.
+  const language = useLanguage();
+  const accountLanguage = session?.user.user_metadata?.language;
+  const languageToSave = userId && (!isLanguage(accountLanguage) || accountLanguage !== language) ? language : null;
+  useEffect(() => {
+    if (!languageToSave) return;
+    saveAccountLanguage(getSupabase(), languageToSave).catch(() => {});
+  }, [userId, languageToSave]);
 
   const value: AuthState = {
     configured: isSupabaseConfigured,

@@ -7,7 +7,7 @@ import {
   fetchFriendRequests,
   fetchFriends,
   formatRequestAge,
-  FRIEND_ERROR_MESSAGES,
+  FRIEND_ERROR_CODES,
   removeFriend,
   respondFriendRequest,
   sendFriendRequest,
@@ -15,6 +15,9 @@ import {
   validateFriendPseudo,
   type Friend,
 } from '../friends-service';
+import { translator } from '@/i18n';
+
+const t = translator('fr');
 
 type Result = { data: unknown; error: unknown };
 
@@ -98,7 +101,7 @@ describe('messages', () => {
     ['already_requested', 'Demande déjà envoyée : elle attend sa réponse.'],
     ['recently_refused', 'Ce joueur a refusé ta demande. Réessaie dans 24 heures.'],
   ])('traduit %s', (code, message) => {
-    expect(describeFriendError({ message: code })).toBe(message);
+    expect(describeFriendError(t, { message: code })).toBe(message);
   });
 
   it('tous les codes du serveur ont un message', () => {
@@ -115,18 +118,19 @@ describe('messages', () => {
       'guest_not_allowed',
       'player_not_found',
     ]) {
-      expect(FRIEND_ERROR_MESSAGES).toHaveProperty(code);
+      expect(FRIEND_ERROR_CODES).toContain(code);
+      expect(describeFriendError(t, { message: code })).not.toMatch(/Vérifie ta connexion/);
     }
   });
 
   it('message générique pour le reste', () => {
-    expect(describeFriendError(new TypeError('Failed to fetch'))).toMatch(/Vérifie ta connexion/);
-    expect(describeFriendError({ message: 'toString' })).toMatch(/Vérifie ta connexion/);
-    expect(describeFriendError(null)).toMatch(/Vérifie ta connexion/);
+    expect(describeFriendError(t, new TypeError('Failed to fetch'))).toMatch(/Vérifie ta connexion/);
+    expect(describeFriendError(t, { message: 'toString' })).toMatch(/Vérifie ta connexion/);
+    expect(describeFriendError(t, null)).toMatch(/Vérifie ta connexion/);
   });
 
   it('demande un pseudo avant d’envoyer', () => {
-    expect(validateFriendPseudo('   ')).toBe('Écris le pseudo de ton ami.');
+    expect(t.msg(validateFriendPseudo('   ')!)).toBe('Écris le pseudo de ton ami.');
     expect(validateFriendPseudo('zoe')).toBeNull();
   });
 });
@@ -145,10 +149,13 @@ describe('affichage', () => {
 
   it('âge des demandes', () => {
     const now = Date.parse('2026-11-14T12:00:00Z');
-    expect(formatRequestAge('2026-11-14T11:59:40Z', now)).toBe('à l’instant');
-    expect(formatRequestAge('2026-11-14T11:55:00Z', now)).toBe('il y a 5 min');
-    expect(formatRequestAge('2026-11-14T09:00:00Z', now)).toBe('il y a 3 h');
-    expect(formatRequestAge('2026-11-13T10:00:00Z', now)).toBe('hier');
-    expect(formatRequestAge('2026-11-10T10:00:00Z', now)).toBe('il y a 4 jours');
+    expect(formatRequestAge(t, '2026-11-14T11:59:40Z', now)).toBe('à l’instant');
+    expect(formatRequestAge(t, '2026-11-14T11:55:00Z', now)).toBe('il y a 5 min');
+    expect(formatRequestAge(t, '2026-11-14T09:00:00Z', now)).toBe('il y a 3 h');
+    expect(formatRequestAge(t, '2026-11-13T10:00:00Z', now)).toBe('hier');
+    expect(formatRequestAge(t, '2026-11-10T10:00:00Z', now)).toBe('il y a 4 jours');
+    expect(formatRequestAge(translator('en'), '2026-11-10T10:00:00Z', now)).toBe('4 days ago');
+    expect(formatRequestAge(translator('de'), '2026-11-14T09:00:00Z', now)).toBe('vor 3 Std.');
+    expect(formatRequestAge(translator('es'), '2026-11-13T10:00:00Z', now)).toBe('ayer');
   });
 });

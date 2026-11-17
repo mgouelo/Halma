@@ -10,9 +10,7 @@ import { PublicProfileView } from '@/components/player/public-profile-view';
 import { EmptyState, LoadingState } from '@/components/state-view';
 import { Colors, playerColor } from '@/constants/theme';
 import { useIsClient } from '@/hooks/use-is-client';
-
-const TITLE = 'Profil';
-const SUBTITLE = 'Profil d’un joueur';
+import { useT } from '@/i18n';
 
 /**
  * Profil public d'un autre joueur, ouvert en touchant sa ligne (classements,
@@ -27,12 +25,15 @@ export default function PlayerScreen() {
 }
 
 function PlayerGate() {
+  const t = useT();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { configured, loading, session, isGuest } = useAuth();
+  const TITLE = t('profile.title');
+  const SUBTITLE = t('profile.playerSubtitle');
 
   if (!configured) {
     return (
-      <AuthScreen header="back" title={TITLE} subtitle="Comptes indisponibles.">
+      <AuthScreen header="back" title={TITLE} subtitle={t('common.accountsUnavailable')}>
         <NotConfiguredCard />
       </AuthScreen>
     );
@@ -40,14 +41,14 @@ function PlayerGate() {
   if (loading) {
     return (
       <AuthScreen header="back" title={TITLE} subtitle={SUBTITLE}>
-        <LoadingState label="Chargement…" />
+        <LoadingState label={t('common.loading')} />
       </AuthScreen>
     );
   }
   if (!session) {
     return (
-      <AuthScreen header="back" title={TITLE} subtitle="Tu n’es pas connecté.">
-        <DrawnButton label="Se connecter" onPress={() => router.push('/sign-in')} color={playerColor(1).piece} />
+      <AuthScreen header="back" title={TITLE} subtitle={t('common.notSignedIn')}>
+        <DrawnButton label={t('common.signIn')} onPress={() => router.push('/sign-in')} color={playerColor(1).piece} />
       </AuthScreen>
     );
   }
@@ -57,10 +58,10 @@ function PlayerGate() {
       <AuthScreen header="back" title={TITLE} subtitle={SUBTITLE}>
         <EmptyState
           icon={<FriendsIcon size={88} />}
-          title="Crée ton compte"
-          message="Les profils des joueurs sont réservés aux comptes. Crée le tien (tu gardes ta progression d’invité) pour voir les profils, ajouter des amis et entrer dans les classements."
-          action={{ label: 'Créer mon compte', onPress: () => router.push('/upgrade'), color: playerColor(1).piece }}
-          secondaryAction={{ label: 'J’ai déjà un compte', onPress: () => router.push('/sign-in') }}
+          title={t('profile.guestPlayerTitle')}
+          message={t('profile.guestPlayerText')}
+          action={{ label: t('common.createMyAccount'), onPress: () => router.push('/upgrade'), color: playerColor(1).piece }}
+          secondaryAction={{ label: t('common.haveAccount'), onPress: () => router.push('/sign-in') }}
         />
       </AuthScreen>
     );

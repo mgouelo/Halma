@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-context';
 import { playerColor, Spacing, Typography } from '@/constants/theme';
+import { useT } from '@/i18n';
 
 import { DrawnButton } from './drawn-button';
 import { ResendEmailButton } from './resend-email-button';
@@ -14,6 +15,7 @@ import { ThinkingDots } from './state-view';
  * l'avatar sont en haut à droite ; la déconnexion est sur le profil.
  */
 export function AccountBar() {
+  const t = useT();
   const { configured, loading, session, isGuest, pendingEmail, profileError, refreshProfile } = useAuth();
 
   if (!configured) return null;
@@ -22,8 +24,8 @@ export function AccountBar() {
   if (!session) {
     return (
       <View style={styles.row}>
-        <Text style={[Typography.caption, styles.flex]}>Connecte-toi pour conserver ta progression.</Text>
-        <DrawnButton label="Se connecter" size="small" onPress={() => router.push('/sign-in')} />
+        <Text style={[Typography.caption, styles.flex]}>{t('home.signInPrompt')}</Text>
+        <DrawnButton label={t('common.signIn')} size="small" onPress={() => router.push('/sign-in')} />
       </View>
     );
   }
@@ -35,9 +37,9 @@ export function AccountBar() {
     <View style={styles.account}>
       {isGuest && !pendingEmail && (
         <View style={styles.row}>
-          <Text style={[Typography.caption, styles.flex]}>Invité : ce compte n’existe que sur cet appareil.</Text>
+          <Text style={[Typography.caption, styles.flex]}>{t('home.guest')}</Text>
           <DrawnButton
-            label="Créer mon compte"
+            label={t('common.createMyAccount')}
             size="small"
             color={playerColor(0).piece}
             onPress={() => router.push('/upgrade')}
@@ -48,17 +50,15 @@ export function AccountBar() {
         <View style={styles.pending}>
           <View style={styles.row}>
             <ThinkingDots />
-            <Text style={[Typography.caption, styles.flex]}>
-              Clique sur le lien envoyé à {pendingEmail} : l’appli s’en apercevra toute seule.
-            </Text>
+            <Text style={[Typography.caption, styles.flex]}>{t('home.pendingEmail', { email: pendingEmail })}</Text>
           </View>
           <ResendEmailButton type="email_change" email={pendingEmail} />
         </View>
       )}
       {profileError && (
         <View style={styles.row}>
-          <Text style={[Typography.caption, styles.flex]}>Profil indisponible (connexion ?).</Text>
-          <DrawnButton label="Réessayer" size="small" onPress={refreshProfile} />
+          <Text style={[Typography.caption, styles.flex]}>{t('home.profileUnavailable')}</Text>
+          <DrawnButton label={t('common.retry')} size="small" onPress={refreshProfile} />
         </View>
       )}
     </View>

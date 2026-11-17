@@ -6,20 +6,22 @@ import {
   activeTab,
   navAction,
   navHref,
-  NAV_LABELS,
+  navLabel,
   NAV_TABS,
-  PROFILE_BUTTON_LABEL,
   profileHref,
   SCREENS_WITH_PROFILE_BUTTON,
   SCREENS_WITHOUT_NAV_BAR,
   type NavTab,
 } from '../nav-bar';
+import { translator } from '@/i18n';
+
+const t = translator('fr');
 
 describe('barre de navigation', () => {
   it('a trois entrées, amis à gauche, accueil au milieu, classements à droite (plus de Profil)', () => {
     expect(NAV_TABS).toEqual(['friends', 'home', 'leaderboard']);
-    expect(NAV_TABS.map((tab) => NAV_LABELS[tab])).toEqual(['Amis', 'Accueil', 'Classements']);
-    expect(Object.values(NAV_LABELS)).not.toContain('Profil');
+    expect(NAV_TABS.map((tab) => navLabel(t, tab))).toEqual(['Amis', 'Accueil', 'Classements']);
+    expect(NAV_TABS.map((tab) => navLabel(translator('es'), tab))).toEqual(['Amigos', 'Inicio', 'Ranking']);
   });
 
   it('chaque entrée mène à son écran', () => {
@@ -66,7 +68,7 @@ describe('profil par l’avatar', () => {
   it('connecté (invité compris), l’avatar mène au profil ; sinon, la silhouette mène à la connexion', () => {
     expect(profileHref(true)).toBe('/profile');
     expect(profileHref(false)).toBe('/sign-in');
-    expect(PROFILE_BUTTON_LABEL).toBe('Profil');
+    expect(t('nav.profile')).toBe('Profil');
   });
 
   it('le profil n’a pas d’entrée active dans la barre : il n’a pas de barre', () => {

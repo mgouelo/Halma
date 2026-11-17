@@ -57,11 +57,11 @@ describe('onlineGameReducer', () => {
 
   it('un refus du serveur ramène au dernier état confirmé, avec le message', () => {
     const state = playAlice();
-    const rejected = onlineGameReducer(state, { type: 'rejected', pending: state.pending!, message: 'Coup refusé.' });
+    const rejected = onlineGameReducer(state, { type: 'rejected', pending: state.pending!, error: 'Coup refusé.' });
     expect(rejected.game).toEqual(start);
     expect(rejected).toMatchObject({ pending: null, animating: null, error: 'Coup refusé.' });
     // Un refus qui concerne un autre coup (ancien) est ignoré.
-    const other = onlineGameReducer(state, { type: 'rejected', pending: { move: aliceMove, turn: 0 }, message: 'x' });
+    const other = onlineGameReducer(state, { type: 'rejected', pending: { move: aliceMove, turn: 0 }, error: 'x' });
     expect(other).toBe(state);
   });
 

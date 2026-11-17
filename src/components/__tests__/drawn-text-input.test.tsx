@@ -4,7 +4,10 @@ import { StyleSheet } from 'react-native';
 
 import { TouchTarget } from '@/constants/theme';
 
-import { DrawnTextInput, HIDE_PASSWORD_LABEL, SHOW_PASSWORD_LABEL } from '../drawn-text-input';
+import { DrawnTextInput } from '../drawn-text-input';
+
+const SHOW_PASSWORD_LABEL = 'Afficher le mot de passe';
+const HIDE_PASSWORD_LABEL = 'Masquer le mot de passe';
 
 function renderPassword(props: Partial<React.ComponentProps<typeof DrawnTextInput>> = {}) {
   return render(

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSupabase } from '@/lib/supabase';
 
 import {
-  describeFriendError,
   fetchFriendRequests,
   fetchFriends,
   sortFriends,
@@ -14,7 +13,7 @@ import {
 
 export type FriendsLoad =
   | { status: 'loading' }
-  | { status: 'error'; message: string }
+  | { status: 'error'; error: unknown }
   | { status: 'ready'; friends: Friend[]; requests: FriendRequest[] };
 
 /**
@@ -41,7 +40,7 @@ export function useFriends(userId: string | null) {
           if (id !== request.current) return;
           // Relecture discrète ratée : on garde ce qui est affiché.
           setLoad((prev) =>
-            quiet && prev.status === 'ready' ? prev : { status: 'error', message: describeFriendError(error) },
+            quiet && prev.status === 'ready' ? prev : { status: 'error', error },
           );
         });
     },

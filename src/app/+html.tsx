@@ -7,10 +7,13 @@ import type { PropsWithChildren } from 'react';
 import { Colors } from '@/constants/theme';
 
 /**
- * - `lang="fr"` : les lecteurs d'écran prononcent le texte en français ;
+ * - `lang="fr"` : le HTML exporté est en français (langue de référence) ; une
+ *   fois la page ouverte, l'application passe à la langue du joueur et met à
+ *   jour `document.documentElement.lang` (src/app/_layout.tsx, `useHtmlLang`),
+ *   pour que les lecteurs d'écran prononcent le texte dans la bonne langue ;
  * - balises communes à toutes les pages pour les aperçus de liens (Open Graph) ;
- *   le titre, la description, `og:title`, `og:description`, `og:url` et
- *   `og:image` changent d'une page à l'autre : ils viennent de `<PageHead>`
+ *   le titre, la description, `og:title`, `og:description`, `og:locale`, `og:url`
+ *   et `og:image` changent d'une page à l'autre : ils viennent de `<PageHead>`
  *   (src/components/page-head.tsx, `<Head>` d'Expo Router). Pas de `<title>` ni
  *   de description ici : Expo Router écrit déjà sa propre balise `<title>` (vide
  *   sans `<Head>`), et deux balises en double se contrediraient ;
@@ -38,7 +41,6 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="theme-color" content={Colors.paper} />
         <meta property="og:site_name" content="Halma" />
         <meta property="og:type" content="website" />
-        <meta property="og:locale" content="fr_FR" />
         <meta name="twitter:card" content="summary" />
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: globalCss }} />

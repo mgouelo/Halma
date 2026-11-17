@@ -11,7 +11,8 @@ import { MutatorBadges } from '@/components/mutator-settings';
 import { PlayersBar } from '@/components/players-bar';
 import { VictoryOverlay } from '@/components/victory-overlay';
 import { playerColor, Spacing, Typography } from '@/constants/theme';
-import { TAP_NOTICE_TEXTS } from '@/mutators/mutators';
+import { useT } from '@/i18n';
+import { tapNoticeText } from '@/mutators/mutators';
 import { participantOfPlayer, ratingOutcome, type StoredGame } from '@/online';
 import { participantAvatar, participantName } from '@/rooms/names';
 import { secondsBeforeForfeit } from '@/rooms/presence';
@@ -31,6 +32,7 @@ interface OnlineGameViewProps {
 
 /** Partie en ligne : plateau, tour, joueurs (connectés ou non), abandon et fin de partie. */
 export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameViewProps) {
+  const t = useT();
   const { room, players } = snapshot;
   // Mutateurs réglés par l'hôte dans la salle d'attente, figés au lancement (la room n'est plus modifiable).
   const { mutators } = room;
@@ -49,12 +51,12 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
     resign,
   } = useOnlineGame({ roomId: room.id, server: snapshot.game, players, userId, now, onGame, mutators });
   const [confirmResign, setConfirmResign] = useState(false);
-  const [resignError, setResignError] = useState<string | null>(null);
+  const [resignError, setResignError] = useState<{ error: unknown } | null>(null);
   const [resigning, setResigning] = useState(false);
 
   const goHome = () => router.dismissTo('/');
   const playerAt = (index: number) => participantOfPlayer(players, index);
-  const nameOf = (index: number) => participantName(playerAt(index), userId);
+  const nameOf = (index: number) => participantName(t, playerAt(index), userId);
   const avatarOf = (index: number) => {
     const participant = playerAt(index);
     return participant
@@ -80,12 +82,12 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
       ? null
       : myTurn
         ? notice
-          ? TAP_NOTICE_TEXTS[notice]
+          ? tapNoticeText(t, notice)
           : selected && moves.length === 0
-            ? 'Ce pion ne peut pas bouger.'
+            ? t('mutators.cannotMove')
             : null
         : currentAway !== null && !current?.aiLevel
-          ? `Déconnecté : forfait dans ${currentAway} s s’il ne revient pas.`
+          ? t('game.awayForfeit', { n: currentAway })
           : null;
 
   const doResign = async () => {
@@ -94,7 +96,7 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
       await resign();
       setConfirmResign(false);
     } catch (e) {
-      setResignError(describeOnlineError(e));
+      setResignError({ error: e });
     } finally {
       setResigning(false);
     }
@@ -110,15 +112,23 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
     ratingOutcome(server, players).ranked;
   const rating = useGameRating(server.id, rankable);
   const winnerMoves = winner === null ? 0 : game.history.filter((entry) => entry.player === winner).length;
-  const endTitle = server.endReason === 'abandoned' ? 'Partie arrêtée' : winner === me ? 'Victoire !' : 'Perdu !';
+  const endTitle =
+    server.endReason === 'abandoned' ? t('game.stopped') : winner === me ? t('game.victory') : t('game.defeat');
   const endMessage =
     server.endReason === 'abandoned'
-      ? 'Il ne reste plus aucun joueur humain dans la partie.'
+      ? t('game.noHumansLeft')
       : server.endReason === 'forfeit' && winner !== null
         ? winner === me
-          ? 'Tu gagnes : les autres joueurs ont quitté la partie.'
-          : `${nameOf(winner)} gagne : les autres joueurs ont quitté la partie.`
+          ? t('game.youWinForfeit')
+          : t('game.otherWinsForfeit', { name: nameOf(winner) })
         : undefined;
+  // Erreur affichée (refus d'un coup, abandon refusé), traduite à l'affichage.
+  const shownError =
+    error !== null && error !== undefined
+      ? describeOnlineError(t, error)
+      : resignError
+        ? describeOnlineError(t, resignError.error)
+        : null;
 
   const dismissNotice = () => {
     dismissError();
@@ -133,11 +143,11 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
           {/* Titre de l'onglet (web seulement) : « À toi de jouer ! » ou « En attente de … ». */}
           {Platform.OS === 'web' && (
             <Head>
-              <title>{onlineTabTitle(turn)}</title>
+              <title>{onlineTabTitle(t, turn)}</title>
             </Head>
           )}
           <Text style={Typography.caption}>
-            Room {room.code} · Coup {game.turn + 1}
+            {t('game.roomMove', { code: room.code, n: game.turn + 1 })}
           </Text>
         </View>
       }
@@ -147,25 +157,26 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
             const participant = playerAt(player.id);
             // Son propre signe de vie peut paraître ancien juste après une reprise : on est là, par définition.
             const away = participant && participant.userId !== userId ? secondsBeforeForfeit(participant, now) : null;
-            const status = server.forfeited.includes(player.id) ? 'parti' : away !== null ? 'déconnecté' : null;
+            const gone = server.forfeited.includes(player.id);
+            const status = gone ? t('game.statusGone') : away !== null ? t('game.statusAway') : null;
             const isCurrent = player.id === game.currentPlayer && !finished;
             return {
               player: player.id,
               label: nameOf(player.id),
               // Le joueur courant est écrit (« joue ») et entouré, pas seulement coloré.
-              detail: status ?? (isCurrent ? 'joue' : undefined),
+              detail: status ?? (isCurrent ? t('game.statusPlaying') : undefined),
               avatar: avatarOf(player.id),
               turn: finished ? undefined : isCurrent ? 'active' : 'waiting',
-              gone: status === 'parti',
-              accessibilityLabel: `${nameOf(player.id)}${status ? `, ${status}` : ''}${isCurrent ? ', à son tour' : ''}`,
+              gone,
+              accessibilityLabel: `${nameOf(player.id)}${status ? `, ${status}` : ''}${isCurrent ? t('game.itsTheirTurn') : ''}`,
             };
           })}
         />
       }
       notice={
-        error || resignError ? (
-          <Pressable onPress={dismissNotice} accessibilityRole="button" accessibilityHint="Touche pour fermer">
-            <Notice>{error ?? resignError}</Notice>
+        shownError ? (
+          <Pressable onPress={dismissNotice} accessibilityRole="button" accessibilityHint={t('game.tapToClose')}>
+            <Notice>{shownError}</Notice>
           </Pressable>
         ) : info ? (
           <Notice tone="info">{info}</Notice>
@@ -190,16 +201,16 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
           <View style={styles.footer}>
             {confirmResign ? (
               <>
-                <DrawnButton label="Oui, abandonner" size="small" onPress={doResign} busy={resigning} />
+                <DrawnButton label={t('game.resignConfirm')} size="small" onPress={doResign} busy={resigning} />
                 <DrawnButton
-                  label="Continuer"
+                  label={t('game.resignContinue')}
                   size="small"
                   onPress={() => setConfirmResign(false)}
                   disabled={resigning}
                 />
               </>
             ) : (
-              <DrawnButton label="Abandonner" size="small" onPress={() => setConfirmResign(true)} />
+              <DrawnButton label={t('game.resign')} size="small" onPress={() => setConfirmResign(true)} />
             )}
           </View>
         )
@@ -209,9 +220,9 @@ export function OnlineGameView({ snapshot, userId, now, onGame }: OnlineGameView
           // Abandon dans une partie qui continue sans toi : on annonce, puis retour à l'accueil.
           <VictoryOverlay
             winner={null}
-            title="Tu as abandonné"
+            title={t('game.resigned')}
             moveCount={0}
-            message="La partie continue sans toi."
+            message={t('game.continuesWithoutYou')}
             onHome={goHome}
           />
         ) : showEnd && (

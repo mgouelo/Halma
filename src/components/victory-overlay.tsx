@@ -3,7 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
 import type { AvatarConfig } from '@/avatar/avatar';
-import { Colors, playerColor, Spacing, Stroke, Typography } from '@/constants/theme';
+import { Colors, playerColor, playerColorName, Spacing, Stroke, Typography } from '@/constants/theme';
+import { useT } from '@/i18n';
 
 import { Avatar } from './avatar';
 import { DrawnButton } from './drawn-button';
@@ -41,7 +42,10 @@ export function VictoryOverlay({
   winnerAvatar,
   extra,
 }: VictoryOverlayProps) {
+  const t = useT();
   const color = winner === null ? null : playerColor(winner);
+  const colorName = winner === null ? '' : playerColorName(t, winner);
+  const who = winnerDetail ? t('game.whoWithDetail', { color: colorName, detail: winnerDetail }) : colorName;
   return (
     <Animated.View entering={FadeIn.duration(200)} style={styles.scrim} accessibilityViewIsModal>
       <Animated.View entering={ZoomIn.delay(80).duration(260)} style={styles.card}>
@@ -55,13 +59,12 @@ export function VictoryOverlay({
             {title}
           </Text>
           <Text style={[Typography.body, styles.center]}>
-            {message ??
-              `${color?.name ?? ''}${winnerDetail ? ` (${winnerDetail})` : ''} a rempli la branche d’en face en ${moveCount} coups.`}
+            {message ?? t('game.filledBranch', { who, count: moveCount })}
           </Text>
           {extra}
           <View style={styles.actions}>
-            {onReplay && <DrawnButton label="Rejouer" onPress={onReplay} color={color?.piece} />}
-            <DrawnButton label="Accueil" onPress={onHome} />
+            {onReplay && <DrawnButton label={t('game.replay')} onPress={onReplay} color={color?.piece} />}
+            <DrawnButton label={t('common.homeButton')} onPress={onHome} />
           </View>
         </DrawnCard>
       </Animated.View>

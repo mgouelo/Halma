@@ -14,7 +14,8 @@ import {
   TouchTarget,
   Typography,
 } from '@/constants/theme';
-import { activeTab, navAction, navHref, NAV_LABELS, type NavTab } from '@/navigation/nav-bar';
+import { useT } from '@/i18n';
+import { activeTab, navAction, navHref, navLabel, type NavTab } from '@/navigation/nav-bar';
 
 import { FriendsIcon, MountainIcon, StarLogo } from './icons';
 
@@ -52,18 +53,21 @@ interface ItemProps {
 }
 
 function SideItem({ tab, active, onPress, children }: ItemProps) {
+  const t = useT();
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="tab"
-      accessibilityLabel={NAV_LABELS[tab]}
+      accessibilityLabel={navLabel(t, tab)}
       accessibilityState={{ selected: active }}
       style={styles.item}>
       {({ pressed }) => (
         <>
           {/* Entrée active : l'icône est entourée d'un trait (pas seulement de couleur). */}
           <View style={[styles.sideIcon, active && styles.sideIconActive, pressed && styles.pressed]}>{children}</View>
-          <Text style={[styles.label, active && styles.labelActive]}>{NAV_LABELS[tab]}</Text>
+          <Text style={[styles.label, active && styles.labelActive]} numberOfLines={1}>
+            {navLabel(t, tab)}
+          </Text>
         </>
       )}
     </Pressable>
@@ -71,11 +75,12 @@ function SideItem({ tab, active, onPress, children }: ItemProps) {
 }
 
 function CenterItem({ active, onPress }: Omit<ItemProps, 'tab' | 'children'>) {
+  const t = useT();
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="tab"
-      accessibilityLabel={NAV_LABELS.home}
+      accessibilityLabel={navLabel(t, 'home')}
       accessibilityState={{ selected: active }}
       style={styles.item}>
       {({ pressed }) => (
@@ -86,7 +91,9 @@ function CenterItem({ active, onPress }: Omit<ItemProps, 'tab' | 'children'>) {
               <StarLogo size={CENTER_SIZE - 14} />
             </View>
           </View>
-          <Text style={[styles.label, active && styles.labelActive]}>{NAV_LABELS.home}</Text>
+          <Text style={[styles.label, active && styles.labelActive]} numberOfLines={1}>
+            {navLabel(t, 'home')}
+          </Text>
         </>
       )}
     </Pressable>

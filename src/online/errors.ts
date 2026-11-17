@@ -1,4 +1,8 @@
-// Messages en français des erreurs du jeu en ligne, et statut HTTP renvoyé par l'Edge Function.
+// Codes d'erreur du jeu en ligne, statut HTTP renvoyé par l'Edge Function et
+// message en français joint à la réponse. L'application n'affiche plus ce
+// message : elle traduit le code (clés `error.online.*` de src/i18n). Il reste
+// pour les journaux et pour les versions déjà installées de l'application, qui
+// l'affichent encore tel quel.
 
 import type { OnlineErrorCode } from './types.ts';
 

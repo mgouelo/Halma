@@ -9,12 +9,14 @@ import { MutatorSettings } from '@/components/mutator-settings';
 import { useNavBarInset, useScreenEdges } from '@/components/nav-bar/screen-edges';
 import { PlayerChip } from '@/components/player-chip';
 import { Stepper } from '@/components/stepper';
-import { Colors, MaxContentWidth, playerColor, Spacing, Stroke, Typography } from '@/constants/theme';
+import { Colors, MaxContentWidth, playerColor, playerColorName, Spacing, Stroke, Typography } from '@/constants/theme';
 import { MAX_HUMAN_COUNT, MIN_HUMAN_COUNT, serializeHumanCount, turnOrderLabel } from '@/hooks/game-setup';
+import { useT } from '@/i18n';
 import { DEFAULT_MUTATORS, serializeMutators, type Mutators } from '@/mutators/mutators';
 
 /** Partie entre amis sur le même appareil : de 2 à 6 joueurs qui se passent l'écran. */
 export default function LocalSetupScreen() {
+  const t = useT();
   const [count, setCount] = useState(MIN_HUMAN_COUNT);
   const edges = useScreenEdges();
   const navInset = useNavBarInset();
@@ -30,20 +32,19 @@ export default function LocalSetupScreen() {
     <SafeAreaView style={styles.screen} edges={edges}>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: Spacing.four + navInset }]}>
         <View style={styles.header}>
-          <DrawnButton label="‹ Accueil" size="small" onPress={() => router.back()} />
+          <DrawnButton label={t('common.home')} size="small" onPress={() => router.back()} />
         </View>
 
         <Text style={Typography.title} accessibilityRole="header">
-          Entre amis
+          {t('setup.localTitle')}
         </Text>
 
         <DrawnCard contentStyle={styles.card}>
           <View style={styles.countRow}>
             <View style={styles.flex}>
-              <Text style={Typography.heading}>Nombre de joueurs</Text>
+              <Text style={Typography.heading}>{t('setup.playerCount')}</Text>
               <Text style={Typography.caption}>
-                Sur le même appareil, chacun son tour
-                {count === 5 ? ' ; une branche reste vide' : ''}
+                {count === 5 ? t('setup.sameDeviceEmptyBranch') : t('setup.sameDevice')}
               </Text>
             </View>
             <Stepper
@@ -51,14 +52,14 @@ export default function LocalSetupScreen() {
               min={MIN_HUMAN_COUNT}
               max={MAX_HUMAN_COUNT}
               onChange={setCount}
-              accessibilityLabel="Nombre de joueurs"
+              accessibilityLabel={t('setup.playerCount')}
             />
           </View>
         </DrawnCard>
 
         <DrawnCard contentStyle={styles.card}>
           <Text style={Typography.heading} accessibilityRole="header">
-            Ordre du tour
+            {t('setup.turnOrder')}
           </Text>
           <View style={styles.players} accessibilityRole="list">
             {Array.from({ length: count }, (_, player) => (
@@ -66,8 +67,11 @@ export default function LocalSetupScreen() {
                 key={player}
                 style={styles.playerRow}
                 accessible
-                accessibilityLabel={`${playerColor(player).name}, joue en ${turnOrderLabel(player)}`}>
-                <PlayerChip player={player} size={26} detail={`joue en ${turnOrderLabel(player)}`} />
+                accessibilityLabel={t('setup.playsAtLabel', {
+                  color: playerColorName(t, player),
+                  rank: turnOrderLabel(t, player),
+                })}>
+                <PlayerChip player={player} size={26} detail={t('setup.playsAt', { rank: turnOrderLabel(t, player) })} />
               </View>
             ))}
           </View>
@@ -75,12 +79,12 @@ export default function LocalSetupScreen() {
         <MutatorSettings
           value={mutators}
           onChange={(key, value) => setMutators((prev) => ({ ...prev, [key]: value }))}
-          caption="Options de la partie, pour tous les joueurs."
+          caption={t('setup.options')}
         />
       </ScrollView>
 
       <View style={styles.footer}>
-        <DrawnButton label="Lancer la partie" onPress={start} color={playerColor(0).piece} />
+        <DrawnButton label={t('common.launchGame')} onPress={start} color={playerColor(0).piece} />
       </View>
     </SafeAreaView>
   );

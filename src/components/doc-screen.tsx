@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useT } from '@/i18n';
 import { Colors, Fonts, MaxContentWidth, Radius, Spacing, Stroke, TouchTarget, Typography } from '@/constants/theme';
 
 import { BackButton } from './back-button';
@@ -72,12 +73,13 @@ export function Bullet({ children }: { children: ReactNode }) {
 
 /** Lien externe (ouvert dans le navigateur), souligné et assez grand pour le doigt. */
 export function ExternalLink({ url, label }: { url: string; label?: string }) {
+  const t = useT();
   return (
     <Pressable
       onPress={() => Linking.openURL(url).catch(() => {})}
       accessibilityRole="link"
       accessibilityLabel={label ?? url}
-      accessibilityHint="Ouvre le lien dans le navigateur"
+      accessibilityHint={t('common.openLinkHint')}
       style={styles.link}>
       <Text style={styles.linkText}>{label ?? url}</Text>
     </Pressable>
@@ -101,17 +103,19 @@ export function reflow(text: string): string {
  * le masque, avec l'état « déplié » annoncé aux lecteurs d'écran.
  */
 export function Collapsible({ label, children }: { label: string; children: string }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
+  const action = open ? t('doc.hide', { label }) : t('doc.show', { label });
   return (
     <View style={styles.collapsible}>
       <Pressable
         onPress={() => setOpen((v) => !v)}
         accessibilityRole="button"
-        accessibilityLabel={`${open ? 'Masquer' : 'Afficher'} ${label}`}
+        accessibilityLabel={action}
         accessibilityState={{ expanded: open }}
         style={[styles.toggle, open && styles.toggleOpen]}>
         <Text style={styles.toggleText}>
-          {open ? '▾' : '▸'} {open ? 'Masquer' : 'Afficher'} {label}
+          {open ? '▾' : '▸'} {action}
         </Text>
       </Pressable>
       {open && (

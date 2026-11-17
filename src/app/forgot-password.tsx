@@ -13,14 +13,12 @@ import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
 import { DrawnTextInput } from '@/components/drawn-text-input';
 import { playerColor, Typography } from '@/constants/theme';
+import { useT } from '@/i18n';
 import { getSupabase } from '@/lib/supabase';
-
-/** Message affiché après la demande, que l'adresse ait un compte ou non. */
-export const RESET_SENT_MESSAGE =
-  'Si un compte existe avec cette adresse, un e-mail vient d’être envoyé. Clique sur le lien qu’il contient pour choisir un nouveau mot de passe.';
 
 /** « Mot de passe oublié ? » : on saisit son e-mail et on reçoit un lien de réinitialisation. */
 export default function ForgotPasswordScreen() {
+  const t = useT();
   const { configured } = useAuth();
   const params = useLocalSearchParams<{ email?: string }>();
   const [email, setEmail] = useState(typeof params.email === 'string' ? params.email : '');
@@ -41,39 +39,38 @@ export default function ForgotPasswordScreen() {
   return (
     <AuthScreen
       header="back"
-      title="Mot de passe oublié"
-      subtitle="Indique ton adresse e-mail : tu recevras un lien pour choisir un nouveau mot de passe.">
+      title={t('forgot.title')}
+      subtitle={t('forgot.subtitle')}>
       {!configured ? (
         <NotConfiguredCard />
       ) : sentTo ? (
         <DrawnCard contentStyle={authStyles.card}>
-          <Notice tone="info">{RESET_SENT_MESSAGE}</Notice>
-          <Text style={Typography.caption}>
-            Rien reçu ? Regarde dans les indésirables, vérifie l’adresse, puis réessaie dans quelques minutes.
-          </Text>
-          <DrawnButton label="Revenir à la connexion" onPress={() => router.replace('/sign-in')} />
-          <DrawnButton label="Renvoyer un lien" size="small" onPress={() => setSentTo(null)} />
+          {/* Même message que l'adresse ait un compte ou non. */}
+          <Notice tone="info">{t('forgot.sent')}</Notice>
+          <Text style={Typography.caption}>{t('forgot.nothing')}</Text>
+          <DrawnButton label={t('forgot.backToSignIn')} onPress={() => router.replace('/sign-in')} />
+          <DrawnButton label={t('forgot.resend')} size="small" onPress={() => setSentTo(null)} />
         </DrawnCard>
       ) : (
         <DrawnCard contentStyle={authStyles.card}>
           <DrawnTextInput
-            label="E-mail"
+            label={t('common.email')}
             value={email}
             onChangeText={(value) => {
               setEmail(value);
               setFieldError(null);
             }}
-            error={fieldError}
+            error={fieldError ? t.msg(fieldError) : null}
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
             textContentType="emailAddress"
-            placeholder="toi@exemple.fr"
+            placeholder={t('common.emailPlaceholder')}
             onSubmitEditing={submit}
           />
           {error && <Notice>{error}</Notice>}
           <DrawnButton
-            label={pending ? 'Envoi…' : 'Recevoir le lien'}
+            label={pending ? t('common.sending') : t('forgot.receive')}
             busy={pending}
             onPress={submit}
             color={playerColor(0).piece}

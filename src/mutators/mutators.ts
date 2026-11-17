@@ -4,6 +4,7 @@
 // En ligne, ils ne sont donc pas vérifiés côté serveur.
 
 import { cellKey, getLegalMoves, pieceAt, sameCell, type Cell, type GameState, type Move, type PlayerId } from '@/game';
+import type { Translator } from '@/i18n';
 
 export interface Mutators {
   /** « Toucher c'est jouer » : un pion qui peut bouger, une fois touché, doit être joué. */
@@ -19,16 +20,11 @@ export const MUTATOR_KEYS: readonly MutatorKey[] = ['touchMove', 'clairvoyance']
 export const DEFAULT_MUTATORS: Mutators = { touchMove: false, clairvoyance: true };
 
 /** Nom et explication de chaque mutateur, affichés sur les écrans de réglage et la salle d'attente. */
-export const MUTATOR_TEXTS: Record<MutatorKey, { label: string; description: string }> = {
-  touchMove: {
-    label: 'Toucher c’est jouer',
-    description: 'Un pion touché qui peut bouger doit être joué : impossible d’en changer ou d’annuler.',
-  },
-  clairvoyance: {
-    label: 'Clairvoyance',
-    description: 'Les cases où le pion choisi peut aller sont affichées en pointillés.',
-  },
-};
+export function mutatorText(t: Translator, key: MutatorKey): { label: string; description: string } {
+  return key === 'touchMove'
+    ? { label: t('mutators.touchMove'), description: t('mutators.touchMoveText') }
+    : { label: t('mutators.clairvoyance'), description: t('mutators.clairvoyanceText') };
+}
 
 // --- Paramètres d'URL (parties locales) -----------------------------------
 
@@ -155,16 +151,15 @@ export function resolveTap({ game, player, selected, moves, cell, mutators }: Ta
 }
 
 /** Message du retour discret, à la place de la consigne du tour. */
-export const TAP_NOTICE_TEXTS: Record<TapNotice, string> = {
-  illegal: 'Ce pion ne peut pas aller là.',
-  locked: 'Toucher c’est jouer : joue le pion choisi.',
-};
+export function tapNoticeText(t: Translator, notice: TapNotice): string {
+  return notice === 'illegal' ? t('mutators.illegal') : t('mutators.locked');
+}
 
 /**
  * Consigne pendant son tour : retour discret d'une touche refusée, sinon ce
  * qu'il faut toucher. Sans « Clairvoyance », elle ne parle pas des pointillés.
  */
-export function selectionHint(options: {
+export function selectionHint(t: Translator, options: {
   selected: Cell | null;
   moves: readonly Move[];
   notice: TapNotice | null;
@@ -173,8 +168,8 @@ export function selectionHint(options: {
   idle: string;
 }): string {
   const { selected, moves, notice, mutators, idle } = options;
-  if (notice) return TAP_NOTICE_TEXTS[notice];
+  if (notice) return tapNoticeText(t, notice);
   if (!selected) return idle;
-  if (moves.length === 0) return 'Ce pion ne peut pas bouger.';
-  return mutators.clairvoyance ? 'Touche une case en pointillés pour jouer.' : 'Touche la case où aller.';
+  if (moves.length === 0) return t('mutators.cannotMove');
+  return mutators.clairvoyance ? t('mutators.tapDotted') : t('mutators.tapTarget');
 }

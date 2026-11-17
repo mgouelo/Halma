@@ -11,7 +11,8 @@ import {
   TouchTarget,
   Typography,
 } from '@/constants/theme';
-import { activeMutators, MUTATOR_KEYS, MUTATOR_TEXTS, type MutatorKey, type Mutators } from '@/mutators/mutators';
+import { useT } from '@/i18n';
+import { activeMutators, MUTATOR_KEYS, mutatorText, type MutatorKey, type Mutators } from '@/mutators/mutators';
 
 import { DrawnCard } from './drawn-card';
 
@@ -52,19 +53,20 @@ interface MutatorSettingsProps {
 
 /** Carte « Mutateurs » : un interrupteur et sa phrase d'explication par mutateur. */
 export function MutatorSettings({ value, onChange, disabled = false, caption }: MutatorSettingsProps) {
+  const t = useT();
   const readOnly = !onChange;
   return (
     <DrawnCard contentStyle={styles.card}>
       <View style={styles.titles}>
         <Text style={Typography.heading} accessibilityRole="header">
-          Mutateurs
+          {t('mutators.title')}
         </Text>
         {caption && <Text style={Typography.caption}>{caption}</Text>}
       </View>
       {MUTATOR_KEYS.map((key) => {
         const on = value[key];
-        const { label, description } = MUTATOR_TEXTS[key];
-        const state = on ? 'Activé' : 'Désactivé';
+        const { label, description } = mutatorText(t, key);
+        const state = on ? t('common.on') : t('common.off');
         const content = (
           <>
             <View style={styles.texts}>
@@ -82,7 +84,7 @@ export function MutatorSettings({ value, onChange, disabled = false, caption }: 
             key={key}
             style={styles.row}
             accessible
-            accessibilityLabel={`${label} : ${state.toLowerCase()}. ${description}`}>
+            accessibilityLabel={t('mutators.readOnlyLabel', { label, state: state.toLocaleLowerCase(t.locale), description })}>
             {content}
           </View>
         ) : (
@@ -105,11 +107,12 @@ export function MutatorSettings({ value, onChange, disabled = false, caption }: 
 
 /** Petits badges des mutateurs actifs, pendant la partie. Rien si aucun n'est actif. */
 export function MutatorBadges({ value }: { value: Mutators }) {
+  const t = useT();
   const active = activeMutators(value);
   if (active.length === 0) return null;
-  const labels = active.map((key) => MUTATOR_TEXTS[key].label);
+  const labels = active.map((key) => mutatorText(t, key).label);
   return (
-    <View style={styles.badges} accessible accessibilityLabel={`Mutateurs actifs : ${labels.join(', ')}`}>
+    <View style={styles.badges} accessible accessibilityLabel={t('mutators.active', { list: labels.join(', ') })}>
       {labels.map((label) => (
         <View key={label} style={styles.badge}>
           <Text style={styles.badgeText}>{label}</Text>

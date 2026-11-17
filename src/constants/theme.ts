@@ -5,6 +5,8 @@
 
 import { Platform, type TextStyle } from 'react-native';
 
+import type { Translator } from '@/i18n';
+
 export const Colors = {
   /** Fond de l'application et intérieur des formes. */
   paper: '#FFFFFF',
@@ -23,16 +25,23 @@ export const Colors = {
  * `piece` pour les pions, `tint` (plus pâle) pour teinter leur branche de départ.
  */
 export const PlayerColors = [
-  { name: 'Rose', piece: '#F6B8C8', tint: '#FDECF1' },
-  { name: 'Bleu', piece: '#A9CBEF', tint: '#EAF3FC' },
-  { name: 'Menthe', piece: '#B3E6CF', tint: '#EBF8F2' },
-  { name: 'Citron', piece: '#F8E7A1', tint: '#FDF8E4' },
-  { name: 'Lavande', piece: '#D2BEEA', tint: '#F3EDFA' },
-  { name: 'Pêche', piece: '#FACBA8', tint: '#FEF0E6' },
+  { piece: '#F6B8C8', tint: '#FDECF1' },
+  { piece: '#A9CBEF', tint: '#EAF3FC' },
+  { piece: '#B3E6CF', tint: '#EBF8F2' },
+  { piece: '#F8E7A1', tint: '#FDF8E4' },
+  { piece: '#D2BEEA', tint: '#F3EDFA' },
+  { piece: '#FACBA8', tint: '#FEF0E6' },
 ] as const;
 
 export function playerColor(player: number) {
   return PlayerColors[player % PlayerColors.length];
+}
+
+const COLOR_KEYS = ['color.0', 'color.1', 'color.2', 'color.3', 'color.4', 'color.5'] as const;
+
+/** Nom de la couleur d'un joueur (« Rose », « Pink », « Rosa »…), dans la langue de `t`. */
+export function playerColorName(t: Translator, player: number): string {
+  return t(COLOR_KEYS[player % COLOR_KEYS.length]);
 }
 
 /** Hexadécimal sans « # », comme dans les avatars Humation. */

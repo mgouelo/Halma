@@ -25,8 +25,8 @@ export interface OnlineGameState {
   animating: { move: Move; player: PlayerId; turn: number } | null;
   /** Coup joué par ce joueur, pas encore confirmé par le serveur. */
   pending: PendingMove | null;
-  /** Dernier refus du serveur, à afficher. */
-  error: string | null;
+  /** Dernier refus du serveur (erreur brute, traduite à l'affichage), ou null. */
+  error: unknown;
   /** Retour discret après une touche refusée (mutateurs), effacé à la touche suivante. */
   notice: TapNotice | null;
 }
@@ -40,7 +40,7 @@ export type OnlineGameAction =
    */
   | { type: 'tap'; cell: Cell; me: PlayerId | null; mutators: Mutators }
   /** Le serveur a refusé le coup en attente. */
-  | { type: 'rejected'; pending: PendingMove; message: string }
+  | { type: 'rejected'; pending: PendingMove; error: unknown }
   | { type: 'animationEnd' }
   | { type: 'dismissError' };
 
@@ -138,7 +138,7 @@ export function onlineGameReducer(state: OnlineGameState, action: OnlineGameActi
         animating: null,
         selected: null,
         moves: [],
-        error: action.message,
+        error: action.error ?? new Error('rejected'),
         notice: null,
       };
 

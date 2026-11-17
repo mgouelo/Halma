@@ -21,6 +21,7 @@ export interface AccountStore {
   deleteUser(userId: string): Promise<void>;
 }
 
+/** Refus : `code` stable (traduit par l'application), `message` pour les journaux et les anciennes versions. */
 export type DeletionResult = { ok: true; resigned: number } | { ok: false; code: OnlineErrorCode; message: string };
 
 /** Réponses d'abandon qui veulent dire « rien à faire dans cette partie ». */

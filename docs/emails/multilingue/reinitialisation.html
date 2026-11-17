@@ -1,0 +1,64 @@
+<!-- FICHIER GÉNÉRÉ par scripts/email-templates.cjs à partir de docs/emails/reinitialisation*.html : ne pas le modifier à la main.
+     Sujet : voir docs/emails/multilingue/sujets.md -->
+{{- $lang := printf "%v" .Data.language -}}
+{{- if eq $lang "en" }}
+<div lang="en" style="margin:0;padding:24px 12px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+  <div style="max-width:480px;margin:0 auto;border:3px solid #111111;border-radius:24px;padding:28px 24px;background:#ffffff;box-shadow:4px 4px 0 #111111;">
+    <p style="margin:0 0 4px;font-size:28px;font-weight:bold;letter-spacing:-0.5px;">Halma</p>
+    <p style="margin:0 0 24px;font-size:13px;color:#555555;">Chinese checkers</p>
+    <p style="margin:0 0 12px;font-size:20px;font-weight:bold;">Forgot your password?</p>
+    <p style="margin:0;font-size:16px;line-height:1.5;">Someone (probably you) asked to change the password of the Halma account linked to {{ .Email }}. Tap the button to choose a new one. The link only works once and expires after an hour.</p>
+    <p style="margin:24px 0;">
+      <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=recovery" style="display:inline-block;padding:14px 24px;border:3px solid #111111;border-radius:999px;background:#F6B8C8;color:#111111;font-size:17px;font-weight:bold;text-decoration:none;">Choose a new password</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:13px;color:#555555;">Button not working? Copy this link into your browser or onto your phone:<br>
+      <span style="word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=recovery</span></p>
+    <p style="margin:16px 0 0;font-size:13px;color:#555555;">Didn’t ask for anything? Ignore this email: your password stays the same.</p>
+  </div>
+</div>
+{{- else if eq $lang "de" }}
+<div lang="de" style="margin:0;padding:24px 12px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+  <div style="max-width:480px;margin:0 auto;border:3px solid #111111;border-radius:24px;padding:28px 24px;background:#ffffff;box-shadow:4px 4px 0 #111111;">
+    <p style="margin:0 0 4px;font-size:28px;font-weight:bold;letter-spacing:-0.5px;">Halma</p>
+    <p style="margin:0 0 24px;font-size:13px;color:#555555;">Sternhalma</p>
+    <p style="margin:0 0 12px;font-size:20px;font-weight:bold;">Passwort vergessen?</p>
+    <p style="margin:0;font-size:16px;line-height:1.5;">Jemand (wahrscheinlich du) möchte das Passwort des Halma-Kontos ändern, das mit {{ .Email }} verknüpft ist. Tipp auf den Button, um ein neues zu wählen. Der Link funktioniert nur einmal und läuft nach einer Stunde ab.</p>
+    <p style="margin:24px 0;">
+      <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=recovery" style="display:inline-block;padding:14px 24px;border:3px solid #111111;border-radius:999px;background:#F6B8C8;color:#111111;font-size:17px;font-weight:bold;text-decoration:none;">Neues Passwort wählen</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:13px;color:#555555;">Der Button funktioniert nicht? Kopier diesen Link in deinen Browser oder auf dein Handy:<br>
+      <span style="word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=recovery</span></p>
+    <p style="margin:16px 0 0;font-size:13px;color:#555555;">Du hast nichts angefordert? Ignorier diese E-Mail: Dein Passwort bleibt, wie es ist.</p>
+  </div>
+</div>
+{{- else if eq $lang "es" }}
+<div lang="es" style="margin:0;padding:24px 12px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+  <div style="max-width:480px;margin:0 auto;border:3px solid #111111;border-radius:24px;padding:28px 24px;background:#ffffff;box-shadow:4px 4px 0 #111111;">
+    <p style="margin:0 0 4px;font-size:28px;font-weight:bold;letter-spacing:-0.5px;">Halma</p>
+    <p style="margin:0 0 24px;font-size:13px;color:#555555;">Damas chinas</p>
+    <p style="margin:0 0 12px;font-size:20px;font-weight:bold;">¿Has olvidado tu contraseña?</p>
+    <p style="margin:0;font-size:16px;line-height:1.5;">Alguien (seguramente tú) ha pedido cambiar la contraseña de la cuenta de Halma vinculada a {{ .Email }}. Toca el botón para elegir una nueva. El enlace solo sirve una vez y caduca al cabo de una hora.</p>
+    <p style="margin:24px 0;">
+      <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=recovery" style="display:inline-block;padding:14px 24px;border:3px solid #111111;border-radius:999px;background:#F6B8C8;color:#111111;font-size:17px;font-weight:bold;text-decoration:none;">Elegir una nueva contraseña</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:13px;color:#555555;">¿El botón no funciona? Copia este enlace en tu navegador o en tu móvil:<br>
+      <span style="word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=recovery</span></p>
+    <p style="margin:16px 0 0;font-size:13px;color:#555555;">¿No has pedido nada? Ignora este correo: tu contraseña sigue siendo la misma.</p>
+  </div>
+</div>
+{{- else }}
+<div lang="fr" style="margin:0;padding:24px 12px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+  <div style="max-width:480px;margin:0 auto;border:3px solid #111111;border-radius:24px;padding:28px 24px;background:#ffffff;box-shadow:4px 4px 0 #111111;">
+    <p style="margin:0 0 4px;font-size:28px;font-weight:bold;letter-spacing:-0.5px;">Halma</p>
+    <p style="margin:0 0 24px;font-size:13px;color:#555555;">Dames chinoises</p>
+    <p style="margin:0 0 12px;font-size:20px;font-weight:bold;">Mot de passe oublié ?</p>
+    <p style="margin:0;font-size:16px;line-height:1.5;">Quelqu’un (sans doute toi) a demandé à changer le mot de passe du compte Halma lié à {{ .Email }}. Touche le bouton pour en choisir un nouveau. Le lien ne sert qu’une fois et expire au bout d’une heure.</p>
+    <p style="margin:24px 0;">
+      <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=recovery" style="display:inline-block;padding:14px 24px;border:3px solid #111111;border-radius:999px;background:#F6B8C8;color:#111111;font-size:17px;font-weight:bold;text-decoration:none;">Choisir un nouveau mot de passe</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:13px;color:#555555;">Le bouton ne marche pas ? Copie ce lien dans ton navigateur ou sur ton téléphone :<br>
+      <span style="word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=recovery</span></p>
+    <p style="margin:16px 0 0;font-size:13px;color:#555555;">Tu n’as rien demandé ? Ignore cet e-mail : ton mot de passe reste le même.</p>
+  </div>
+</div>
+{{- end }}

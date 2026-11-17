@@ -14,6 +14,12 @@ import {
   validateSignUp,
 } from '../validation';
 
+import { translator, type Msg } from '@/i18n';
+
+const t = translator('fr');
+/** Texte français d'une erreur de champ (null si valide). */
+const fr = (error: Msg | null) => (error ? t.msg(error) : null);
+
 describe('validation', () => {
   it('accepte un e-mail valide, même entouré d’espaces', () => {
     expect(validateEmail('  alice@example.com ')).toBeNull();
@@ -44,7 +50,7 @@ describe('validation', () => {
   );
 
   it.each(['...', '---', '12345', 'a1b2', 'x.y.1', '__a_b__'])('exige au moins 3 lettres : refuse « %s »', (pseudo) => {
-    expect(validatePseudo(pseudo)).toBe('Le pseudo doit contenir au moins 3 lettres.');
+    expect(fr(validatePseudo(pseudo))).toBe('Le pseudo doit contenir au moins 3 lettres.');
   });
 
   describe('é, è, É, È et apostrophe', () => {
@@ -56,28 +62,28 @@ describe('validation', () => {
     );
 
     it.each(['Zoë', 'Zoê', 'Ève-à', 'Ça va', 'naïve', 'Ñandú', 'Dan‘s', 'Dan`s', 'Dan"s'])('refuse les autres accents et signes : « %s »', (pseudo) => {
-      expect(validatePseudo(pseudo)).toBe(
+      expect(fr(validatePseudo(pseudo))).toBe(
         'Seulement des lettres (accents permis : é, è, É, È), des chiffres, « _ », « - », « . » et l’apostrophe.',
       );
     });
 
     it.each(["'Dan", "Dan'", "'Dan'", " Dan' ", 'Dan\u2019'])('refuse l’apostrophe au début ou à la fin : « %s »', (pseudo) => {
-      expect(validatePseudo(pseudo)).toBe('Le pseudo ne peut ni commencer ni finir par une apostrophe.');
+      expect(fr(validatePseudo(pseudo))).toBe('Le pseudo ne peut ni commencer ni finir par une apostrophe.');
     });
 
     it.each(["Da''n", 'Da\u2019\u2019n', "Da'\u2019n"])('refuse l’apostrophe doublée : « %s »', (pseudo) => {
-      expect(validatePseudo(pseudo)).toBe('Le pseudo ne peut pas contenir deux apostrophes de suite.');
+      expect(fr(validatePseudo(pseudo))).toBe('Le pseudo ne peut pas contenir deux apostrophes de suite.');
     });
 
     it('compte é, è, É et È comme des lettres, pas l’apostrophe', () => {
-      expect(validatePseudo('é.è')).toBe('Le pseudo doit contenir au moins 3 lettres.');
-      expect(validatePseudo("a'b")).toBe('Le pseudo doit contenir au moins 3 lettres.');
+      expect(fr(validatePseudo('é.è'))).toBe('Le pseudo doit contenir au moins 3 lettres.');
+      expect(fr(validatePseudo("a'b"))).toBe('Le pseudo doit contenir au moins 3 lettres.');
       expect(validatePseudo('é1è2É')).toBeNull();
     });
 
     it('refuse aussi le préfixe des invités écrit avec un accent ou une apostrophe', () => {
       for (const pseudo of ['invité-x', 'INVITÉ-bob', "invi'te-x"]) {
-        expect(validatePseudo(pseudo)).toBe('Ce début de pseudo est réservé aux invités.');
+        expect(fr(validatePseudo(pseudo))).toBe('Ce début de pseudo est réservé aux invités.');
       }
     });
   });
@@ -144,13 +150,13 @@ describe('validation', () => {
       password: null,
       confirmation: null,
     });
-    expect(validateNewPassword({ password: '1234567', confirmation: '1234567' }).password).toBe(
+    expect(fr(validateNewPassword({ password: '1234567', confirmation: '1234567' }).password)).toBe(
       'Le mot de passe doit faire au moins 8 caractères.',
     );
-    expect(validateNewPassword({ password: 'motdepasse', confirmation: '' }).confirmation).toBe(
+    expect(fr(validateNewPassword({ password: 'motdepasse', confirmation: '' }).confirmation)).toBe(
       'Confirme ton nouveau mot de passe.',
     );
-    expect(validateNewPassword({ password: 'motdepasse', confirmation: 'motdepasse!' }).confirmation).toBe(
+    expect(fr(validateNewPassword({ password: 'motdepasse', confirmation: 'motdepasse!' }).confirmation)).toBe(
       'Les deux mots de passe ne sont pas identiques.',
     );
   });

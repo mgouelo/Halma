@@ -1,28 +1,37 @@
 import { useState } from 'react';
 
+import { useT } from '@/i18n';
+
 import { describeAuthError } from './errors';
 
 /**
- * Exécute une action d'authentification en suivant son état : en cours,
- * message d'erreur en français. Renvoie vrai si l'action a réussi.
+ * Exécute une action d'authentification en suivant son état : en cours, et
+ * message d'erreur (traduit à l'affichage : il suit un changement de langue).
+ * Renvoie vrai si l'action a réussi.
  */
 export function useAuthAction() {
+  const t = useT();
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // L'erreur brute est gardée, enveloppée (une erreur peut valoir null ou undefined).
+  const [failure, setFailure] = useState<{ error: unknown } | null>(null);
 
   const run = async (action: () => Promise<void>): Promise<boolean> => {
     setPending(true);
-    setError(null);
+    setFailure(null);
     try {
       await action();
       return true;
     } catch (e) {
-      setError(describeAuthError(e));
+      setFailure({ error: e });
       return false;
     } finally {
       setPending(false);
     }
   };
 
-  return { pending, error, setError, run };
+  const error = failure ? describeAuthError(t, failure.error) : null;
+  /** Efface l'erreur affichée. */
+  const clearError = () => setFailure(null);
+
+  return { pending, error, clearError, run };
 }

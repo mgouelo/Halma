@@ -19,9 +19,11 @@ import { ResendEmailButton } from '@/components/resend-email-button';
 import { ThinkingDots } from '@/components/state-view';
 import { Spacing, Typography } from '@/constants/theme';
 import { setFlashNotice } from '@/lib/flash-notice';
+import { getLanguage, rich, useT } from '@/i18n';
 import { getSupabase } from '@/lib/supabase';
 
 export default function SignUpScreen() {
+  const t = useT();
   const { configured, isGuest, session } = useAuth();
   // Identifiants gardés en mémoire (jamais enregistrés) le temps d'attendre la confirmation.
   const [waitingFor, setWaitingFor] = useState<SignUpFields | null>(null);
@@ -47,6 +49,7 @@ export default function SignUpScreen() {
         getSupabase(),
         fields,
         redirectUrl(AUTH_LINK_PATHS.confirmed),
+        getLanguage(),
       ));
     });
     if (!ok) return;
@@ -57,34 +60,42 @@ export default function SignUpScreen() {
   };
 
   return (
-    <AuthScreen header="back" title="Inscription" subtitle="Un pseudo pour jouer en ligne et retrouver tes parties.">
+    <AuthScreen header="back" title={t('signUp.title')} subtitle={t('signUp.subtitle')}>
       {!configured ? (
         <NotConfiguredCard />
       ) : waitingFor ? (
         <DrawnCard contentStyle={authStyles.card}>
-          <Notice tone="info">
-            Presque fini ! Un e-mail de confirmation a été envoyé à {waitingFor.email}. Clique sur le lien qu’il
-            contient, sur ce téléphone ou ailleurs.
-          </Notice>
-          <View style={styles.waiting} accessibilityLabel="En attente de la validation">
+          <Notice tone="info">{t('signUp.almostDone', { email: waitingFor.email })}</Notice>
+          <View style={styles.waiting} accessibilityLabel={t('signUp.waitingLabel')}>
             <ThinkingDots />
-            <Text style={[Typography.caption, styles.flex]}>Cet écran avance tout seul dès que ton compte est validé.</Text>
+            <Text style={[Typography.caption, styles.flex]}>{t('signUp.autoAdvance')}</Text>
           </View>
           <ResendEmailButton type="signup" email={waitingFor.email} />
-          <DrawnButton label="Aller à la connexion" size="small" onPress={() => router.replace('/sign-in')} />
+          <DrawnButton label={t('signUp.goToSignIn')} size="small" onPress={() => router.replace('/sign-in')} />
         </DrawnCard>
       ) : (
         <>
           {isGuest && (
             <Notice tone="info">
-              Tu joues en invité. Pour conserver ta progression, crée plutôt ton compte depuis le compte invité :{' '}
-              <Link href="/upgrade" style={authStyles.inlineLink}>créer mon compte</Link>.
+              {rich(t('signUp.guestWarning'), {
+                link: (text) => (
+                  <Link href="/upgrade" style={authStyles.inlineLink}>
+                    {text}
+                  </Link>
+                ),
+              })}
             </Notice>
           )}
-          <AccountForm submitLabel="Créer mon compte" pendingLabel="Création…" pending={pending} error={error} onSubmit={submit} />
+          <AccountForm
+            submitLabel={t('common.createMyAccount')}
+            pendingLabel={t('signUp.creating')}
+            pending={pending}
+            error={error}
+            onSubmit={submit}
+          />
           <View style={authStyles.links}>
             <Link href="/sign-in" replace style={authStyles.link}>
-              Déjà un compte ? Connecte-toi
+              {t('signUp.haveAccount')}
             </Link>
           </View>
         </>

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Colors, MaxContentWidth, playerColor, Spacing, Stroke, Typography } from '@/constants/theme';
+import { useT } from '@/i18n';
 
 import { DrawnButton } from './drawn-button';
 import { DrawnCard } from './drawn-card';
@@ -26,6 +27,7 @@ function FallenPion() {
  * n'affiche plus un écran blanc, mais ceci, avec de quoi repartir.
  */
 export function ErrorScreen({ error, retry }: ErrorBoundaryProps) {
+  const t = useT();
   const goHome = () => {
     try {
       router.replace('/');
@@ -40,16 +42,13 @@ export function ErrorScreen({ error, retry }: ErrorBoundaryProps) {
         <DrawnCard contentStyle={styles.card}>
           <FallenPion />
           <Text style={[Typography.title, styles.center]} accessibilityRole="header">
-            Oups, un pion est tombé
+            {t('errorScreen.title')}
           </Text>
-          <Text style={[Typography.body, styles.center]}>
-            Quelque chose s’est mal passé dans l’application. Tes parties en ligne sont enregistrées sur le serveur :
-            tu peux réessayer ou revenir à l’accueil.
-          </Text>
+          <Text style={[Typography.body, styles.center]}>{t('errorScreen.text')}</Text>
           {__DEV__ && <Text style={[Typography.caption, styles.center]}>{error.message}</Text>}
           <View style={styles.actions}>
-            <DrawnButton label="Réessayer" onPress={() => retry()} color={playerColor(1).piece} />
-            <DrawnButton label="Retour à l’accueil" size="small" onPress={goHome} />
+            <DrawnButton label={t('common.retry')} onPress={() => retry()} color={playerColor(1).piece} />
+            <DrawnButton label={t('errorScreen.home')} size="small" onPress={goHome} />
           </View>
         </DrawnCard>
       </ScrollView>

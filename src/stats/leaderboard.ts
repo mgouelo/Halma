@@ -1,6 +1,8 @@
 // Classements : les trois tableaux, et la mise en forme des lignes renvoyées par
 // la fonction SQL `get_leaderboards` (migration rating). Logique pure.
 
+import { formatNumber, formatOrdinal, type Translator } from '@/i18n';
+
 // Dans l'ordre des onglets ; « Points » est le classement par défaut. Les parties
 // lancées et les victoires par niveau d'IA sont comptées mais n'ont pas de classement.
 export const BOARDS = ['points', 'wins', 'best_streak'] as const;
@@ -18,22 +20,17 @@ export interface BoardInfo {
   description: string;
 }
 
-export const BOARD_INFO: Record<Board, BoardInfo> = {
-  points: {
-    title: 'Points',
-    tab: 'Points',
-    description: 'Gagnés et perdus au fil des parties classées.',
-  },
-  wins: { title: 'Victoires', tab: 'Victoires', description: 'Toutes les victoires.' },
-  best_streak: {
-    title: 'Série de connexion',
-    tab: 'Série',
-    description: 'La plus longue série de jours de connexion consécutifs.',
-  },
-};
-
-/** Phrase d'accroche de l'écran des classements. */
-export const LEADERBOARD_TAGLINE = 'Seules les légendes apparaissent ici.';
+/** Titre, onglet et explication d'un classement, dans la langue de `t`. */
+export function boardInfo(t: Translator, board: Board): BoardInfo {
+  switch (board) {
+    case 'points':
+      return { title: t('leaderboard.pointsTitle'), tab: t('leaderboard.pointsTab'), description: t('leaderboard.pointsText') };
+    case 'wins':
+      return { title: t('leaderboard.winsTitle'), tab: t('leaderboard.winsTab'), description: t('leaderboard.winsText') };
+    case 'best_streak':
+      return { title: t('leaderboard.streakTitle'), tab: t('leaderboard.streakTab'), description: t('leaderboard.streakText') };
+  }
+}
 
 /**
  * Qui peut voir les classements : un compte e-mail. Un invité (connexion
@@ -47,21 +44,12 @@ export function leaderboardAccess(session: { isGuest: boolean } | null): Leaderb
   return session.isGuest ? 'guest' : 'allowed';
 }
 
-/** Codes d'erreur courts renvoyés par `get_leaderboards`, et leur traduction. */
-export const LEADERBOARD_ERROR_MESSAGES = {
-  guest_not_ranked: 'Connecte-toi à ton compte pour apparaître dans les classements et les consulter.',
-  not_authenticated: 'Connecte-toi pour consulter les classements.',
-} as const;
-
-const DEFAULT_LEADERBOARD_ERROR = 'Impossible de lire les classements. Vérifie ta connexion.';
-
-/** Message à afficher pour une erreur de lecture des classements. */
-export function describeLeaderboardError(error: unknown): string {
+/** Texte d'une erreur de lecture des classements (codes courts de `get_leaderboards`). */
+export function describeLeaderboardError(t: Translator, error: unknown): string {
   const message = (error as { message?: unknown } | null)?.message;
-  if (typeof message === 'string' && Object.prototype.hasOwnProperty.call(LEADERBOARD_ERROR_MESSAGES, message)) {
-    return LEADERBOARD_ERROR_MESSAGES[message as keyof typeof LEADERBOARD_ERROR_MESSAGES];
-  }
-  return DEFAULT_LEADERBOARD_ERROR;
+  if (message === 'guest_not_ranked') return t('error.leaderboard.guest_not_ranked');
+  if (message === 'not_authenticated') return t('error.leaderboard.not_authenticated');
+  return t('error.leaderboard.default');
 }
 
 /** Ligne telle que renvoyée par `get_leaderboards`. */
@@ -119,38 +107,41 @@ export function groupLeaderboards(rows: readonly LeaderboardRow[]): Record<Board
 }
 
 /** Unité d'un score, accordée : « victoire », « victoires », « jours », « points »… */
-export function formatUnit(board: Board, score: number): string {
-  const plural = Math.abs(score) > 1 ? 's' : '';
+export function formatUnit(t: Translator, board: Board, score: number): string {
   switch (board) {
     case 'points':
-      return `point${plural}`;
+      return t('leaderboard.unitPoints', { count: score });
     case 'best_streak':
-      return `jour${plural}`;
+      return t('leaderboard.unitDays', { count: score });
     default:
-      return `victoire${plural}`;
+      return t('leaderboard.unitWins', { count: score });
   }
 }
 
-/** Valeur du score : un score négatif garde son signe (« -15 »). */
-export function formatValue(score: number): string {
-  return score < 0 ? `-${Math.abs(score)}` : String(score);
+/** Valeur du score, écrite à la façon de la langue : un score négatif garde son signe (« -15 »). */
+export function formatValue(t: Translator, score: number): string {
+  const value = formatNumber(t.locale, Math.abs(score));
+  return score < 0 ? `-${value}` : value;
 }
 
 /** Score avec son unité : « 1 victoire », « 12 victoires », « 3 jours », « -15 points ». */
-export function formatScore(board: Board, score: number): string {
-  return `${formatValue(score)} ${formatUnit(board, score)}`;
+export function formatScore(t: Translator, board: Board, score: number): string {
+  return t('leaderboard.score', { value: formatValue(t, score), unit: formatUnit(t, board, score) });
 }
 
 /** Variation de points, toujours signée : « +27 points », « -15 points », « +1 point ». */
-export function formatPointsDelta(delta: number): string {
-  const sign = delta < 0 ? '-' : '+';
-  return `${sign}${Math.abs(delta)} point${Math.abs(delta) > 1 ? 's' : ''}`;
+export function formatPointsDelta(t: Translator, delta: number): string {
+  return t('leaderboard.delta', {
+    sign: delta < 0 ? '-' : '+',
+    value: formatNumber(t.locale, Math.abs(delta)),
+    unit: t('leaderboard.unitPoints', { count: delta }),
+  });
 }
 
-/** Rang écrit en toutes lettres : « 1er », « 2e », … ; « — » sans classement. */
-export function formatRank(rank: number | null): string {
-  if (rank === null) return '—';
-  return rank === 1 ? '1er' : `${rank}e`;
+/** Rang écrit à la façon de la langue : « 1er », « 2e » ; « 1st » ; « 1. » ; « 1.º » ; « — » sans classement. */
+export function formatRank(t: Translator, rank: number | null): string {
+  if (rank === null) return t('common.dash');
+  return formatOrdinal(t.language, rank);
 }
 
 /** Place sur le podium (1 à 3), ou null. */
@@ -158,14 +149,18 @@ export function podiumPlace(rank: number | null): 1 | 2 | 3 | null {
   return rank === 1 || rank === 2 || rank === 3 ? rank : null;
 }
 
+/** Rang lu par le lecteur d'écran : « 3e place », ou « pas encore classé ». */
+export function rankSpoken(t: Translator, rank: number | null): string {
+  return rank === null ? t('leaderboard.notRanked') : t('leaderboard.place', { rank: formatRank(t, rank) });
+}
+
 /** Texte lu par le lecteur d'écran pour une ligne. */
-export function entryLabel(board: Board, entry: LeaderboardEntry): string {
-  const who = entry.isMe ? `${entry.pseudo} (toi)` : entry.pseudo;
-  const rank = entry.rank === null ? 'pas encore classé' : `${formatRank(entry.rank)} place`;
-  return `${rank}, ${who}, ${formatScore(board, entry.score)}`;
+export function entryLabel(t: Translator, board: Board, entry: LeaderboardEntry): string {
+  const who = entry.isMe ? t('leaderboard.meName', { name: entry.pseudo }) : entry.pseudo;
+  return t('leaderboard.entry', { rank: rankSpoken(t, entry.rank), who, score: formatScore(t, board, entry.score) });
 }
 
 /** Position du joueur, dans le bloc « C'est toi » : « Tu es 12e », « Tu es 1er » ; null s'il n'est pas classé. */
-export function myPositionLabel(rank: number | null): string | null {
-  return rank === null ? null : `Tu es ${formatRank(rank)}`;
+export function myPositionLabel(t: Translator, rank: number | null): string | null {
+  return rank === null ? null : t('leaderboard.myPosition', { rank: formatRank(t, rank) });
 }

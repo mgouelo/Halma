@@ -1,7 +1,8 @@
 import { LegalScreen } from '@/components/legal-screen';
-import { TERMS } from '@/legal/terms';
+import { useLanguage } from '@/i18n';
+import { TERMS_DOCS } from '@/legal/terms';
 
-/** Conditions d'utilisation (brouillon à faire relire). */
+/** Conditions d'utilisation (brouillon à faire relire), dans la langue active. */
 export default function TermsScreen() {
-  return <LegalScreen doc={TERMS} />;
+  return <LegalScreen doc={TERMS_DOCS[useLanguage()]} />;
 }

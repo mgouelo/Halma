@@ -6,24 +6,26 @@ import { OnlineError } from '@/online';
 
 import {
   createRoom,
-  describeOnlineError,
+  describeOnlineError as describe_,
   fetchActiveRoom,
   fetchRoom,
-  GENERIC_ERROR,
-  HOST_CLOSED_NOTICE,
   isValidRoomCode,
   joinRoom,
   leaveRoom,
-  leaveRoomPrompt,
-  NETWORK_ERROR,
+  shouldConfirmLeave,
   normalizeRoomCode,
   playMove,
   roomClosedNotice,
-  ROOM_CLOSED_NOTICE,
   roomFromRow,
   setRoomMutators,
   type RoomSnapshot,
 } from '../room-service';
+import { msg, translator } from '@/i18n';
+
+const t = translator('fr');
+const describeOnlineError = (error: unknown) => describe_(t, error);
+const NETWORK_ERROR = 'Impossible de joindre le serveur. Vérifie ta connexion.';
+const GENERIC_ERROR = 'Une erreur est survenue. Réessaie.';
 
 type Result = { data: unknown; error: unknown };
 
@@ -65,7 +67,9 @@ describe('codes de room', () => {
 
   it('refuse un code mal formé sans appeler le serveur', async () => {
     const { client, asSupabase } = fakeClient();
-    await expect(joinRoom(asSupabase, 'abc')).rejects.toBeInstanceOf(OnlineError);
+    const error = await joinRoom(asSupabase, 'abc').catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(OnlineError);
+    expect(describeOnlineError(error)).toBe('Un code de room compte 6 lettres ou chiffres.');
     expect(client.rpc).not.toHaveBeenCalled();
   });
 
@@ -99,14 +103,15 @@ describe('gameAction', () => {
     });
   });
 
-  it('lit le code et le message d’un refus du serveur', async () => {
+  it('lit le code d’un refus du serveur et le traduit (le message du serveur ne sert qu’aux journaux)', async () => {
     const response = new Response(JSON.stringify({ ok: false, code: 'illegal_move', message: 'Coup refusé : Case de destination occupée.' }), {
       status: 422,
     });
     const { asSupabase } = fakeClient({ invoke: { data: null, error: new FunctionsHttpError(response) } });
     const error = await playMove(asSupabase, 'room-id', move, 0).catch((e: unknown) => e);
     expect(error).toMatchObject({ code: 'illegal_move' });
-    expect(describeOnlineError(error)).toBe('Coup refusé : Case de destination occupée.');
+    expect(describeOnlineError(error)).toBe('Coup refusé.');
+    expect(describe_(translator('en'), error)).toBe('Move rejected.');
   });
 
   it('signale une coupure réseau', () => {
@@ -154,7 +159,7 @@ describe('fetchRoom', () => {
 });
 
 describe('une seule room active', () => {
-  it('explique en français le refus « déjà dans une room » (création et jointure)', async () => {
+  it('explique le refus « déjà dans une room » (création et jointure)', async () => {
     const { asSupabase } = fakeClient({ rpc: { data: null, error: { message: 'already_in_room', code: 'P0001' } } });
     const joined = await joinRoom(asSupabase, 'K7QM3X').catch((e: unknown) => e);
     expect(joined).toMatchObject({ code: 'already_in_room' });
@@ -195,18 +200,19 @@ describe('room fermée et sortie de la salle d’attente', () => {
 
   it('dit aux invités que l’hôte a fermé la room, et reste neutre sinon', () => {
     const waiting = snapshot('host', [player('p1', 'host', 0), player('p2', 'me', 1)]);
-    expect(roomClosedNotice(waiting, 'me')).toBe(HOST_CLOSED_NOTICE);
-    expect(roomClosedNotice(waiting, 'host')).toBe(ROOM_CLOSED_NOTICE);
+    expect(roomClosedNotice(waiting, 'me')).toEqual(msg('online.hostClosed'));
+    expect(t.msg(roomClosedNotice(waiting, 'me'))).toBe('L’hôte a fermé la room.');
+    expect(roomClosedNotice(waiting, 'host')).toEqual(msg('online.roomClosed'));
     const playing = snapshot('host', [player('p1', 'host', 0), player('p2', 'me', 1)], 'playing');
-    expect(roomClosedNotice(playing, 'me')).toBe(ROOM_CLOSED_NOTICE);
+    expect(roomClosedNotice(playing, 'me')).toEqual(msg('online.roomClosed'));
   });
 
   it('demande confirmation seulement à l’hôte qui ferme une room avec d’autres joueurs', () => {
     const withFriend = snapshot('host', [player('p1', 'host', 0), player('p2', 'friend', 1)]);
-    expect(leaveRoomPrompt(withFriend, 'host')).toMatchObject({ title: 'Fermer la room ?', confirmLabel: 'Fermer la room' });
-    expect(leaveRoomPrompt(withFriend, 'friend')).toBeNull();
+    expect(shouldConfirmLeave(withFriend, 'host')).toBe(true);
+    expect(shouldConfirmLeave(withFriend, 'friend')).toBe(false);
     const withAi = snapshot('host', [player('p1', 'host', 0), player('p2', null, 1)]);
-    expect(leaveRoomPrompt(withAi, 'host')).toBeNull();
+    expect(shouldConfirmLeave(withAi, 'host')).toBe(false);
   });
 });
 

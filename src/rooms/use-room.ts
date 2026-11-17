@@ -12,7 +12,6 @@ import {
 } from '@/online';
 
 import {
-  describeOnlineError,
   fetchRoom,
   heartbeat,
   roomFromRow,
@@ -40,7 +39,8 @@ function newerGame(current: StoredGame | null, next: StoredGame): StoredGame {
 export function useRoom(roomId: string) {
   const [snapshot, setSnapshot] = useState<RoomSnapshot | null>(null);
   const [status, setStatus] = useState<RoomLoadStatus>('loading');
-  const [error, setError] = useState<string | null>(null);
+  /** Dernière erreur de lecture (brute : l'écran la traduit), ou null. */
+  const [error, setError] = useState<unknown>(null);
   /** Vrai quand l'abonnement Realtime est actif. */
   const [live, setLive] = useState(false);
   const request = useRef(0);
@@ -60,7 +60,7 @@ export function useRoom(roomId: string) {
       })
       .catch((e: unknown) => {
         if (id !== request.current) return;
-        setError(describeOnlineError(e));
+        setError(e ?? new Error('room'));
         setStatus((prev) => (prev === 'ready' ? prev : 'error'));
       });
   }, [roomId]);

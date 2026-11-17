@@ -7,7 +7,6 @@ import { act, renderRouter, screen } from 'expo-router/testing-library';
 import { Text } from 'react-native';
 
 import { getFlashNotice, setFlashNotice } from '@/lib/flash-notice';
-import { HOST_CLOSED_NOTICE } from '../room-service';
 
 type State = { status: string; snapshot: unknown; error: string | null };
 const mockStore: { state: State; listeners: Set<() => void> } = {
@@ -93,7 +92,7 @@ describe('room supprimée par l’hôte', () => {
 
     act(() => setRoomState({ status: 'missing', snapshot: waitingSnapshot, error: null }));
     expect(screen.getByText('Accueil de test')).toBeTruthy();
-    expect(getFlashNotice()).toBe(HOST_CLOSED_NOTICE);
+    expect(getFlashNotice()).toEqual({ key: 'online.hostClosed' });
   });
 
   it('affiche « Room introuvable » (sans redirection) quand on ouvre une room qui n’existe pas', () => {

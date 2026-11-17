@@ -13,6 +13,7 @@ import {
 } from '@/constants/theme';
 import { useMeasuredSize } from '@/hooks/use-measured-size';
 import { useWideLayout } from '@/hooks/use-wide-layout';
+import { useT } from '@/i18n';
 
 import { Board } from './board/board';
 import { computeBoardLayout } from './board/layout';
@@ -74,6 +75,7 @@ export function GameLayout({
   frameTint,
   board,
 }: GameLayoutProps) {
+  const t = useT();
   const wide = useWideLayout();
   const area = useMeasuredSize();
   const layout = useMemo(
@@ -101,7 +103,7 @@ export function GameLayout({
       {wide ? (
         <View style={[styles.content, styles.wideContent]}>
           <ScrollView style={styles.panel} contentContainerStyle={styles.panelContent}>
-            <DrawnButton label="‹ Accueil" size="small" onPress={onHome} style={styles.home} />
+            <DrawnButton label={t('common.home')} size="small" onPress={onHome} style={styles.home} />
             {header}
             {players}
             {badges}

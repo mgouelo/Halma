@@ -13,11 +13,11 @@ import {
   START_RETRY_MS,
   type MatchmakingStatus,
 } from './matchmaking';
-import { describeOnlineError, fetchRoom, startGame, type RoomPlayer } from './room-service';
+import { fetchRoom, startGame, type RoomPlayer } from './room-service';
 
 export type MatchmakingState =
   | { kind: 'joining' }
-  | { kind: 'error'; message: string; alreadyInRoom: boolean }
+  | { kind: 'error'; error: unknown; alreadyInRoom: boolean }
   | { kind: 'active'; status: MatchmakingStatus };
 
 /** Heure de l'appareil, rafraîchie toutes les `intervalMs` (compte à rebours, durée de la recherche). */
@@ -79,7 +79,7 @@ export function useMatchmaking(userId: string, onStarted: (roomId: string) => vo
         if (!active) return;
         setState({
           kind: 'error',
-          message: describeOnlineError(error),
+          error,
           alreadyInRoom: error instanceof OnlineError && error.code === 'already_in_room',
         });
       });

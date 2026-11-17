@@ -2,6 +2,8 @@
 // Logique pure (sans React), testée à part ; l'affichage est dans
 // src/components/nav-bar/.
 
+import type { Translator } from '@/i18n';
+
 export type NavTab = 'friends' | 'home' | 'leaderboard';
 
 export type NavHref = '/' | '/friends' | '/leaderboard';
@@ -9,11 +11,10 @@ export type NavHref = '/' | '/friends' | '/leaderboard';
 /** Entrées de la barre, de gauche à droite. */
 export const NAV_TABS: readonly NavTab[] = ['friends', 'home', 'leaderboard'];
 
-export const NAV_LABELS: Record<NavTab, string> = {
-  friends: 'Amis',
-  home: 'Accueil',
-  leaderboard: 'Classements',
-};
+/** Libellé de chaque entrée, dans la langue de `t`. */
+export function navLabel(t: Translator, tab: NavTab): string {
+  return t(`nav.${tab}`);
+}
 
 /** Écran d'arrivée de chaque entrée (le même, connecté ou non). */
 export function navHref(tab: NavTab): NavHref {
@@ -36,9 +37,6 @@ export function navHref(tab: NavTab): NavHref {
 export function profileHref(signedIn: boolean): '/profile' | '/sign-in' {
   return signedIn ? '/profile' : '/sign-in';
 }
-
-/** Libellé d'accessibilité du bouton de profil (avatar en haut à droite). */
-export const PROFILE_BUTTON_LABEL = 'Profil';
 
 /** Écrans de la barre qui montrent l'avatar du joueur en haut à droite. */
 export const SCREENS_WITH_PROFILE_BUTTON: readonly string[] = ['index', 'friends', 'leaderboard'];

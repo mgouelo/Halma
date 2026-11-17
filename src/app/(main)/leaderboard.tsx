@@ -24,9 +24,10 @@ import {
   TouchTarget,
   Typography,
 } from '@/constants/theme';
+import { useT } from '@/i18n';
 import { getSupabase } from '@/lib/supabase';
 import {
-  BOARD_INFO,
+  boardInfo,
   BOARDS,
   DEFAULT_BOARD,
   describeLeaderboardError,
@@ -35,8 +36,6 @@ import {
   formatUnit,
   formatValue,
   groupLeaderboards,
-  LEADERBOARD_ERROR_MESSAGES,
-  LEADERBOARD_TAGLINE,
   leaderboardAccess,
   myPositionLabel,
   podiumPlace,
@@ -49,7 +48,7 @@ import { fetchLeaderboards } from '@/stats/stats-service';
 
 type Load =
   | { status: 'loading' }
-  | { status: 'error'; message: string }
+  | { status: 'error'; error: unknown }
   | { status: 'ready'; views: Record<Board, BoardView> };
 
 /**
@@ -58,6 +57,7 @@ type Load =
  * invitation à se connecter, et aucune requête de classement n'est envoyée.
  */
 export default function LeaderboardScreen() {
+  const t = useT();
   const edges = useScreenEdges();
   const navInset = useNavBarInset();
   const { configured, loading, session, isGuest } = useAuth();
@@ -68,25 +68,25 @@ export default function LeaderboardScreen() {
   if (!configured) {
     body = <NotConfiguredCard />;
   } else if (loading) {
-    body = <LoadingState label="Chargement…" />;
+    body = <LoadingState label={t('common.loading')} />;
   } else if (access === 'guest') {
     body = (
       <EmptyState
         icon={<MountainIcon size={64} />}
-        title="Rejoins les légendes"
-        message={`${LEADERBOARD_ERROR_MESSAGES.guest_not_ranked} En créant ton compte, tu gardes toute ta progression d’invité.`}
-        action={{ label: 'Créer mon compte', onPress: () => router.push('/upgrade'), color: playerColor(1).piece }}
-        secondaryAction={{ label: 'J’ai déjà un compte', onPress: () => router.push('/sign-in') }}
+        title={t('leaderboard.joinTitle')}
+        message={`${t('error.leaderboard.guest_not_ranked')} ${t('leaderboard.guestExtra')}`}
+        action={{ label: t('common.createMyAccount'), onPress: () => router.push('/upgrade'), color: playerColor(1).piece }}
+        secondaryAction={{ label: t('common.haveAccount'), onPress: () => router.push('/sign-in') }}
       />
     );
   } else if (access === 'signed_out' || !session) {
     body = (
       <EmptyState
         icon={<MountainIcon size={64} />}
-        title="Rejoins les légendes"
-        message={LEADERBOARD_ERROR_MESSAGES.guest_not_ranked}
-        action={{ label: 'Se connecter', onPress: () => router.push('/sign-in'), color: playerColor(1).piece }}
-        secondaryAction={{ label: 'Créer un compte', onPress: () => router.push('/sign-up') }}
+        title={t('leaderboard.joinTitle')}
+        message={t('error.leaderboard.guest_not_ranked')}
+        action={{ label: t('common.signIn'), onPress: () => router.push('/sign-in'), color: playerColor(1).piece }}
+        secondaryAction={{ label: t('common.createAccount'), onPress: () => router.push('/sign-up') }}
       />
     );
   } else {
@@ -99,9 +99,9 @@ export default function LeaderboardScreen() {
         <View style={styles.titleRow}>
           <View style={styles.titles}>
             <Text style={Typography.title} accessibilityRole="header">
-              Classements
+              {t('leaderboard.title')}
             </Text>
-            <Text style={styles.tagline}>{LEADERBOARD_TAGLINE}</Text>
+            <Text style={styles.tagline}>{t('leaderboard.tagline')}</Text>
           </View>
           <ProfileButton />
         </View>
@@ -112,6 +112,7 @@ export default function LeaderboardScreen() {
 }
 
 function Boards({ myId, board, onBoard }: { myId: string; board: Board; onBoard: (board: Board) => void }) {
+  const t = useT();
   const [load, setLoad] = useState<Load>({ status: 'loading' });
   const request = useRef(0);
 
@@ -126,7 +127,7 @@ function Boards({ myId, board, onBoard }: { myId: string; board: Board; onBoard:
         // Relecture discrète ratée : on garde ce qui est affiché.
         if (id === request.current) {
           setLoad((prev) =>
-            quiet && prev.status === 'ready' ? prev : { status: 'error', message: describeLeaderboardError(error) },
+            quiet && prev.status === 'ready' ? prev : { status: 'error', error },
           );
         }
       });
@@ -144,15 +145,15 @@ function Boards({ myId, board, onBoard }: { myId: string; board: Board; onBoard:
       <BoardTabs value={board} onChange={onBoard} />
       <View style={styles.boardTitles}>
         <Text style={Typography.heading} accessibilityRole="header">
-          {BOARD_INFO[board].title}
+          {boardInfo(t, board).title}
         </Text>
-        <Text style={Typography.caption}>{BOARD_INFO[board].description}</Text>
+        <Text style={Typography.caption}>{boardInfo(t, board).description}</Text>
       </View>
-      {load.status === 'loading' && <LoadingState label="Chargement des classements…" />}
+      {load.status === 'loading' && <LoadingState label={t('leaderboard.loading')} />}
       {load.status === 'error' && (
         <ErrorState
-          title="Classements indisponibles"
-          message={load.message}
+          title={t('leaderboard.unavailable')}
+          message={describeLeaderboardError(t, load.error)}
           onRetry={() => reload(false)}
         />
       )}
@@ -162,6 +163,7 @@ function Boards({ myId, board, onBoard }: { myId: string; board: Board; onBoard:
 }
 
 function BoardTabs({ value, onChange }: { value: Board; onChange: (board: Board) => void }) {
+  const t = useT();
   return (
     <View style={styles.tabs} accessibilityRole="tablist">
       {BOARDS.map((board) => {
@@ -171,13 +173,15 @@ function BoardTabs({ value, onChange }: { value: Board; onChange: (board: Board)
             key={board}
             onPress={() => onChange(board)}
             accessibilityRole="tab"
-            accessibilityLabel={BOARD_INFO[board].title}
+            accessibilityLabel={boardInfo(t, board).title}
             accessibilityState={{ selected }}
             style={styles.tabWrapper}>
             {/* Onglet choisi : relevé par une ombre franche, trait épais et texte gras. */}
             {selected && <View style={styles.tabShadow} />}
             <View style={[styles.tab, selected && styles.tabSelected]}>
-              <Text style={[styles.tabLabel, selected && styles.tabLabelSelected]}>{BOARD_INFO[board].tab}</Text>
+              <Text style={[styles.tabLabel, selected && styles.tabLabelSelected]} numberOfLines={1} adjustsFontSizeToFit>
+                {boardInfo(t, board).tab}
+              </Text>
             </View>
           </Pressable>
         );
@@ -187,13 +191,14 @@ function BoardTabs({ value, onChange }: { value: Board; onChange: (board: Board)
 }
 
 function BoardList({ board, view, myId }: { board: Board; view: BoardView; myId: string }) {
+  const t = useT();
   // Personne n'a de score : le serveur ne renvoie que la ligne du joueur, sans rang.
   if (view.top.length === 0 && view.me?.rank == null) {
     return (
       <EmptyState
         icon={<MountainIcon size={64} />}
-        title="Personne n’est encore classé"
-        message="Le sommet est libre : gagne une partie en ligne pour y planter ton pion."
+        title={t('leaderboard.emptyTitle')}
+        message={t('leaderboard.emptyText')}
       />
     );
   }
@@ -213,14 +218,14 @@ function BoardList({ board, view, myId }: { board: Board; view: BoardView; myId:
           </Text>
           {view.me.rank !== null && (
             <Text style={[Typography.heading, styles.center]} accessibilityRole="header">
-              {myPositionLabel(view.me.rank)}
+              {myPositionLabel(t, view.me.rank)}
             </Text>
           )}
           <DrawnCard contentStyle={styles.rows}>
             <Row board={board} entry={view.me} first myId={myId} />
           </DrawnCard>
           {view.me.rank === null && (
-            <Text style={[Typography.caption, styles.center]}>Tu n’es pas encore classé ici.</Text>
+            <Text style={[Typography.caption, styles.center]}>{t('leaderboard.notRankedHere')}</Text>
           )}
         </View>
       )}
@@ -234,13 +239,14 @@ function BoardList({ board, view, myId }: { board: Board; view: BoardView; myId:
  * ouvre le profil du joueur (le sien pour la ligne « C'est toi »).
  */
 function Row({ board, entry, first, myId }: { board: Board; entry: LeaderboardEntry; first: boolean; myId: string }) {
+  const t = useT();
   const href = playerHref(entry.userId, myId);
   const rowStyle = [styles.row, !first && styles.rowSeparator, entry.isMe && styles.rowMe];
   const content = <RowContent board={board} entry={entry} />;
   // Serveur pas encore à jour (pas d'identifiant) : ligne simple, non cliquable.
   if (!href) {
     return (
-      <View style={rowStyle} accessible accessibilityLabel={entryLabel(board, entry)}>
+      <View style={rowStyle} accessible accessibilityLabel={entryLabel(t, board, entry)}>
         {content}
       </View>
     );
@@ -249,8 +255,8 @@ function Row({ board, entry, first, myId }: { board: Board; entry: LeaderboardEn
     <Pressable
       onPress={() => router.push(href)}
       accessibilityRole="button"
-      accessibilityLabel={playerProfileLabel(entry.pseudo)}
-      accessibilityValue={{ text: entryLabel(board, entry) }}
+      accessibilityLabel={playerProfileLabel(t, entry.pseudo)}
+      accessibilityValue={{ text: entryLabel(t, board, entry) }}
       style={({ pressed }) => [rowStyle, pressed && styles.rowPressed]}>
       {content}
     </Pressable>
@@ -258,23 +264,24 @@ function Row({ board, entry, first, myId }: { board: Board; entry: LeaderboardEn
 }
 
 function RowContent({ board, entry }: { board: Board; entry: LeaderboardEntry }) {
+  const t = useT();
   const place = podiumPlace(entry.rank);
   return (
     <>
       <View style={styles.rank} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         {place && <PodiumBadge place={place} size={34} />}
-        <Text style={[styles.rankText, place !== null && styles.rankTextPodium]}>{formatRank(entry.rank)}</Text>
+        <Text style={[styles.rankText, place !== null && styles.rankTextPodium]}>{formatRank(t, entry.rank)}</Text>
       </View>
       <Avatar value={entry.avatar} seed={entry.pseudo} size={40} />
       <View style={styles.who}>
         <Text style={[Typography.heading, styles.pseudo]} numberOfLines={1}>
           {entry.pseudo}
         </Text>
-        {entry.isMe && <Text style={styles.meTag}>C’est toi</Text>}
+        {entry.isMe && <Text style={styles.meTag}>{t('leaderboard.itsYou')}</Text>}
       </View>
       <View style={styles.scoreBox}>
-        <Text style={styles.score}>{formatValue(entry.score)}</Text>
-        <Text style={styles.unit}>{formatUnit(board, entry.score)}</Text>
+        <Text style={styles.score}>{formatValue(t, entry.score)}</Text>
+        <Text style={styles.unit}>{formatUnit(t, board, entry.score)}</Text>
       </View>
     </>
   );

@@ -16,7 +16,7 @@ import {
   type AvatarConfig,
   type AvatarSlot,
 } from '@/avatar/avatar';
-import { COLOR_LABELS, partLabel, SLOT_LABELS } from '@/avatar/labels';
+import { colorLabel, partLabel, slotLabel } from '@/avatar/labels';
 import { useAuth } from '@/auth/auth-context';
 import { updateAvatar } from '@/auth/auth-service';
 import { useAuthAction } from '@/auth/use-auth-action';
@@ -41,44 +41,46 @@ import {
   Typography,
 } from '@/constants/theme';
 import { useWideLayout } from '@/hooks/use-wide-layout';
+import { useT, type Translator } from '@/i18n';
 import { getSupabase } from '@/lib/supabase';
 import { goBack } from '@/navigation/back';
 
 type Tab = (typeof EDITABLE_SLOTS)[number] | 'colors';
 const TABS: readonly Tab[] = [...EDITABLE_SLOTS, 'colors'];
-const TAB_LABELS: Record<Tab, string> = { ...SLOT_LABELS, colors: 'Couleurs' };
+const tabLabel = (t: Translator, tab: Tab) => (tab === 'colors' ? t('avatar.colors') : slotLabel(t, tab));
 const COLOR_ROWS = [...EDITABLE_COLOR_SLOTS, 'background'] as const;
 
 const THUMB = 72;
 
 /** Création de l'avatar : morceaux, couleurs, puis enregistrement dans le profil. */
 export default function AvatarScreen() {
+  const t = useT();
   const { configured, loading, session, profile, profileError, refreshProfile } = useAuth();
   if (!configured) {
     return (
-      <AuthScreen header="back" title="Ton avatar" subtitle="Avatars indisponibles.">
+      <AuthScreen header="back" title={t('avatar.title')} subtitle={t('avatar.unavailable')}>
         <NotConfiguredCard />
       </AuthScreen>
     );
   }
   if (session && !profile && profileError) {
     return (
-      <AuthScreen header="back" title="Ton avatar" subtitle="Profil indisponible.">
-        <ErrorState message="Impossible de lire ton profil. Vérifie ta connexion." onRetry={refreshProfile} />
+      <AuthScreen header="back" title={t('avatar.title')} subtitle={t('avatar.profileUnavailable')}>
+        <ErrorState message={t('profile.readFailed')} onRetry={refreshProfile} />
       </AuthScreen>
     );
   }
   if (loading || (session && !profile)) {
     return (
-      <AuthScreen header="back" title="Ton avatar" subtitle="Crée le personnage que verront les autres joueurs.">
+      <AuthScreen header="back" title={t('avatar.title')} subtitle={t('avatar.subtitle')}>
         <LoadingState />
       </AuthScreen>
     );
   }
   if (!session || !profile) {
     return (
-      <AuthScreen header="back" title="Ton avatar" subtitle="Connecte-toi (ou joue en invité) pour créer ton avatar.">
-        <DrawnButton label="Se connecter" onPress={() => router.push('/sign-in')} color={playerColor(1).piece} />
+      <AuthScreen header="back" title={t('avatar.title')} subtitle={t('avatar.signIn')}>
+        <DrawnButton label={t('common.signIn')} onPress={() => router.push('/sign-in')} color={playerColor(1).piece} />
       </AuthScreen>
     );
   }
@@ -86,6 +88,7 @@ export default function AvatarScreen() {
 }
 
 function AvatarEditor({ userId, saved }: { userId: string; saved: string | null }) {
+  const t = useT();
   const { refreshProfile } = useAuth();
   const [avatar, setAvatar] = useState<AvatarConfig>(() => parseAvatar(saved, userId));
   const [tab, setTab] = useState<Tab>('head');
@@ -113,30 +116,30 @@ function AvatarEditor({ userId, saved }: { userId: string; saved: string | null 
       <ScrollView contentContainerStyle={[styles.content, wide && styles.wideContent]}>
         <BackButton />
         <Text style={Typography.title} accessibilityRole="header">
-          Ton avatar
+          {t('avatar.title')}
         </Text>
 
         <View style={[styles.body, wide && styles.wideBody]}>
           <View style={[styles.previewColumn, wide && styles.widePreviewColumn]}>
             <View style={styles.preview}>
-              <Avatar value={avatar} seed={userId} size={168} accessibilityLabel="Aperçu de ton avatar" />
+              <Avatar value={avatar} seed={userId} size={168} accessibilityLabel={t('avatar.preview')} />
               <View style={styles.previewActions}>
-                <DrawnButton label="Au hasard" size="small" onPress={() => setAvatar(randomAvatar(AvatarPalettes))} />
-                <DrawnButton label="Par défaut" size="small" onPress={() => setAvatar(seededAvatar(userId))} />
+                <DrawnButton label={t('avatar.random')} size="small" onPress={() => setAvatar(randomAvatar(AvatarPalettes))} />
+                <DrawnButton label={t('avatar.default')} size="small" onPress={() => setAvatar(seededAvatar(userId))} />
               </View>
             </View>
           </View>
           <View style={styles.optionsColumn}>
             <View style={styles.tabs} accessibilityRole="tablist">
-              {TABS.map((t) => (
+              {TABS.map((option) => (
                 <Pressable
-                  key={t}
-                  onPress={() => setTab(t)}
+                  key={option}
+                  onPress={() => setTab(option)}
                   accessibilityRole="tab"
-                  accessibilityState={{ selected: t === tab }}
-                  style={[styles.tab, t === tab && styles.tabSelected]}>
-                  <Text style={[Typography.caption, styles.tabLabel, t === tab && styles.tabLabelSelected]}>
-                    {TAB_LABELS[t]}
+                  accessibilityState={{ selected: option === tab }}
+                  style={[styles.tab, option === tab && styles.tabSelected]}>
+                  <Text style={[Typography.caption, styles.tabLabel, option === tab && styles.tabLabelSelected]}>
+                    {tabLabel(t, option)}
                   </Text>
                 </Pressable>
               ))}
@@ -148,18 +151,18 @@ function AvatarEditor({ userId, saved }: { userId: string; saved: string | null 
                   const current = slot === 'background' ? avatar.background : avatar.colors[slot];
                   return (
                     <View key={slot} style={styles.colorRow}>
-                      <Text style={Typography.heading}>{COLOR_LABELS[slot]}</Text>
+                      <Text style={Typography.heading}>{colorLabel(t, slot)}</Text>
                       <View
                         style={styles.swatches}
                         accessibilityRole="radiogroup"
-                        accessibilityLabel={COLOR_LABELS[slot]}>
+                        accessibilityLabel={colorLabel(t, slot)}>
                         {AvatarPalettes[slot].map((color) => (
                           <Pressable
                             key={color}
                             onPress={() => chooseColor(slot, color)}
                             accessibilityRole="radio"
                             accessibilityState={{ selected: color === current }}
-                            accessibilityLabel={`${COLOR_LABELS[slot]} #${color}`}
+                            accessibilityLabel={t('avatar.colorSwatch', { slot: colorLabel(t, slot), color })}
                             style={[
                               styles.swatch,
                               { backgroundColor: `#${color}` },
@@ -172,10 +175,10 @@ function AvatarEditor({ userId, saved }: { userId: string; saved: string | null 
                   );
                 })
               ) : (
-                <View style={styles.grid} accessibilityRole="radiogroup" accessibilityLabel={SLOT_LABELS[tab]}>
+                <View style={styles.grid} accessibilityRole="radiogroup" accessibilityLabel={slotLabel(t, tab)}>
                   {partsForSlot(tab).map((part) => {
                     const selected = avatar.selections[tab] === part.id;
-                    const label = partLabel(tab, part.id);
+                    const label = partLabel(t, tab, part.id);
                     return (
                       <Pressable
                         key={part.id}
@@ -198,7 +201,7 @@ function AvatarEditor({ userId, saved }: { userId: string; saved: string | null 
 
       <View style={[styles.footer, wide && styles.wideFooter]}>
         <DrawnButton
-          label={pending ? 'Enregistrement…' : 'Enregistrer'}
+          label={pending ? t('common.saving') : t('common.save')}
           onPress={save}
           color={playerColor(0).piece}
           busy={pending}
