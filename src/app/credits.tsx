@@ -26,7 +26,10 @@ function Entry({ entry, title }: { entry: CreditEntry; title?: string }) {
 export default function CreditsScreen() {
   const { humation, font, libraries } = CREDITS;
   return (
-    <DocScreen title="Crédits et licences" subtitle="Halma est fait avec des projets libres. Merci à leurs auteurs.">
+    <DocScreen
+      title="Crédits et licences"
+      subtitle="Halma est fait avec des projets libres. Merci à leurs auteurs."
+      description="Crédits et licences de Halma : avatars Humation, police Fredoka et bibliothèques open source.">
       <DocSection title="Avatars : Humation">
         <Paragraph>
           Les avatars sont dessinés avec {humation.project}, de {humation.authors}, sous licence MIT : le moteur

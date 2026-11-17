@@ -6,13 +6,28 @@ import { Colors, Fonts, MaxContentWidth, Radius, Spacing, Stroke, TouchTarget, T
 
 import { BackButton } from './back-button';
 import { DrawnCard } from './drawn-card';
+import { PageHead } from './page-head';
 import { useScreenEdges } from './nav-bar/screen-edges';
 
-/** Page de texte (crédits, confidentialité, conditions) : titre, retour, défilement. */
-export function DocScreen({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
+/**
+ * Page de texte (crédits, confidentialité, conditions) : titre, retour, défilement.
+ * `description` : description de la page web (moteurs de recherche, aperçus de liens).
+ */
+export function DocScreen({
+  title,
+  subtitle,
+  description,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  description?: string;
+  children: ReactNode;
+}) {
   const edges = useScreenEdges();
   return (
     <SafeAreaView style={styles.screen} edges={edges}>
+      <PageHead title={title} description={description} />
       <ScrollView contentContainerStyle={styles.content}>
         <BackButton />
         <View style={styles.titles}>

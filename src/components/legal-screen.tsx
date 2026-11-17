@@ -8,7 +8,7 @@ import { Bullet, DocScreen, DocSection, Paragraph } from './doc-screen';
 /** Page légale (confidentialité, conditions), avec un bandeau tant que c'est un brouillon. */
 export function LegalScreen({ doc }: { doc: LegalDocument }) {
   return (
-    <DocScreen title={doc.title} subtitle={`Version : ${doc.version}`}>
+    <DocScreen title={doc.title} subtitle={`Version : ${doc.version}`} description={doc.description}>
       {doc.draft && (
         <View style={styles.draft} accessibilityRole="alert">
           <Text style={styles.draftTitle}>Brouillon à faire relire</Text>

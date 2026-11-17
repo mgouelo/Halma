@@ -26,6 +26,26 @@ describe('adresses de redirection', () => {
     expect(authRedirectUrl(AUTH_LINK_PATHS.confirmed, 'native')).toBe('halma://auth/confirmed');
   });
 
+  it('mobile, avec l’adresse du site (EXPO_PUBLIC_SITE_URL) : lien https vers le site', () => {
+    expect(authRedirectUrl(AUTH_LINK_PATHS.resetPassword, 'native', null, 'https://halma-game.com')).toBe(
+      'https://halma-game.com/reset-password',
+    );
+    expect(authRedirectUrl(AUTH_LINK_PATHS.confirmed, 'native', null, ' https://halma-game.com/ ')).toBe(
+      'https://halma-game.com/auth/confirmed',
+    );
+  });
+
+  it('mobile, adresse du site absente ou vide : schéma de l’application', () => {
+    expect(authRedirectUrl(AUTH_LINK_PATHS.resetPassword, 'native', null, null)).toBe('halma://reset-password');
+    expect(authRedirectUrl(AUTH_LINK_PATHS.confirmed, 'native', null, '   ')).toBe('halma://auth/confirmed');
+  });
+
+  it('web : l’origine de la page passe avant l’adresse du site', () => {
+    expect(authRedirectUrl(AUTH_LINK_PATHS.resetPassword, 'web', 'http://localhost:8081', 'https://halma-game.com')).toBe(
+      'http://localhost:8081/reset-password',
+    );
+  });
+
   it('web : route du site', () => {
     expect(authRedirectUrl(AUTH_LINK_PATHS.resetPassword, 'web', 'https://halma.example')).toBe(
       'https://halma.example/reset-password',

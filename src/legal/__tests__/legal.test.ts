@@ -13,10 +13,30 @@ describe('pages légales', () => {
     for (const doc of [PRIVACY, TERMS]) expect(doc.draft).toBe(true);
   });
 
-  it('n’ont plus de champ à compléter, et indiquent la région Supabase (Irlande, UE)', () => {
-    expect(missingFields(PRIVACY)).toHaveLength(0);
-    expect(missingFields(TERMS)).toHaveLength(0);
+  it('ne gardent que les champs à compléter connus (identité de l’éditeur, transferts), et indiquent la région Supabase', () => {
+    const publisher = '[À COMPLÉTER : nom complet et statut de l’éditeur (particulier, entreprise…)]';
+    expect(missingFields(PRIVACY)).toEqual([
+      publisher,
+      '[À COMPLÉTER : pays où Brevo et Cloudflare traitent les données, et garanties en cas de transfert hors de l’Union européenne]',
+    ]);
+    expect(missingFields(TERMS)).toEqual([publisher]);
     expect(text(PRIVACY)).toMatch(/région Irlande, au sein de l’Union européenne/);
+  });
+
+  it('l’adresse de contact est celle du domaine du site', () => {
+    expect(CONTACT_EMAIL).toBe('contact@halma-game.com');
+  });
+
+  it('la politique nomme les trois prestataires techniques et leur rôle', () => {
+    const body = text(PRIVACY);
+    expect(body).toMatch(/Supabase : hébergement des données/);
+    expect(body).toMatch(/Brevo : envoi des e-mails/);
+    expect(body).toMatch(/Cloudflare : hébergement du site halma-game\.com/);
+    expect(body).toMatch(/réception des e-mails écrits à contact@halma-game\.com/);
+  });
+
+  it('ont une description pour la page web', () => {
+    for (const doc of [PRIVACY, TERMS]) expect(doc.description.length).toBeGreaterThan(20);
   });
 
   it('donnent l’adresse de contact, sans inventer d’autre coordonnée (e-mail, téléphone)', () => {

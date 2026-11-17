@@ -5,6 +5,7 @@ import { useAuth } from '@/auth/auth-context';
 import { AUTH_LINK_PATHS } from '@/auth/auth-links';
 import { confirmFromLink } from '@/auth/confirm-link';
 import { AuthFailure, describeAuthError } from '@/auth/errors';
+import { useScreenHost } from '@/auth/open-app';
 import { forgetPendingConfirmation, readPendingConfirmation } from '@/auth/pending-confirmation';
 import { useIncomingAuthLink, useLinkVerification, useStripAuthParamsFromAddressBar } from '@/auth/use-auth-link';
 import { useAutoHome } from '@/auth/use-auto-home';
@@ -12,17 +13,23 @@ import { AuthScreen, authStyles, NotConfiguredCard } from '@/components/auth-scr
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
 import { StarLogo } from '@/components/nav-bar/icons';
+import { OpenAppButton } from '@/components/open-app-button';
 import { ErrorState, LoadingState } from '@/components/state-view';
 import { playerColor, Typography } from '@/constants/theme';
 import { createEphemeralSupabase, getSupabase } from '@/lib/supabase';
 
 export const CONFIRMED_TITLE = 'Compte validé !';
 export const CONFIRMED_ELSEWHERE_TITLE = 'Compte validé';
+export const CONFIRMED_ELSEWHERE_BODY =
+  'Tu peux retourner dans l’application : elle s’en aperçoit toute seule en quelques secondes.';
 
 /**
- * Lien de confirmation d'e-mail. Sur l'appareil de l'inscription : session
- * ouverte, « Compte validé ! » puis l'accueil tout seul. Sur un autre appareil :
- * « Compte validé, retourne dans l'appli » (l'appli le détecte d'elle-même).
+ * Lien de confirmation d'e-mail (il mène au site : https://…/auth/confirmed).
+ * Dans le navigateur de l'inscription faite sur le site : session ouverte,
+ * « Compte validé ! » puis l'accueil tout seul. Ailleurs (inscription faite dans
+ * l'application, ou sur un autre appareil) : « Compte validé, tu peux retourner
+ * dans l'application » (elle le détecte d'elle-même), avec un bouton pour
+ * l'ouvrir dans le navigateur d'un téléphone.
  */
 export default function ConfirmedScreen() {
   const { configured } = useAuth();
@@ -38,6 +45,7 @@ export default function ConfirmedScreen() {
   useStripAuthParamsFromAddressBar(verification.status !== 'pending');
   const here = verification.status === 'ok' && verification.value === 'here';
   useAutoHome(here);
+  const host = useScreenHost();
 
   const content = () => {
     if (!configured) return <NotConfiguredCard />;
@@ -59,7 +67,7 @@ export default function ConfirmedScreen() {
           </Text>
           <Text style={Typography.body}>{verification.error.message}</Text>
           <Text style={Typography.caption}>
-            Si ton compte est déjà validé, connecte-toi. Sinon, renvoie l’e-mail depuis l’appli.
+            Si ton compte est déjà validé, connecte-toi. Sinon, renvoie l’e-mail depuis l’application.
           </Text>
           <DrawnButton label="Se connecter" onPress={() => router.replace('/sign-in')} color={playerColor(0).piece} />
         </DrawnCard>
@@ -83,10 +91,9 @@ export default function ConfirmedScreen() {
         <Text style={[Typography.title, styles.text]} accessibilityRole="header" accessibilityLiveRegion="polite">
           {CONFIRMED_ELSEWHERE_TITLE}
         </Text>
-        <Text style={[Typography.body, styles.text]}>
-          Retourne dans l’appli : elle s’en aperçoit toute seule en quelques secondes.
-        </Text>
-        <Text style={[Typography.caption, styles.text]}>Tu peux fermer cette page.</Text>
+        <Text style={[Typography.body, styles.text]}>{CONFIRMED_ELSEWHERE_BODY}</Text>
+        <OpenAppButton />
+        {host !== 'app' && <Text style={[Typography.caption, styles.text]}>Tu peux fermer cette page.</Text>}
       </DrawnCard>
     );
   };

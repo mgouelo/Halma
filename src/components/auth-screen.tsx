@@ -9,6 +9,7 @@ import { Colors, Fonts, MaxContentWidth, Radius, Spacing, Stroke, Typography } f
 import { BackButton } from './back-button';
 import { DrawnButton } from './drawn-button';
 import { DrawnCard } from './drawn-card';
+import { PageHead } from './page-head';
 import { useScreenEdges } from './nav-bar/screen-edges';
 
 interface AuthScreenProps {
@@ -28,6 +29,7 @@ export function AuthScreen({ title, subtitle, header = 'home', children }: AuthS
   const edges = useScreenEdges();
   return (
     <SafeAreaView style={styles.screen} edges={edges}>
+      <PageHead title={title} />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {header === 'back' && <BackButton />}

@@ -21,6 +21,9 @@ import { getFlashNotice, setFlashNotice } from '@/lib/flash-notice';
 
 let mockLinkingUrl: string | null = null;
 let mockParams: Record<string, string> = {};
+/** Où s'affiche l'écran : application, ou navigateur d'un téléphone ou d'un ordinateur (site web). */
+let mockHost: 'app' | 'phone' | 'desktop' = 'app';
+const mockOpenApp = jest.fn();
 const mockAuth = {
   configured: true,
   loading: false,
@@ -57,6 +60,7 @@ jest.mock('@/auth/auth-service', () => ({
   signOut: jest.fn(),
 }));
 jest.mock('@/components/avatar', () => ({ Avatar: () => null }));
+jest.mock('@/auth/open-app', () => ({ useScreenHost: () => mockHost, openApp: () => mockOpenApp() }));
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const ForgotPassword = require('@/app/forgot-password').default;
@@ -74,6 +78,8 @@ beforeEach(async () => {
   resetLinkVerifications();
   mockLinkingUrl = null;
   mockParams = {};
+  mockHost = 'app';
+  delete process.env.EXPO_PUBLIC_SITE_URL;
   mockAuth.session = null;
   mockAuth.isGuest = false;
   mockAuth.pendingEmail = null;
@@ -82,6 +88,7 @@ beforeEach(async () => {
 });
 afterEach(() => {
   jest.useRealTimers();
+  delete process.env.EXPO_PUBLIC_SITE_URL;
 });
 
 describe('mot de passe oublié', () => {
@@ -94,6 +101,16 @@ describe('mot de passe oublié', () => {
     await waitFor(() => expect(screen.getByText(/Si un compte existe avec cette adresse, un e-mail vient d’être envoyé/)).toBeTruthy());
     expect(requestPasswordReset).toHaveBeenCalledWith({ main: true }, 'lea@example.com', 'halma://reset-password');
     expect(screen.getByRole('button', { name: '‹ Retour' })).toBeTruthy();
+  });
+
+  it('avec EXPO_PUBLIC_SITE_URL : le lien de l’e-mail mène au site (https), cliquable partout', async () => {
+    process.env.EXPO_PUBLIC_SITE_URL = 'https://halma-game.com';
+    mocked(requestPasswordReset).mockResolvedValue(undefined);
+    render(<ForgotPassword />);
+    fireEvent.changeText(screen.getByLabelText('E-mail'), 'lea@example.com');
+    fireEvent.press(screen.getByRole('button', { name: 'Recevoir le lien' }));
+    await waitFor(() => expect(requestPasswordReset).toHaveBeenCalled());
+    expect(requestPasswordReset).toHaveBeenCalledWith({ main: true }, 'lea@example.com', 'https://halma-game.com/reset-password');
   });
 
   it('vérifie l’adresse avant d’envoyer', () => {
@@ -144,6 +161,44 @@ describe('nouveau mot de passe', () => {
     expect(mockRouter.dismissTo).not.toHaveBeenCalled();
     act(() => jest.advanceTimersByTime(AUTO_HOME_DELAY_MS));
     expect(mockRouter.dismissTo).toHaveBeenCalledWith('/');
+  });
+
+  const changePassword = async () => {
+    await waitFor(() => expect(screen.getByLabelText('Nouveau mot de passe')).toBeTruthy());
+    fireEvent.changeText(screen.getByLabelText('Nouveau mot de passe'), 'nouveau-mdp');
+    fireEvent.changeText(screen.getByLabelText('Confirme le mot de passe'), 'nouveau-mdp');
+    fireEvent.press(screen.getByRole('button', { name: 'Enregistrer le mot de passe' }));
+    await waitFor(() => expect(screen.getByText('Mot de passe modifié')).toBeTruthy());
+  };
+
+  it('site, navigateur d’un téléphone (lien https de l’e-mail) : invite à retourner dans l’application, sans repartir seul', async () => {
+    jest.useFakeTimers();
+    mockHost = 'phone';
+    mockParams = { token_hash: 'abc', type: 'recovery' };
+    mocked(sessionFromLink).mockResolvedValue(null);
+    mocked(updatePassword).mockResolvedValue(undefined);
+    render(<ResetPassword />);
+    await changePassword();
+    expect(sessionFromLink).toHaveBeenCalledWith({ main: true }, { kind: 'otp', tokenHash: 'abc', type: 'recovery' });
+    expect(screen.getByText(/Tu peux retourner dans l’application/)).toBeTruthy();
+    expect(screen.queryByText(/Retour à l’accueil…/)).toBeNull();
+    fireEvent.press(screen.getByRole('button', { name: 'Ouvrir l’application Halma' }));
+    expect(mockOpenApp).toHaveBeenCalledTimes(1);
+    act(() => jest.advanceTimersByTime(AUTO_HOME_DELAY_MS * 3));
+    expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByRole('button', { name: 'Jouer sur le site' }));
+    expect(mockRouter.dismissTo).toHaveBeenCalledWith('/');
+  });
+
+  it('site, navigateur d’un ordinateur : même message, sans bouton pour ouvrir l’application', async () => {
+    mockHost = 'desktop';
+    mockParams = { token_hash: 'abc', type: 'recovery' };
+    mocked(sessionFromLink).mockResolvedValue(null);
+    mocked(updatePassword).mockResolvedValue(undefined);
+    render(<ResetPassword />);
+    await changePassword();
+    expect(screen.getByText(/Tu peux retourner dans l’application/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Ouvrir l’application Halma' })).toBeNull();
   });
 
   it('lien expiré : message clair et bouton pour redemander un lien', async () => {
@@ -205,14 +260,39 @@ describe('compte validé', () => {
     expect(mockRouter.dismissTo).toHaveBeenCalledWith('/');
   });
 
-  it('sur un autre appareil : « retourne dans l’appli », validé sans ouvrir de session ici', async () => {
+  it('sur un autre appareil : « tu peux retourner dans l’application », validé sans ouvrir de session ici', async () => {
     mockLinkingUrl = confirmLink;
     mocked(sessionFromLink).mockResolvedValue(null);
     render(<Confirmed />);
     await waitFor(() => expect(screen.getByText('Compte validé')).toBeTruthy());
-    expect(screen.getByText(/Retourne dans l’appli/)).toBeTruthy();
+    expect(screen.getByText(/Tu peux retourner dans l’application/)).toBeTruthy();
     expect(sessionFromLink).toHaveBeenCalledWith({ ephemeral: true }, expect.objectContaining({ kind: 'otp' }));
     expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+    // Dans l'application elle-même : ni bouton pour l'ouvrir, ni « ferme cette page ».
+    expect(screen.queryByRole('button', { name: 'Ouvrir l’application Halma' })).toBeNull();
+    expect(screen.queryByText('Tu peux fermer cette page.')).toBeNull();
+  });
+
+  it('site, navigateur d’un téléphone (inscription faite dans l’application) : bouton pour ouvrir l’application', async () => {
+    mockHost = 'phone';
+    mockParams = { token_hash: 'h', type: 'signup' };
+    mocked(sessionFromLink).mockResolvedValue(null);
+    render(<Confirmed />);
+    await waitFor(() => expect(screen.getByText('Compte validé')).toBeTruthy());
+    expect(sessionFromLink).toHaveBeenCalledWith({ ephemeral: true }, { kind: 'otp', tokenHash: 'h', type: 'signup' });
+    expect(screen.getByText('Tu peux fermer cette page.')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: 'Ouvrir l’application Halma' }));
+    expect(mockOpenApp).toHaveBeenCalledTimes(1);
+  });
+
+  it('site, navigateur d’un ordinateur : pas de bouton pour ouvrir l’application', async () => {
+    mockHost = 'desktop';
+    mockParams = { token_hash: 'h', type: 'signup' };
+    mocked(sessionFromLink).mockResolvedValue(null);
+    render(<Confirmed />);
+    await waitFor(() => expect(screen.getByText('Compte validé')).toBeTruthy());
+    expect(screen.getByText(/Tu peux retourner dans l’application/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Ouvrir l’application Halma' })).toBeNull();
   });
 
   it('lien expiré : message et accès à la connexion', async () => {
@@ -258,6 +338,20 @@ describe('inscription en attente de validation', () => {
     });
     await waitFor(() => expect(mockRouter.dismissTo).toHaveBeenCalledWith('/'));
     expect(getFlashNotice()).toBe('Compte validé ! Bienvenue dans Halma.');
+  });
+
+  it('avec EXPO_PUBLIC_SITE_URL : la confirmation mène au site (https)', async () => {
+    process.env.EXPO_PUBLIC_SITE_URL = 'https://halma-game.com';
+    mocked(signUpWithEmail).mockResolvedValue({ needsEmailConfirmation: true });
+    mocked(signInIfConfirmed).mockResolvedValue(false);
+    render(<SignUp />);
+    fill();
+    await waitFor(() => expect(signUpWithEmail).toHaveBeenCalled());
+    expect(signUpWithEmail).toHaveBeenCalledWith(
+      { main: true },
+      { pseudo: 'Zoé', email: 'zoe@example.com', password: 'motdepasse' },
+      'https://halma-game.com/auth/confirmed',
+    );
   });
 
   it('« Renvoyer l’e-mail » renvoie la confirmation d’inscription', async () => {

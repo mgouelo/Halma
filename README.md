@@ -36,12 +36,27 @@ Copier `.env.example` en `.env` (ignoré par git) et le remplir :
 | -------- | ------- |
 | `EXPO_PUBLIC_SUPABASE_URL` | URL du projet, par exemple `https://abcdefghijklmnop.supabase.co` |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | clé publique du projet : clé `anon` ou nouvelle clé `publishable` (`sb_publishable_…`) |
+| `EXPO_PUBLIC_SITE_URL` | adresse publique du site, **sans barre finale** : `https://halma-game.com` (facultative en développement) |
 
 Elles se trouvent dans le tableau de bord Supabase, rubrique *Project Settings → API* (ou *API Keys*).
 Le préfixe `EXPO_PUBLIC_` les intègre dans l'application : ce sont des valeurs publiques, la sécurité
 repose sur la Row Level Security. **Ne jamais mettre la clé `service_role` (ou *secret key*) dans l'application
 ni dans un fichier commité.** Après un changement de `.env`, relancer avec `npx expo start --clear`.
-Pour une compilation EAS, définir les mêmes variables dans l'environnement EAS du projet.
+Pour une compilation EAS, définir les mêmes variables dans l'environnement EAS du projet. Le cache de Metro
+garde les valeurs déjà intégrées : après un changement, `npx expo export --platform web --clear` aussi.
+
+`EXPO_PUBLIC_SITE_URL` fixe l'adresse vers laquelle mènent les liens des e-mails envoyés depuis l'application
+mobile (`src/auth/redirect.ts`) :
+
+- **définie** (`https://halma-game.com`) : `https://halma-game.com/reset-password` et
+  `https://halma-game.com/auth/confirmed`. Des liens https, cliquables dans toutes les messageries (Gmail ne rend
+  pas cliquables les liens `halma://`), ouverts dans le navigateur du téléphone ou de l'ordinateur, sans avoir
+  besoin de l'application ;
+- **absente** (développement local, tests) : `halma://reset-password` et `halma://auth/confirmed`, comme avant.
+
+Sur le web, l'adresse de redirection reste celle du site ouvert (`window.location.origin`) ; la variable y sert
+seulement aux adresses absolues des pages (`og:url`, `og:image`, lien canonique, voir « Déploiement du site »).
+Aucune adresse n'est écrite en dur dans le code.
 
 ### Mise en place du projet Supabase
 
@@ -132,15 +147,19 @@ le joueur apparaît alors dans les classements.
 ### Validation de l'e-mail
 
 À l'inscription (`signUp`) et quand un invité ajoute un e-mail (`updateUser`), l'application passe une adresse de
-redirection (`emailRedirectTo`) : `halma://auth/confirmed` sur mobile, `https://<site>/auth/confirmed` sur le web
-(`src/auth/auth-links.ts`). Le lien de l'e-mail ouvre l'écran **`/auth/confirmed`** :
+redirection (`emailRedirectTo`) : `https://halma-game.com/auth/confirmed` (`EXPO_PUBLIC_SITE_URL`, voir plus
+haut ; `halma://auth/confirmed` sans elle) sur mobile, `https://<site>/auth/confirmed` sur le web
+(`src/auth/auth-links.ts`). Le lien de l'e-mail ouvre l'écran **`/auth/confirmed`**, en général **dans le
+navigateur** (page du site) :
 
-- **sur l'appareil de l'inscription** (il garde en mémoire locale qu'une confirmation est attendue,
-  `src/auth/pending-confirmation.ts`) : le jeton est vérifié, la session ouverte, « Compte validé ! » s'affiche et
-  l'accueil suit tout seul (environ 2 s, bouton « Jouer » en secours) ;
-- **sur un autre appareil** (ordinateur, autre navigateur) : le jeton est vérifié avec un client Supabase jetable,
-  sans ouvrir ni remplacer de session sur cet appareil ; l'écran affiche « Compte validé », puis « Retourne dans
-  l'appli » ;
+- **dans le navigateur de l'inscription faite sur le site** (il garde en mémoire locale qu'une confirmation est
+  attendue, `src/auth/pending-confirmation.ts`) : le jeton est vérifié, la session ouverte, « Compte validé ! »
+  s'affiche et l'accueil suit tout seul (environ 2 s, bouton « Jouer » en secours) ;
+- **ailleurs** (inscription faite dans l'application, ou sur un autre appareil) : le jeton est vérifié avec un
+  client Supabase jetable, sans ouvrir ni remplacer de session ; l'écran affiche « Compte validé » et « Tu peux
+  retourner dans l'application : elle s'en aperçoit toute seule en quelques secondes. ». Dans le navigateur d'un
+  téléphone (Android ou iPhone), un bouton **« Ouvrir l'application Halma »** (lien `halma://`) ; pas sur
+  ordinateur (`src/auth/open-app.ts`, `src/components/open-app-button.tsx`) ;
 - **lien expiré ou déjà utilisé** : message clair et bouton « Se connecter ».
 
 Pendant l'attente, l'appareil d'origine **détecte la validation tout seul** : relecture du compte au retour au
@@ -159,15 +178,23 @@ Le bouton « J'ai confirmé » a disparu ; « Renvoyer l'e-mail » reste (`auth.
 
 - Lien « Mot de passe oublié ? » sous le formulaire de connexion, vers **`/forgot-password`** (sans barre, bouton
   « ‹ Retour », e-mail prérempli depuis la connexion). L'application appelle `auth.resetPasswordForEmail` avec
-  l'adresse de redirection `halma://reset-password` (mobile) ou `https://<site>/reset-password` (web).
+  l'adresse de redirection `https://halma-game.com/reset-password` (mobile, `EXPO_PUBLIC_SITE_URL` ;
+  `halma://reset-password` sans elle) ou `https://<site>/reset-password` (web).
 - Réponse **toujours neutre** : « Si un compte existe avec cette adresse, un e-mail vient d'être envoyé. » (on ne
   révèle pas quelles adresses ont un compte). Les limites d'envoi sont traduites (« Un e-mail vient déjà d'être
   envoyé. Réessaie dans 37 secondes. », « Trop d'e-mails envoyés… »).
-- **`/reset-password`** reçoit le lien (mobile : lien profond `halma://reset-password`, lu avec `expo-linking`
-  et la route Expo Router du même nom ; web : l'URL de la page), ouvre la session de récupération, puis demande
-  le nouveau mot de passe deux fois (8 caractères au moins, œil sur chaque champ), appelle
-  `auth.updateUser({ password })`, affiche « Mot de passe modifié » et mène à l'accueil, connecté. Lien expiré ou
-  invalide : message clair et bouton « Recevoir un nouveau lien ».
+- **`/reset-password`** reçoit le lien (web : l'URL de la page, `https://halma-game.com/reset-password?token_hash=…&type=recovery` ;
+  mobile en développement : lien profond `halma://reset-password`, lu avec `expo-linking` et la route Expo Router
+  du même nom), ouvre la session de récupération, retire les jetons de la barre d'adresse, puis demande le
+  nouveau mot de passe deux fois (8 caractères au moins, œil sur chaque champ) et appelle
+  `auth.updateUser({ password })`. Tout se passe dans le navigateur, sans l'application. Ensuite :
+  - **sur le site** : « Mot de passe modifié », « Tu peux retourner dans l'application et te connecter avec ce
+    nouveau mot de passe. », bouton « Ouvrir l'application Halma » dans le navigateur d'un téléphone (pas sur
+    ordinateur) et « Jouer sur le site » ; pas de retour automatique à l'accueil ;
+  - **dans l'application** : « Mot de passe modifié » et retour à l'accueil, connecté.
+
+  Lien expiré ou invalide : « Lien expiré ou invalide », « Ce lien a expiré ou a déjà servi. » et bouton
+  « Recevoir un nouveau lien ».
 - Pas de « changer mon mot de passe » sur le profil : « mot de passe oublié » est la seule voie.
 
 **Choix du flux.** Les modèles d'e-mails de `docs/emails/` mènent directement à l'application avec
@@ -183,38 +210,41 @@ client garde `detectSessionInUrl: false` : c'est l'écran du lien qui ouvre la s
 À faire une fois dans le tableau de bord du projet (rien de secret dans le dépôt).
 
 1. **Adresses des liens** : *Authentication → URL Configuration*.
-   - *Site URL* : l'adresse du site web, par exemple `https://halma.example.fr` (adresse de secours quand une
-     redirection n'est pas autorisée).
+   - *Site URL* : `https://halma-game.com` (adresse de secours quand une redirection n'est pas autorisée).
    - *Redirect URLs*, ajouter :
-     - `halma://**` (application mobile : `halma://auth/confirmed`, `halma://reset-password`) ;
-     - `https://halma.example.fr/**` (site web) ;
+     - `https://halma-game.com/**` (site web, et liens des e-mails envoyés depuis l'application mobile quand
+       `EXPO_PUBLIC_SITE_URL` est définie) ;
+     - `halma://**` (application sans `EXPO_PUBLIC_SITE_URL` : `halma://auth/confirmed`, `halma://reset-password`) ;
      - en développement : `http://localhost:8081/**` (web local) et, avec Expo Go, `exp://**`.
 2. **Service d'envoi d'e-mails** : *Authentication → Emails → SMTP Settings* (ou *Project Settings →
    Authentication*). Le service par défaut de Supabase ne sert qu'aux essais : très peu d'e-mails par heure, et
-   seulement vers les adresses des membres de l'équipe du projet. Brancher un service d'envoi, par exemple
-   [Resend](https://resend.com) :
-   1. créer un compte, ajouter et vérifier son domaine (enregistrements DNS SPF et DKIM fournis par Resend) ;
-   2. créer une clé d'API (envoi seulement) ;
-   3. dans Supabase, activer *Enable Custom SMTP* : hôte `smtp.resend.com`, port `465`, utilisateur `resend`,
-      mot de passe = la clé d'API, expéditeur `Halma <no-reply@halma.example.fr>`.
+   seulement vers les adresses des membres de l'équipe du projet. Halma utilise [Brevo](https://www.brevo.com) :
+   1. dans Brevo, ajouter et authentifier le domaine `halma-game.com` (enregistrements DNS fournis par Brevo, à
+      créer dans la zone DNS Cloudflare) ;
+   2. dans Supabase, activer *Enable Custom SMTP* : hôte `smtp-relay.brevo.com`, port `587`, utilisateur et
+      mot de passe = l'identifiant et une clé SMTP indiqués par Brevo (rubrique *SMTP & API*), expéditeur
+      `noreply@halma-game.com`, nom `Halma`.
 
-   Autres services possibles avec les mêmes champs : Brevo (`smtp-relay.brevo.com`, port `587`), Postmark,
-   Amazon SES. La clé reste dans Supabase, jamais dans le dépôt ni dans `.env`. Ensuite, ajuster *Authentication
-   → Rate Limits → emails sent per hour*.
+   La clé reste dans Supabase, jamais dans le dépôt ni dans `.env`. Ensuite, ajuster *Authentication → Rate
+   Limits → emails sent per hour*. La réception (`contact@halma-game.com`) passe par Cloudflare Email Routing,
+   qui transfère vers la boîte du projet : rien à faire dans Supabase.
 3. **Modèles en français** : *Authentication → Email Templates*, coller le sujet et le HTML de `docs/emails/`
    (voir `docs/emails/README.md`) dans *Confirm signup*, *Change Email Address* et *Reset Password*.
 4. **Durée des liens** : *Authentication → Providers → Email*, *Email OTP Expiration* à `3600` secondes (une heure,
    comme l'annoncent les e-mails).
-5. **Essai** : s'inscrire sur le téléphone et ouvrir le lien sur l'ordinateur (l'appli doit avancer seule),
-   puis « Mot de passe oublié ? » sur le téléphone et ouvrir le lien sur le téléphone.
+5. **Essai** : s'inscrire dans l'application sur le téléphone et ouvrir le lien sur l'ordinateur (l'appli doit
+   avancer seule), puis « Mot de passe oublié ? » dans l'application et ouvrir le lien dans Gmail sur le
+   téléphone : la page du site s'ouvre dans le navigateur, on y choisit le mot de passe, puis « Ouvrir
+   l'application Halma ».
 
 Captures : `docs/screenshots/auth-13-…` à `auth-22-…` (lien « Mot de passe oublié ? », demande et réponse
 neutre, nouveau mot de passe, « Mot de passe modifié », lien expiré, « Compte validé ! », autre appareil, attente à
 l'inscription, invité en attente de confirmation).
 
-Limite connue : certaines messageries (Gmail sur le web, notamment) ne rendent pas cliquables les liens
-`halma://`. Ouvrir alors l'e-mail sur le téléphone, dans l'application de messagerie ; une solution plus
-solide serait d'activer les liens universels (iOS) et App Links (Android) sur le domaine du site.
+Les liens `halma://` ne sont pas cliquables dans certaines messageries (Gmail, notamment) : c'est pourquoi
+l'application mobile envoie des liens https vers le site (`EXPO_PUBLIC_SITE_URL`). Amélioration possible plus
+tard : les liens universels (iOS) et App Links (Android) sur `halma-game.com`, pour que ces mêmes liens ouvrent
+directement l'application quand elle est installée.
 
 ### Changer de pseudo
 
@@ -972,12 +1002,13 @@ npx eas-cli@latest init            # crée le projet EAS et ajoute son identifia
 Les identifiants de l'application sont `com.matth.halma` (iOS `bundleIdentifier`, Android `package`,
 dans `app.json`). **Les changer avant la première publication** si besoin : ils sont définitifs sur les stores.
 
-Les variables Supabase sont lues au moment de la compilation. Les définir pour chaque environnement EAS
+Les variables Supabase et `EXPO_PUBLIC_SITE_URL` sont lues au moment de la compilation. Les définir pour chaque environnement EAS
 (`development`, `preview`, `production`), avec la visibilité « plaintext » puisqu'elles sont publiques :
 
 ```bash
 npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_SUPABASE_URL --value https://….supabase.co --visibility plaintext
 npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value … --visibility plaintext
+npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_SITE_URL --value https://halma-game.com --visibility plaintext
 ```
 
 ### Compiler et publier
@@ -998,6 +1029,102 @@ Icône, icône adaptative Android (premier plan, fond blanc, version monochrome 
 écran de démarrage et favicon sont dans `assets/images/`. Leurs sources SVG sont dans `assets/icon-source/` :
 l'étoile au trait noir avec trois pions pastel dans chaque branche, dessinée plus simplement que le plateau
 pour rester lisible à 48 pixels.
+
+## Déploiement du site (Cloudflare Pages)
+
+Le site `https://halma-game.com` est la version web de l'application (export statique d'Expo Router,
+`web.output: "static"` dans `app.json`), hébergée sur [Cloudflare Pages](https://pages.cloudflare.com) et
+reliée au dépôt GitHub : chaque poussée sur la branche de production le reconstruit. Il sert à jouer dans le
+navigateur, aux pages légales publiques et aux **liens des e-mails** (validation du compte, mot de passe oublié).
+
+### Réglages du projet Cloudflare Pages
+
+*Workers & Pages → Create → Pages → Connect to Git*, choisir le dépôt, puis :
+
+| Réglage | Valeur |
+| ------- | ------ |
+| Framework preset | `None` |
+| Build command | `npx expo export --platform web` |
+| Build output directory | `dist` |
+| Root directory | (vide : racine du dépôt) |
+| Node.js | 22 (fichier `.node-version` du dépôt ; sinon variable `NODE_VERSION=22`) |
+
+Variables d'environnement (*Settings → Variables and Secrets*, pour *Production* et *Preview*), lues au moment
+de la compilation et intégrées dans le site (valeurs publiques, en texte simple) :
+
+| Variable | Valeur |
+| -------- | ------ |
+| `EXPO_PUBLIC_SUPABASE_URL` | URL du projet Supabase (`https://….supabase.co`) |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | clé `anon` ou `publishable` (**jamais** la clé `service_role`) |
+| `EXPO_PUBLIC_SITE_URL` | `https://halma-game.com` (sans barre finale) |
+
+Sans les deux variables Supabase, le site se construit mais les comptes et les liens des e-mails affichent
+« Comptes indisponibles ». Les mêmes valeurs vont dans l'environnement EAS `production` (avec
+`EXPO_PUBLIC_SITE_URL`) pour que l'application mobile envoie des liens https.
+
+**Domaine** : *Custom domains → Set up a custom domain*, `halma-game.com` (la zone est déjà chez Cloudflare :
+l'enregistrement DNS est créé tout seul) ; ajouter aussi `www.halma-game.com` si on veut, avec une redirection
+vers `halma-game.com` (*Rules → Redirect Rules*). Ne pas toucher aux enregistrements MX d'Email Routing ni à
+ceux de Brevo.
+
+**Supabase** : *Authentication → URL Configuration*, *Site URL* `https://halma-game.com` et *Redirect URLs*
+`https://halma-game.com/**` (détails dans « E-mails d'authentification : réglages Supabase »). Les modèles
+d'e-mails de `docs/emails/` ne changent pas : `{{ .RedirectTo }}` vaut désormais l'adresse https du site.
+
+### Ce que produit l'export
+
+`npx expo export --platform web` écrit `dist/` (ignoré par git) : une page HTML par route, déjà remplie (texte,
+styles, titre et description), le JavaScript dans `_expo/static/js/web/entry-<empreinte>.js`, les polices et
+images dans `assets/…<empreinte>.ttf|png`, et une copie du dossier `public/`. Routes générées :
+
+| Adresse | Fichier |
+| ------- | ------- |
+| `/` | `index.html` (accueil) |
+| `/online`, `/friends`, `/leaderboard`, `/ai-setup`, `/local-setup` | `online.html`… (aussi en double sous `(main)/`, le groupe de la barre de navigation) |
+| `/game`, `/matchmaking`, `/profile`, `/avatar` | `game.html`… |
+| `/sign-in`, `/sign-up`, `/upgrade`, `/forgot-password` | `sign-in.html`… |
+| `/reset-password`, `/auth/confirmed` | `reset-password.html`, `auth/confirmed.html` (liens des e-mails) |
+| `/privacy`, `/terms`, `/credits` | `privacy.html`, `terms.html`, `credits.html` (pages publiques, sans compte) |
+| `/room/:id`, `/player/:id` | `room/[id].html`, `player/[id].html` (une seule page par route dynamique) |
+| (route inconnue) | `+not-found.html` ; `_sitemap.html` (liste des routes, générée par Expo Router) |
+
+Cloudflare Pages sert `privacy.html` à l'adresse `/privacy` (et redirige `/privacy.html` vers `/privacy`).
+
+### Fichiers de `public/`
+
+Copiés tels quels dans `dist/` par l'export, lus par Cloudflare Pages :
+
+- **`_redirects`** : `/room/:id` et `/player/:id` servent `room/[id].html` et `player/[id].html` (réécriture,
+  code 200 : l'adresse reste `/room/ABC123`, l'application lit l'identifiant une fois chargée). Sans ces règles,
+  ces adresses retomberaient sur l'accueil.
+- **`_headers`** : pages HTML revalidées à chaque visite (`Cache-Control: no-cache`, réponse 304 si rien n'a
+  changé), ressources versionnées (`/_expo/static/*`, `/assets/*`, empreinte dans le nom) en cache un an
+  (`immutable`), `X-Frame-Options: DENY`, et `X-Robots-Tag: noindex` sur les adresses de prévisualisation
+  `*.pages.dev`.
+
+Il n'y a pas de `404.html` à la racine : Cloudflare Pages sert alors l'accueil pour une adresse inconnue (mode
+« application monopage »), et Expo Router affiche sa page « introuvable » une fois chargé. Pour une vraie
+réponse 404, on pourra utiliser comme commande de build
+`npx expo export --platform web && cp dist/+not-found.html dist/404.html`.
+
+### Titre, description et aperçus de liens
+
+`src/app/+html.tsx` donne `lang="fr"` et les balises communes (`og:site_name`, `og:type`, `og:locale`,
+`twitter:card`). Le titre, la description, `og:title`, `og:description`, `og:url`, `og:image` (l'icône
+`assets/images/icon.png`) et le lien canonique viennent de `<PageHead>` (`src/components/page-head.tsx`, avec
+`<Head>` d'Expo Router, écrit dans le HTML statique en SDK 57) : valeurs par défaut dans la mise en page racine,
+remplacées par chaque écran de compte et page de texte (« Politique de confidentialité · Halma »…). Les
+adresses absolues demandent `EXPO_PUBLIC_SITE_URL`.
+
+### Vérifier en local
+
+```bash
+npx expo export --platform web --clear
+npx expo serve
+```
+
+Pour essayer aussi `_redirects` et `_headers` comme sur Cloudflare, l'émulateur de Cloudflare Pages :
+`npx wrangler pages dev dist`.
 
 ## Production
 
@@ -1027,9 +1154,14 @@ peut supprimer que son propre compte.
 ### Pages légales
 
 `/privacy` (politique de confidentialité) et `/terms` (conditions d'utilisation), accessibles depuis le profil
-(connecté ou non) et depuis la page des crédits (lien « Crédits » à côté du titre de l'accueil). **Ce sont des brouillons à faire relire** : un bandeau le signale, et aucun champ `[À COMPLÉTER : …]` ne reste. L'éditeur est « Matth »,
-le contact est `src/legal/contact.ts`, l'âge minimum est de 15 ans, la région Supabase est eu-west-1 (Irlande). Un test vérifie qu'aucune autre coordonnée
-n'y est inventée.
+(connecté ou non) et depuis la page des crédits (lien « Crédits » à côté du titre de l'accueil). Sur le site, elles
+s'ouvrent sans compte à une adresse stable (`https://halma-game.com/privacy`, `/terms`, `/credits`), utilisable
+dans les fiches des stores. **Ce sont des brouillons à faire relire** : un bandeau le signale. Il reste deux
+champs `[À COMPLÉTER : …]` : le nom complet et le statut de l'éditeur (« Matth » pour l'instant), et les pays où
+Brevo et Cloudflare traitent les données (transferts hors de l'UE). Le contact est `contact@halma-game.com`
+(`src/legal/contact.ts`), l'âge minimum est de 15 ans, la région Supabase est eu-west-1 (Irlande) ; la politique
+nomme les trois prestataires (Supabase : données ; Brevo : envoi des e-mails ; Cloudflare : site et réception des
+e-mails). Un test vérifie qu'aucune autre coordonnée n'y est inventée.
 
 ### Crédits et licences
 
@@ -1124,6 +1256,7 @@ Toujours installer les paquets Expo avec `npx expo install <paquet>` pour obteni
 - `src/auth/` et `src/lib/supabase.ts` : comptes (voir « Comptes (Supabase) »).
 - `src/avatar/` : avatars Humation (configuration, rendu SVG, libellés) ; `src/components/avatar.tsx` : composant `<Avatar />` ; `src/app/(main)/profile.tsx` et `src/app/(main)/avatar.tsx` : profil et éditeur.
 - `src/online/` : jeu en ligne partagé avec les Edge Functions (types, arbitre, traitement des demandes, suppression de compte) ; `src/rooms/` : côté application (appels à Supabase, Realtime, état de la partie en ligne) ; `src/components/online/` : salle d'attente et écran de partie.
+- `public/` : fichiers copiés tels quels dans l'export web (`_redirects`, `_headers` de Cloudflare Pages, voir « Déploiement du site ») ; `src/components/page-head.tsx` : titre, description et aperçus de liens des pages web.
 - `supabase/migrations/` : schéma SQL ; `supabase/checks/` : vérifications locales des migrations ; `supabase/functions/game-action/` : Edge Function du jeu en ligne ; `supabase/functions/delete-account/` : suppression de compte.
 - `src/game/` : moteur de règles (voir ci-dessous).
 

@@ -11,13 +11,16 @@ sujet, puis corps en HTML). Ils sont en français, dans la DA de l'application (
 
 ## Pourquoi ces liens et pas `{{ .ConfirmationURL }}`
 
-Le lien mène **directement à l'application** : `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=…`.
+Le lien mène **directement à l'écran du lien** : `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=…`.
 
-- `{{ .RedirectTo }}` est l'adresse passée par l'application : `halma://auth/confirmed` ou
-  `halma://reset-password` sur mobile, `https://<site>/auth/confirmed` ou `https://<site>/reset-password` sur le
-  web. Si elle n'est pas dans la liste des *Redirect URLs*, Supabase la remplace par la *Site URL*.
-- L'application vérifie le jeton elle-même (`auth.verifyOtp`). Rien n'est consommé quand un antivirus ou une
-  messagerie « visite » le lien pour l'analyser : seule l'application, une fois ouverte, valide le jeton.
+- `{{ .RedirectTo }}` est l'adresse passée par l'application : la page du site,
+  `https://halma-game.com/auth/confirmed` ou `https://halma-game.com/reset-password` (sur mobile avec
+  `EXPO_PUBLIC_SITE_URL`, et sur le web) ; `halma://auth/confirmed` ou `halma://reset-password` sur mobile sans
+  cette variable (développement). Si elle n'est pas dans la liste des *Redirect URLs*, Supabase la remplace par
+  la *Site URL*.
+- La page vérifie le jeton elle-même (`auth.verifyOtp`), dans le navigateur, sans l'application. Rien n'est
+  consommé quand un antivirus ou une messagerie « visite » le lien pour l'analyser : seule la page, une fois
+  son JavaScript exécuté, valide le jeton.
 - Contrairement au flux PKCE, le lien marche sur n'importe quel appareil, pas seulement celui qui a fait la demande.
 
 Avec les modèles par défaut de Supabase (`{{ .ConfirmationURL }}`), l'application fonctionne aussi (jetons du flux

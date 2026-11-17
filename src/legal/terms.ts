@@ -6,13 +6,14 @@ import type { LegalDocument } from './document';
 
 export const TERMS: LegalDocument = {
   title: 'Conditions d’utilisation',
+  description: 'Conditions d’utilisation du jeu Halma : le service, votre compte, les règles de conduite et le contact.',
   version: '1er octobre 2026',
   draft: true,
   sections: [
     {
       title: 'Le service',
       paragraphs: [
-        'Halma est un jeu de dames chinoises édité par Matth. On peut y jouer hors ligne sans compte, ou en ligne avec un compte e-mail ou invité. Le jeu est gratuit.',
+        'Halma est un jeu de dames chinoises édité par Matth [À COMPLÉTER : nom complet et statut de l’éditeur (particulier, entreprise…)]. On peut y jouer hors ligne sans compte, ou en ligne avec un compte e-mail ou invité. Le jeu est gratuit.',
         'En créant un compte, vous acceptez ces conditions.',
       ],
     },

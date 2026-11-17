@@ -6,6 +6,7 @@ import { useAuth } from '@/auth/auth-context';
 import { AUTH_LINK_PATHS } from '@/auth/auth-links';
 import { sessionFromLink, updatePassword } from '@/auth/auth-service';
 import { AuthFailure, describeAuthError } from '@/auth/errors';
+import { useScreenHost } from '@/auth/open-app';
 import { useAuthAction } from '@/auth/use-auth-action';
 import { useIncomingAuthLink, useLinkVerification, useStripAuthParamsFromAddressBar } from '@/auth/use-auth-link';
 import { useAutoHome } from '@/auth/use-auto-home';
@@ -14,16 +15,24 @@ import { AuthScreen, authStyles, Notice, NotConfiguredCard } from '@/components/
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
 import { DrawnTextInput } from '@/components/drawn-text-input';
+import { OpenAppButton } from '@/components/open-app-button';
 import { ErrorState, LoadingState } from '@/components/state-view';
 import { playerColor, Typography } from '@/constants/theme';
 import { getSupabase } from '@/lib/supabase';
 
 export const PASSWORD_CHANGED_MESSAGE = 'Mot de passe modifié';
+export const PASSWORD_CHANGED_WEB_BODY =
+  'Ton nouveau mot de passe est enregistré. Tu peux retourner dans l’application et te connecter avec ce nouveau mot de passe.';
 
 /**
  * Lien « mot de passe oublié » : ouvre la session de récupération portée par
  * le lien, puis demande le nouveau mot de passe (avec confirmation). Seule
  * façon de changer de mot de passe dans l'application.
+ *
+ * Le lien de l'e-mail mène au site (https://…/reset-password) : tout se passe
+ * dans le navigateur, sans l'application. Après le changement, le site invite à
+ * retourner dans l'application (bouton pour l'ouvrir sur téléphone) au lieu de
+ * repartir tout seul vers l'accueil.
  */
 export default function ResetPasswordScreen() {
   const { configured } = useAuth();
@@ -36,7 +45,8 @@ export default function ResetPasswordScreen() {
   const [errors, setErrors] = useState<Record<string, FieldError>>({});
   const [done, setDone] = useState(false);
   const { pending, error, run } = useAuthAction();
-  useAutoHome(done);
+  const host = useScreenHost();
+  useAutoHome(done && host === 'app');
 
   const submit = async () => {
     if (pending) return;
@@ -70,6 +80,23 @@ export default function ResetPasswordScreen() {
             label="Recevoir un nouveau lien"
             onPress={() => router.replace('/forgot-password')}
             color={playerColor(0).piece}
+          />
+        </DrawnCard>
+      );
+    }
+    if (done && host !== 'app') {
+      return (
+        <DrawnCard contentStyle={authStyles.card}>
+          <Text style={Typography.title} accessibilityRole="header" accessibilityLiveRegion="polite">
+            {PASSWORD_CHANGED_MESSAGE}
+          </Text>
+          <Text style={Typography.body}>{PASSWORD_CHANGED_WEB_BODY}</Text>
+          <OpenAppButton />
+          <DrawnButton
+            label="Jouer sur le site"
+            size="small"
+            onPress={() => router.dismissTo('/')}
+            accessibilityHint="Ouvre l’accueil du jeu dans ce navigateur"
           />
         </DrawnCard>
       );

@@ -1,10 +1,11 @@
 // Liens reçus par e-mail (confirmation de compte, changement d'e-mail,
 // réinitialisation du mot de passe) : adresses de redirection et analyse des
-// liens, sur mobile (schéma halma://) comme sur le web. Logique pure, testée à part.
+// liens, sur le site web (https://…) comme dans l'application (schéma halma://,
+// en développement). Logique pure, testée à part.
 //
 // Choix du flux : les modèles d'e-mails (docs/emails/) mènent directement à
-// l'application avec `token_hash` et `type` ; l'application vérifie le jeton
-// elle-même (`auth.verifyOtp`). Pas de PKCE : son `code` ne peut être échangé
+// l'écran du lien avec `token_hash` et `type` ; l'écran vérifie le jeton
+// lui-même (`auth.verifyOtp`). Pas de PKCE : son `code` ne peut être échangé
 // que sur l'appareil (et dans le navigateur) qui a fait la demande, alors
 // qu'on ouvre souvent l'e-mail ailleurs. Les liens des modèles par défaut de
 // Supabase (flux implicite : jetons `access_token` et `refresh_token` après
@@ -22,13 +23,29 @@ export const AUTH_LINK_PATHS = {
 export type AuthLinkPath = (typeof AUTH_LINK_PATHS)[keyof typeof AUTH_LINK_PATHS];
 
 /**
- * Adresse de redirection passée à Supabase : le schéma de l'application sur
- * mobile (`halma://reset-password`), la route web sur le web
- * (`https://exemple.fr/reset-password`).
+ * Adresse de redirection passée à Supabase, celle vers laquelle mènent les liens
+ * des e-mails :
+ * - web : la route du site ouvert (`https://exemple.fr/reset-password`) ;
+ * - mobile, avec l'adresse du site (`EXPO_PUBLIC_SITE_URL`) : la même route sur
+ *   le site (`https://halma-game.com/reset-password`), un lien https cliquable
+ *   dans toutes les messageries, que le navigateur du téléphone ouvre et vérifie ;
+ * - mobile, sans adresse du site (développement local, tests) : le schéma de
+ *   l'application (`halma://reset-password`).
  */
-export function authRedirectUrl(path: AuthLinkPath, platform: 'web' | 'native', webOrigin?: string | null): string {
-  if (platform === 'web' && webOrigin) return `${webOrigin.replace(/\/+$/, '')}${path}`;
+export function authRedirectUrl(
+  path: AuthLinkPath,
+  platform: 'web' | 'native',
+  webOrigin?: string | null,
+  siteUrl?: string | null,
+): string {
+  if (platform === 'web' && webOrigin) return `${trimTrailingSlashes(webOrigin)}${path}`;
+  const site = siteUrl?.trim();
+  if (site) return `${trimTrailingSlashes(site)}${path}`;
   return `${APP_SCHEME}://${path.replace(/^\/+/, '')}`;
+}
+
+function trimTrailingSlashes(url: string): string {
+  return url.replace(/\/+$/, '');
 }
 
 /** Types de jetons à usage unique que l'application sait vérifier. */

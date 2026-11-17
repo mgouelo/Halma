@@ -41,8 +41,8 @@
 - [ ] *Authentication* : e-mail activé avec *Confirm email*, connexion invité activée, mots de passe de 8
       caractères au moins, *Site URL* réglée, limites de débit revues (surtout les connexions invité), captcha
       décidé (voir README, « Limites d'abus » : l'activer demande d'ajouter le widget dans l'application).
-- [ ] *Redirect URLs* : `halma://**` et l'adresse du site web (README, « E-mails d'authentification : réglages
-      Supabase »).
+- [ ] *Site URL* `https://halma-game.com` ; *Redirect URLs* : `https://halma-game.com/**` et `halma://**` (README,
+      « E-mails d'authentification : réglages Supabase »).
 - [ ] Modèles d'e-mails en français collés depuis `docs/emails/` et expéditeur SMTP personnalisé (l'expéditeur
       par défaut de Supabase est très limité en nombre d'envois).
 - [ ] Sauvegardes : vérifier ce que l'offre Supabase choisie inclut.
@@ -54,10 +54,12 @@ valeurs publiques) :
 
 - [ ] `EXPO_PUBLIC_SUPABASE_URL`
 - [ ] `EXPO_PUBLIC_SUPABASE_ANON_KEY` (clé `anon` ou `publishable`, **jamais** la clé `service_role`)
+- [ ] `EXPO_PUBLIC_SITE_URL` = `https://halma-game.com` (liens https dans les e-mails, cliquables partout)
 
 ```bash
 npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_SUPABASE_URL --value https://….supabase.co --visibility plaintext
 npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value … --visibility plaintext
+npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_SITE_URL --value https://halma-game.com --visibility plaintext
 ```
 
 ## 5. Textes légaux
@@ -65,8 +67,12 @@ npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_SUPABA
 - [ ] Faire relire `src/legal/privacy.ts` et `src/legal/terms.ts`, relire les textes, tous complétés
       (éditeur, contact, région Supabase eu-west-1 / Irlande, base légale, âge minimum de 15 ans, droit applicable),
       puis passer `draft` à `false` (le bandeau « Brouillon » disparaît).
-- [ ] Publier la politique de confidentialité à une **adresse web publique** (exigée par les deux stores) : par
-      exemple la version web de l'application (`/privacy`), hébergée avec `npx expo export -p web`.
+- [ ] Compléter les champs `[À COMPLÉTER : …]` : nom complet et statut de l'éditeur, pays de traitement chez
+      Brevo et Cloudflare (transferts hors de l'UE).
+- [ ] Site déployé sur Cloudflare Pages (README, « Déploiement du site ») : la politique de confidentialité est à
+      l'adresse publique `https://halma-game.com/privacy` (exigée par les deux stores), les conditions à
+      `https://halma-game.com/terms`.
+- [ ] Contact pour les fiches des stores : `contact@halma-game.com` (Cloudflare Email Routing actif).
 - [ ] Adresse e-mail de support et page (ou adresse) d'aide pour les fiches des stores.
 
 ## 6. Fiches de confidentialité des stores

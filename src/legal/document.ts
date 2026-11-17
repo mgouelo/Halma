@@ -9,6 +9,8 @@ export interface LegalSection {
 
 export interface LegalDocument {
   title: string;
+  /** Description de la page web (moteurs de recherche, aperçus de liens) : un résumé, pas du texte juridique. */
+  description: string;
   /** Date de la version affichée (à mettre à jour à chaque changement). */
   version: string;
   /** Brouillon non relu : un bandeau le signale en haut de la page. */

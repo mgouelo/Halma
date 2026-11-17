@@ -1,4 +1,4 @@
-import { CONTACT_EMAIL } from './contact';
+import { CONTACT_EMAIL, SITE_DOMAIN } from './contact';
 import type { LegalDocument } from './document';
 
 // BROUILLON À FAIRE RELIRE (par une personne compétente en droit des données
@@ -7,13 +7,15 @@ import type { LegalDocument } from './document';
 
 export const PRIVACY: LegalDocument = {
   title: 'Politique de confidentialité',
+  description:
+    'Politique de confidentialité de Halma : données collectées, prestataires techniques, durées de conservation et vos droits.',
   version: '1er octobre 2026',
   draft: true,
   sections: [
     {
       title: 'Qui est responsable de vos données',
       paragraphs: [
-        'Halma est édité par Matth.',
+        'Halma est édité par Matth [À COMPLÉTER : nom complet et statut de l’éditeur (particulier, entreprise…)].',
         `Pour toute question sur vos données : ${CONTACT_EMAIL}.`,
       ],
     },
@@ -59,7 +61,17 @@ export const PRIVACY: LegalDocument = {
     {
       title: 'Où sont stockées vos données',
       paragraphs: [
-        'Chez notre hébergeur Supabase (base de données Postgres et authentification), dans la région Irlande, au sein de l’Union européenne. Sur votre appareil, l’application garde seulement votre session (pour rester connecté).',
+        'Chez notre hébergeur Supabase (base de données Postgres et authentification), dans la région Irlande, au sein de l’Union européenne. Sur votre appareil (ou dans votre navigateur, sur le site), l’application garde seulement votre session (pour rester connecté).',
+      ],
+    },
+    {
+      title: 'Nos prestataires techniques',
+      paragraphs: ['Trois prestataires traitent des données pour faire fonctionner le service :'],
+      bullets: [
+        'Supabase : hébergement des données et des comptes (voir ci-dessus).',
+        'Brevo : envoi des e-mails du service (validation du compte, changement d’adresse, mot de passe oublié). Brevo reçoit votre adresse e-mail et le contenu de ces messages.',
+        `Cloudflare : hébergement du site ${SITE_DOMAIN} (qui traite l’adresse IP de ses visiteurs pour afficher les pages) et réception des e-mails écrits à ${CONTACT_EMAIL}, transférés vers la boîte du projet.`,
+        '[À COMPLÉTER : pays où Brevo et Cloudflare traitent les données, et garanties en cas de transfert hors de l’Union européenne]',
       ],
     },
     {

@@ -8,6 +8,12 @@ import { Colors } from '@/constants/theme';
 
 /**
  * - `lang="fr"` : les lecteurs d'écran prononcent le texte en français ;
+ * - balises communes à toutes les pages pour les aperçus de liens (Open Graph) ;
+ *   le titre, la description, `og:title`, `og:description`, `og:url` et
+ *   `og:image` changent d'une page à l'autre : ils viennent de `<PageHead>`
+ *   (src/components/page-head.tsx, `<Head>` d'Expo Router). Pas de `<title>` ni
+ *   de description ici : Expo Router écrit déjà sa propre balise `<title>` (vide
+ *   sans `<Head>`), et deux balises en double se contrediraient ;
  * - anneau de focus bien visible pour la navigation au clavier (trait noir épais,
  *   comme le reste de la DA), uniquement quand on navigue au clavier (`:focus-visible`) ;
  * - fond blanc dès le premier affichage, et couleur de thème du navigateur.
@@ -29,8 +35,11 @@ export default function Root({ children }: PropsWithChildren) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-        <meta name="description" content="Dames chinoises (Halma) de 2 à 6 joueurs : contre l’IA, entre amis ou en ligne." />
         <meta name="theme-color" content={Colors.paper} />
+        <meta property="og:site_name" content="Halma" />
+        <meta property="og:type" content="website" />
+        <meta property="og:locale" content="fr_FR" />
+        <meta name="twitter:card" content="summary" />
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: globalCss }} />
         {headNodes}

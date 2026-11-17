@@ -1,0 +1,9 @@
+# Cloudflare Pages : règles lues au déploiement (copiées dans dist/ par `npx expo export --platform web`).
+# Voir le README, « Déploiement du site ».
+#
+# Routes dynamiques : l'export statique ne produit qu'une page par route
+# (dist/room/[id].html, dist/player/[id].html). Réécriture (code 200) : la page
+# est servie pour n'importe quel identifiant et l'adresse reste /room/ABC123 ;
+# l'application lit l'identifiant dans l'adresse une fois chargée.
+/room/:id    /room/[id]    200
+/player/:id  /player/[id]  200

@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { AuthProvider } from '@/auth/auth-context';
+import { PageHead } from '@/components/page-head';
 import { Colors } from '@/constants/theme';
 import { useAppFonts } from '@/hooks/use-app-fonts';
 // Avant le routeur : garde du retour du navigateur pendant une partie locale (web).
@@ -24,6 +25,8 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
+      {/* Titre et description par défaut des pages web (chaque écran peut les remplacer). */}
+      <PageHead />
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
