@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AccountBar } from '@/components/account-bar';
@@ -9,17 +9,21 @@ import { computeBoardLayout } from '@/components/board/layout';
 import { FlashNoticeBanner } from '@/components/flash-notice-banner';
 import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
-import { useScreenEdges } from '@/components/nav-bar/screen-edges';
+import { useNavBarInset, useScreenEdges } from '@/components/nav-bar/screen-edges';
 import { ProfileCorner } from '@/components/profile-button';
 import { Colors, MaxContentWidth, MaxWideContentWidth, playerColor, Spacing, Typography } from '@/constants/theme';
 import { createGame } from '@/game';
 import { useMeasuredSize } from '@/hooks/use-measured-size';
 import { useWideLayout } from '@/hooks/use-wide-layout';
 
+/** Sous cette hauteur, le plateau décoratif disparaît : il ne serait plus qu'une tache. */
+const MIN_PREVIEW_HEIGHT = 140;
+
 export default function HomeScreen() {
   const area = useMeasuredSize();
   const wide = useWideLayout();
   const edges = useScreenEdges();
+  const navInset = useNavBarInset();
   // Plateau décoratif à six joueurs : toutes les couleurs pastel des pions.
   const [preview] = useState(() => createGame(6));
   const layout = useMemo(() => computeBoardLayout(area.width, area.height), [area.width, area.height]);
@@ -46,7 +50,7 @@ export default function HomeScreen() {
       onLayout={area.onLayout}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants">
-      {layout.width > 0 && <Board game={preview} layout={layout} />}
+      {layout.width > 0 && area.height >= MIN_PREVIEW_HEIGHT && <Board game={preview} layout={layout} />}
     </View>
   );
   const modes = (
@@ -79,7 +83,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.screen} edges={edges}>
+    <SafeAreaView style={[styles.screen, wide && { paddingBottom: navInset }]} edges={edges}>
       {wide ? (
         // Grand écran : plateau à gauche, titre et modes de jeu à droite.
         <View style={[styles.content, styles.wideContent]}>
@@ -90,11 +94,18 @@ export default function HomeScreen() {
           </View>
         </View>
       ) : (
-        <View style={styles.content}>
-          {header}
-          {board}
-          {modes}
-        </View>
+        // Téléphone : si la hauteur ne suffit pas (navigateur avec sa propre barre, petit écran),
+        // l'accueil défile au lieu de passer sous la barre de navigation.
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: navInset }]}
+          showsVerticalScrollIndicator={false}>
+          <View style={[styles.content, styles.scrollable]}>
+            {header}
+            {board}
+            {modes}
+          </View>
+        </ScrollView>
       )}
     </SafeAreaView>
   );
@@ -114,6 +125,18 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.four,
     justifyContent: 'space-between',
     gap: Spacing.four,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  // Dans le défilement : le contenu remplit la hauteur disponible (le plateau prend le reste) et grandit
+  // au besoin, au lieu de se limiter à l'écran.
+  scrollable: {
+    flex: 0,
+    flexGrow: 1,
   },
   wideContent: {
     maxWidth: MaxWideContentWidth,

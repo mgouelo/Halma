@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { NavBar } from '@/components/nav-bar/nav-bar';
@@ -14,9 +15,10 @@ import { Colors } from '@/constants/theme';
  * « ‹ Retour ».
  */
 export default function MainLayout() {
+  const [barHeight, setBarHeight] = useState(0);
   return (
     <View style={styles.screen}>
-      <NavBarContext.Provider value>
+      <NavBarContext.Provider value={barHeight}>
         <Stack
           screenOptions={{
             headerShown: false,
@@ -30,7 +32,8 @@ export default function MainLayout() {
           <Stack.Screen name="leaderboard" options={{ title: 'Classements' }} />
         </Stack>
       </NavBarContext.Provider>
-      <NavBar />
+      {/* Posée par-dessus le contenu, fond transparent : on voit défiler les écrans dessous. */}
+      <NavBar onHeight={setBarHeight} />
     </View>
   );
 }

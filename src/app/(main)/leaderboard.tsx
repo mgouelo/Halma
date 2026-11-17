@@ -9,7 +9,7 @@ import { Avatar } from '@/components/avatar';
 import { DrawnCard } from '@/components/drawn-card';
 import { PodiumBadge } from '@/components/leaderboard/podium-badge';
 import { MountainIcon } from '@/components/nav-bar/icons';
-import { useScreenEdges } from '@/components/nav-bar/screen-edges';
+import { useNavBarInset, useScreenEdges } from '@/components/nav-bar/screen-edges';
 import { ProfileButton } from '@/components/profile-button';
 import { EmptyState, ErrorState, LoadingState } from '@/components/state-view';
 import {
@@ -59,6 +59,7 @@ type Load =
  */
 export default function LeaderboardScreen() {
   const edges = useScreenEdges();
+  const navInset = useNavBarInset();
   const { configured, loading, session, isGuest } = useAuth();
   const [board, setBoard] = useState<Board>(DEFAULT_BOARD);
   const access = leaderboardAccess(session && { isGuest });
@@ -94,7 +95,7 @@ export default function LeaderboardScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={edges}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: Spacing.four + navInset }]}>
         <View style={styles.titleRow}>
           <View style={styles.titles}>
             <Text style={Typography.title} accessibilityRole="header">

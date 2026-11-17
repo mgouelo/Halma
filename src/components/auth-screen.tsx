@@ -10,7 +10,7 @@ import { BackButton } from './back-button';
 import { DrawnButton } from './drawn-button';
 import { DrawnCard } from './drawn-card';
 import { PageHead } from './page-head';
-import { useScreenEdges } from './nav-bar/screen-edges';
+import { useNavBarInset, useScreenEdges } from './nav-bar/screen-edges';
 
 interface AuthScreenProps {
   title: string;
@@ -27,11 +27,14 @@ interface AuthScreenProps {
 /** Cadre commun des écrans de compte (connexion, inscription, profil, jouer en ligne…). */
 export function AuthScreen({ title, subtitle, header = 'home', children }: AuthScreenProps) {
   const edges = useScreenEdges();
+  const navInset = useNavBarInset();
   return (
     <SafeAreaView style={styles.screen} edges={edges}>
       <PageHead title={title} />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: Spacing.four + navInset }]}
+          keyboardShouldPersistTaps="handled">
           {header === 'back' && <BackButton />}
           {header === 'home' && (
             <View style={styles.header}>

@@ -13,7 +13,7 @@ import { DrawnCard } from '@/components/drawn-card';
 import { DrawnTextInput } from '@/components/drawn-text-input';
 import { MailboxButton, MailboxIcon } from '@/components/friends/mailbox-button';
 import { FriendsIcon } from '@/components/nav-bar/icons';
-import { useScreenEdges } from '@/components/nav-bar/screen-edges';
+import { useNavBarInset, useScreenEdges } from '@/components/nav-bar/screen-edges';
 import { ProfileButton } from '@/components/profile-button';
 import { EmptyState, ErrorState, LoadingState } from '@/components/state-view';
 import {
@@ -50,6 +50,7 @@ import { formatRank, formatScore, formatValue } from '@/stats/leaderboard';
  */
 export default function FriendsScreen() {
   const edges = useScreenEdges();
+  const navInset = useNavBarInset();
   const { configured, loading, session, isGuest } = useAuth();
   const userId = session && !isGuest ? session.user.id : null;
 
@@ -83,7 +84,7 @@ export default function FriendsScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={edges}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: Spacing.four + navInset }]} keyboardShouldPersistTaps="handled">
         <View style={styles.titleRow}>
           <View style={styles.titles}>
             <Text style={Typography.title} accessibilityRole="header">

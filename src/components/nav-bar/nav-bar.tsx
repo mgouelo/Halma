@@ -99,15 +99,21 @@ function CenterItem({ active, onPress }: Omit<ItemProps, 'tab' | 'children'>) {
  * profil et des écrans de connexion, qui sont empilés par-dessus. Le profil
  * s'ouvre par l'avatar en haut à droite (`ProfileButton`).
  */
-export function NavBar() {
+export function NavBar({ onHeight }: { onHeight?: (height: number) => void }) {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const keyboardOpen = useKeyboardOpen();
+  // Barre masquée : plus de place à réserver sous les écrans.
+  useEffect(() => {
+    if (keyboardOpen) onHeight?.(0);
+  }, [keyboardOpen, onHeight]);
   if (keyboardOpen) return null;
 
   const current = activeTab(pathname);
   return (
-    <View style={[styles.outer, { paddingBottom: Math.max(insets.bottom, Spacing.two) }]}>
+    <View
+      style={[styles.outer, { paddingBottom: Math.max(insets.bottom, Spacing.two) }]}
+      onLayout={(event) => onHeight?.(event.nativeEvent.layout.height)}>
       <View style={styles.bar} accessibilityRole="tablist">
         <View style={styles.barShadow} />
         <View style={styles.barFace}>
@@ -125,8 +131,14 @@ export function NavBar() {
 }
 
 const styles = StyleSheet.create({
+  // Par-dessus le contenu, sans fond : les écrans défilent sous la barre. Les touches à côté de la
+  // barre passent à travers (`box-none`).
   outer: {
-    backgroundColor: Colors.paper,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: 'box-none',
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.four,
   },
