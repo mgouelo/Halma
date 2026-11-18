@@ -76,6 +76,7 @@ export const de: Messages = {
   'page.credits': 'Credits und Lizenzen',
   'page.privacy': 'Datenschutzerklärung',
   'page.terms': 'Nutzungsbedingungen',
+  'page.deleteAccount': 'Mein Konto löschen',
   'page.online': 'Online spielen',
   'page.aiSetup': 'Gegen die KI spielen',
   'page.localSetup': 'Mit Freunden',

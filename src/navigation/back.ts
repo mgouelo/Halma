@@ -15,6 +15,7 @@ const PROFILE_FALLBACK_PATHS: readonly string[] = [
   '/credits',
   '/privacy',
   '/terms',
+  '/delete-account',
 ];
 
 /** Écran de secours du bouton de retour : le profil pour les écrans de compte et d'information, l'accueil sinon (profil compris). */

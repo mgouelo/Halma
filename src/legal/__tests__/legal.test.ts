@@ -1,8 +1,13 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { LANGUAGES } from '@/i18n';
+import { de } from '@/i18n/de';
+import { en } from '@/i18n/en';
+import { es } from '@/i18n/es';
+import { fr } from '@/i18n/fr';
 
 import { CONTACT_EMAIL } from '../contact';
+import { DELETE_ACCOUNT_DOCS } from '../delete-account';
 import { documentText as text, type LegalDocuments } from '../document';
 import { PRIVACY, PRIVACY_DOCS } from '../privacy';
 import { TERMS, TERMS_DOCS } from '../terms';
@@ -102,3 +107,26 @@ describe('pages légales traduites (en, de, es)', () => {
   });
 });
 
+
+describe('page de suppression de compte', () => {
+  const messages = { fr, en, de, es };
+
+  it('a la même structure dans les quatre langues et donne l’adresse de contact', () => {
+    const shape = (doc: LegalDocuments['fr']) => doc.sections.map((s) => [s.paragraphs?.length ?? 0, s.bullets?.length ?? 0]);
+    for (const language of LANGUAGES) {
+      const doc = DELETE_ACCOUNT_DOCS[language];
+      expect(shape(doc)).toEqual(shape(DELETE_ACCOUNT_DOCS.fr));
+      expect(doc.description.length).toBeGreaterThan(20);
+      expect(text(doc)).toContain(CONTACT_EMAIL);
+      expect(text(doc).split(CONTACT_EMAIL).join('')).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
+    }
+  });
+
+  it('cite les libellés exacts des boutons de l’application, dans chaque langue', () => {
+    for (const language of LANGUAGES) {
+      const body = text(DELETE_ACCOUNT_DOCS[language]);
+      expect(body).toContain(messages[language]['profile.deleteAccount']);
+      expect(body).toContain(messages[language]['profile.deleteConfirm']);
+    }
+  });
+});

@@ -63,6 +63,7 @@ export const SCREENS_WITHOUT_NAV_BAR: readonly string[] = [
   'credits',
   'privacy',
   'terms',
+  'delete-account',
 ];
 
 function normalize(pathname: string): string {

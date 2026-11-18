@@ -76,6 +76,7 @@ export const es: Messages = {
   'page.credits': 'Créditos y licencias',
   'page.privacy': 'Política de privacidad',
   'page.terms': 'Condiciones de uso',
+  'page.deleteAccount': 'Eliminar mi cuenta',
   'page.online': 'Jugar en línea',
   'page.aiSetup': 'Jugar contra la IA',
   'page.localSetup': 'Con amigos',

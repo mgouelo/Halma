@@ -79,6 +79,7 @@ export default function RootLayout() {
         <Stack.Screen name="credits" options={{ title: t('page.credits') }} />
         <Stack.Screen name="privacy" options={{ title: t('page.privacy') }} />
         <Stack.Screen name="terms" options={{ title: t('page.terms') }} />
+        <Stack.Screen name="delete-account" options={{ title: t('page.deleteAccount') }} />
       </Stack>
     </AuthProvider>
   );

@@ -79,6 +79,7 @@ export const fr = {
   'page.credits': 'Crédits et licences',
   'page.privacy': 'Politique de confidentialité',
   'page.terms': 'Conditions d’utilisation',
+  'page.deleteAccount': 'Supprimer mon compte',
   'page.online': 'Jouer en ligne',
   'page.aiSetup': 'Jouer contre l’IA',
   'page.localSetup': 'Entre amis',
