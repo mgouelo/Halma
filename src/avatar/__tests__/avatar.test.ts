@@ -8,6 +8,7 @@ import {
   aiAvatar,
   AVATAR_COLOR_SLOTS,
   AVATAR_SLOTS,
+  EDITABLE_SLOTS,
   MAX_AVATAR_LENGTH,
   parseAvatar,
   partsForSlot,
@@ -159,8 +160,8 @@ describe('rendu pour react-native-svg', () => {
 });
 
 describe('libellés', () => {
-  it('chaque morceau a un libellé français', () => {
-    for (const slot of AVATAR_SLOTS) {
+  it('chaque morceau proposé dans l’éditeur a un libellé français', () => {
+    for (const slot of EDITABLE_SLOTS) {
       for (const part of partsForSlot(slot)) expect(partLabel(t, slot, part.id)).not.toBe(part.name);
     }
   });

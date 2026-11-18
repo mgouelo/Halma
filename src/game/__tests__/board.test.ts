@@ -6,7 +6,6 @@ import {
   cornerOf,
   hexDistance,
   isOnBoard,
-  neighbors,
   oppositeCorner,
   parseCellKey,
   PIECES_PER_PLAYER,
@@ -53,11 +52,6 @@ describe('plateau', () => {
     expect(isOnBoard(c(4, -9))).toBe(false);
     expect(isOnBoard(c(0.5, 0))).toBe(false);
     expect(isOnBoard(c(Number.NaN, 0))).toBe(false);
-  });
-
-  it('donne 6 voisins au centre et 2 à une pointe', () => {
-    expect(neighbors(c(0, 0))).toHaveLength(6);
-    expect(neighbors(c(4, -8)).map(cellKey).sort()).toEqual(['3,-7', '4,-7']);
   });
 
   it('convertit les clés dans les deux sens', () => {

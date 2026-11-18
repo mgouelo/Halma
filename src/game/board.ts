@@ -96,11 +96,6 @@ export function cornerCells(corner: Corner): readonly Cell[] {
   return CORNER_CELLS[corner];
 }
 
-/** Cases voisines présentes sur le plateau. */
-export function neighbors(cell: Cell): Cell[] {
-  return DIRECTIONS.map((d) => addCells(cell, d)).filter(isOnBoard);
-}
-
 /** Distance hexagonale entre deux cases (nombre minimal de pas simples sur une grille infinie). */
 export function hexDistance(a: Cell, b: Cell): number {
   const dq = a.q - b.q;

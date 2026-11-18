@@ -1,10 +1,11 @@
-// Série de connexion : jour calendaire de Paris et série à afficher.
-// Le serveur fait foi (fonction SQL record_daily_login, même règle) ; ce module
-// sert à afficher une série à jour même si la connexion du jour n'a pas encore
-// été enregistrée (hors ligne, par exemple).
+// Serie de connexion : jour calendaire de Paris et serie a afficher.
+// Le serveur fait foi : seule la fonction SQL advance_login_streak (appelee par
+// record_daily_login, jour de Paris lu sur l'horloge du serveur) fait avancer
+// la serie. Ce module sert seulement a afficher une serie a jour meme si la
+// connexion du jour n'a pas encore ete enregistree (hors ligne, par exemple).
 
 /** Fuseau des jours de connexion : un jour commence à minuit, heure de Paris. */
-export const STREAK_TIME_ZONE = 'Europe/Paris';
+const STREAK_TIME_ZONE = 'Europe/Paris';
 
 /** Jour calendaire à Paris (AAAA-MM-JJ) de l'instant `date`. */
 export function parisDay(date: Date): string {
@@ -32,17 +33,6 @@ export interface StreakState {
   bestStreak: number;
   /** Dernier jour de connexion enregistré (AAAA-MM-JJ), ou null. */
   lastLoginDay: string | null;
-}
-
-/**
- * Série suivante après une connexion le jour `today` (règle du serveur) :
- * même jour = rien ; jour suivant = série + 1 ; plus d'un jour manqué (ou
- * première fois) = retour à 1. La meilleure série suit.
- */
-export function nextStreak(state: StreakState, today: string): StreakState {
-  if (state.lastLoginDay !== null && daysBetween(state.lastLoginDay, today) <= 0) return state;
-  const current = state.lastLoginDay !== null && daysBetween(state.lastLoginDay, today) === 1 ? state.currentStreak + 1 : 1;
-  return { currentStreak: current, bestStreak: Math.max(state.bestStreak, current), lastLoginDay: today };
 }
 
 /**

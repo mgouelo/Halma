@@ -67,11 +67,6 @@ function isControllerList(setup: LocalGameSetup | readonly Controller[]): setup 
   return Array.isArray(setup);
 }
 
-/** Destination d'un coup (dernière case du chemin). */
-export function destinationOf(move: Move): Cell {
-  return move.path[move.path.length - 1];
-}
-
 /**
  * Vrai quand quitter ou recommencer ferait perdre quelque chose : au moins un
  * coup joué et partie pas encore terminée. Une partie locale n'est jamais
@@ -82,7 +77,7 @@ export function isGameInProgress(game: GameState): boolean {
 }
 
 /** Contrôleur du joueur dont c'est le tour. */
-export function currentController(state: LocalGameState): Controller {
+function currentController(state: LocalGameState): Controller {
   return state.controllers[state.game.currentPlayer];
 }
 

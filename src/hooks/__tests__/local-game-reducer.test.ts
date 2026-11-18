@@ -1,10 +1,9 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { cellKey, cornerCells, createGame, type GameState, type PlayerId } from '@/game';
+import { cellKey, cornerCells, createGame, type Cell, type GameState, type Move, type PlayerId } from '@/game';
 import { DEFAULT_MUTATORS, type Mutators } from '@/mutators/mutators';
 
 import {
-  destinationOf,
   initLocalGame,
   isAiTurn,
   localGameReducer,
@@ -13,6 +12,8 @@ import {
 } from '../local-game-reducer';
 
 const c = (q: number, r: number) => ({ q, r });
+/** Destination d'un coup (derniere case du chemin). */
+const destinationOf = (move: Move): Cell => move.path[move.path.length - 1];
 
 function withBoard(
   pieces: [number, number, PlayerId][],

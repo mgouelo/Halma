@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { daysBetween, displayedStreak, nextStreak, parisDay, type StreakState } from '../streak';
+import { daysBetween, displayedStreak, parisDay, type StreakState } from '../streak';
 
 const fresh: StreakState = { currentStreak: 0, bestStreak: 0, lastLoginDay: null };
 
@@ -26,32 +26,7 @@ describe('jour calendaire de Paris', () => {
   });
 });
 
-describe('série de connexion (même règle que le serveur)', () => {
-  it('commence à 1', () => {
-    expect(nextStreak(fresh, '2026-10-01')).toEqual({ currentStreak: 1, bestStreak: 1, lastLoginDay: '2026-10-01' });
-  });
-
-  it('ne change pas le même jour', () => {
-    const state = nextStreak(fresh, '2026-10-01');
-    expect(nextStreak(state, '2026-10-01')).toBe(state);
-  });
-
-  it('augmente le jour suivant, et la meilleure série suit', () => {
-    let state = fresh;
-    for (const day of ['2026-12-29', '2026-12-30', '2026-12-31', '2027-01-01']) state = nextStreak(state, day);
-    expect(state).toEqual({ currentStreak: 4, bestStreak: 4, lastLoginDay: '2027-01-01' });
-  });
-
-  it('repart à 1 après un jour manqué, en gardant la meilleure série', () => {
-    const state = { currentStreak: 5, bestStreak: 5, lastLoginDay: '2026-10-01' };
-    expect(nextStreak(state, '2026-10-03')).toEqual({ currentStreak: 1, bestStreak: 5, lastLoginDay: '2026-10-03' });
-  });
-
-  it('ignore un jour antérieur (horloge qui recule)', () => {
-    const state = { currentStreak: 3, bestStreak: 4, lastLoginDay: '2026-10-05' };
-    expect(nextStreak(state, '2026-10-04')).toBe(state);
-  });
-
+describe('série affichée', () => {
   it('affiche la série tant qu’elle n’est pas rompue', () => {
     const state = { currentStreak: 3, bestStreak: 4, lastLoginDay: '2026-10-05' };
     expect(displayedStreak(state, '2026-10-05')).toBe(3);

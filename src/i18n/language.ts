@@ -26,7 +26,7 @@ export function detectLanguage(stored: string | null | undefined, deviceLanguage
 }
 
 /** Langues de l'appareil ou du navigateur, par ordre de préférence (vide pendant le rendu statique). */
-export function deviceLanguages(): string[] {
+function deviceLanguages(): string[] {
   if (Platform.OS === 'web' && typeof window === 'undefined') return [];
   try {
     return getLocales().map((locale) => locale.languageCode ?? locale.languageTag);

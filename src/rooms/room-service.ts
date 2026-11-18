@@ -69,7 +69,7 @@ export const ROOM_CODE_LENGTH = 6;
 const ROOM_CODE = /^[A-HJKMNP-Z2-9]{6}$/;
 
 /** Code mal formé (refusé avant tout appel au serveur) : message dédié, même code que « room introuvable ». */
-export class InvalidRoomCodeError extends OnlineError {
+class InvalidRoomCodeError extends OnlineError {
   constructor() {
     super('room_not_found', 'Un code de room compte 6 lettres ou chiffres.');
     this.name = 'InvalidRoomCodeError';
@@ -215,7 +215,7 @@ export async function fetchActiveRoom(client: SupabaseClient): Promise<ActiveRoo
 }
 
 /** Envoie une demande à l'Edge Function `game-action` ; renvoie la partie à jour. */
-export async function gameAction(client: SupabaseClient, request: GameRequest): Promise<StoredGame | null> {
+async function gameAction(client: SupabaseClient, request: GameRequest): Promise<StoredGame | null> {
   const { data, error } = await client.functions.invoke<GameResponse>('game-action', { body: request });
   if (error) {
     // Refus du serveur : le corps de la réponse porte le code (traduit par l'écran) et un message pour les journaux.

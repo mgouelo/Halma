@@ -9,12 +9,12 @@ import { msg, type Msg } from '@/i18n';
  * Caractères permis : lettres sans accent, « é », « è », « É », « È », chiffres,
  * « _ », « - », « . » et l'apostrophe droite. Même règle que la base.
  */
-export const PSEUDO_PATTERN = /^[A-Za-z0-9éèÉÈ._'-]{3,20}$/;
+const PSEUDO_PATTERN = /^[A-Za-z0-9éèÉÈ._'-]{3,20}$/;
 /** Lettres d'un pseudo : é, è, É et È comptent comme des lettres. */
 const PSEUDO_LETTER = /[A-Za-zéèÉÈ]/g;
 /** Nombre minimal de lettres dans un pseudo, où qu'elles soient. */
-export const PSEUDO_MIN_LETTERS = 3;
-export const PSEUDO_MIN_LENGTH = 3;
+const PSEUDO_MIN_LETTERS = 3;
+const PSEUDO_MIN_LENGTH = 3;
 export const PSEUDO_MAX_LENGTH = 20;
 export const PASSWORD_MIN_LENGTH = 8;
 /** Délai minimal entre deux changements de pseudo (même valeur que change_pseudo côté base). */
@@ -67,11 +67,6 @@ export function pseudoKey(pseudo: string): string {
     .replace(/[éèÉÈ]/g, (letter) => KEY_MAP[letter])
     .replace(/'/g, '')
     .replace(/[A-Z]/g, (letter) => letter.toLowerCase());
-}
-
-/** Vrai si les deux pseudos sont le même aux yeux de l'unicité. */
-export function samePseudo(a: string, b: string): boolean {
-  return pseudoKey(a) === pseudoKey(b);
 }
 
 export function validatePseudo(pseudo: string): FieldError {

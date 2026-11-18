@@ -9,7 +9,7 @@ import { fr } from './fr';
 import type { MessageArgs, MessageKey, Messages } from './messages';
 import { DEFAULT_LANGUAGE, LANGUAGE_LOCALES, type Language, type ParamValue, type Plural } from './types';
 
-export const MESSAGES: Record<Language, Messages> = { fr, en, de, es };
+const MESSAGES: Record<Language, Messages> = { fr, en, de, es };
 
 /** Message à afficher plus tard (erreur gardée dans un état, notice) : sa clé et ses variables. */
 export interface Msg {

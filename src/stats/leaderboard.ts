@@ -83,7 +83,7 @@ export interface BoardView {
 }
 
 /** Nombre de lignes affichées par classement (le serveur n'en renvoie pas plus). */
-export const TOP_SIZE = 50;
+const TOP_SIZE = 50;
 
 /** Répartit les lignes du serveur par classement ; les lignes inattendues sont ignorées. */
 export function groupLeaderboards(rows: readonly LeaderboardRow[]): Record<Board, BoardView> {

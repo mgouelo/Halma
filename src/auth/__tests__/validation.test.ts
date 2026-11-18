@@ -5,7 +5,6 @@ import {
   normalizePseudo,
   normalizePseudoInput,
   pseudoKey,
-  samePseudo,
   validateEmail,
   validatePassword,
   validatePseudo,
@@ -114,7 +113,7 @@ describe('validation', () => {
       ['Jean.Dupont', 'jean.DUPONT'],
       ['Zoe\u0301', 'zoé'],
     ])('« %s » et « %s » sont le même pseudo', (a, b) => {
-      expect(samePseudo(a, b)).toBe(true);
+      expect(pseudoKey(a)).toBe(pseudoKey(b));
     });
 
     it.each([
@@ -122,7 +121,7 @@ describe('validation', () => {
       ['Jean.Dupont', 'Jean-Dupont'],
       ['Dan', 'Dan_'],
     ])('« %s » et « %s » sont deux pseudos', (a, b) => {
-      expect(samePseudo(a, b)).toBe(false);
+      expect(pseudoKey(a)).not.toBe(pseudoKey(b));
     });
 
     it('construit la même clé que la base', () => {

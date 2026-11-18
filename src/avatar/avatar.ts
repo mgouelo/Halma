@@ -21,12 +21,14 @@ export type AvatarSlot = (typeof AVATAR_SLOTS)[number];
  * propose donc pas.
  */
 export const EDITABLE_SLOTS = ['head', 'body', 'item', 'glasses'] as const satisfies readonly AvatarSlot[];
+export type EditableSlot = (typeof EDITABLE_SLOTS)[number];
 
 /** Couleurs modifiables (le trait reste noir) et fond. */
 export const AVATAR_COLOR_SLOTS = ['skin', 'hair', 'clothes', 'bottom'] as const;
 /** Couleurs proposées dans l'éditeur (le bas ne se voit pas, voir `EDITABLE_SLOTS`). */
 export const EDITABLE_COLOR_SLOTS = ['skin', 'hair', 'clothes'] as const satisfies readonly AvatarColorSlot[];
 export type AvatarColorSlot = (typeof AVATAR_COLOR_SLOTS)[number];
+export type EditableColorSlot = (typeof EDITABLE_COLOR_SLOTS)[number];
 
 /** Configuration d'un avatar : morceaux (identifiants canoniques) et couleurs (hexadécimal sans « # »). */
 export interface AvatarConfig {

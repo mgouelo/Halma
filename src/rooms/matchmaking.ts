@@ -65,7 +65,7 @@ export function statusFromRow(row: StatusRow | null | undefined, receivedAt: num
 }
 
 /** Heure du serveur estimée à partir de l'heure de l'appareil. */
-export function serverTime(status: Pick<MatchmakingStatus, 'clockOffsetMs'>, now: number): number {
+function serverTime(status: Pick<MatchmakingStatus, 'clockOffsetMs'>, now: number): number {
   return now + status.clockOffsetMs;
 }
 

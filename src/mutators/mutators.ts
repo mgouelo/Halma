@@ -29,7 +29,7 @@ export function mutatorText(t: Translator, key: MutatorKey): { label: string; de
 // --- Paramètres d'URL (parties locales) -----------------------------------
 
 /** Nom du paramètre d'URL de chaque mutateur (`/game?touch=1&clairvoyance=0`). */
-export const MUTATOR_PARAMS: Record<MutatorKey, string> = { touchMove: 'touch', clairvoyance: 'clairvoyance' };
+const MUTATOR_PARAMS: Record<MutatorKey, string> = { touchMove: 'touch', clairvoyance: 'clairvoyance' };
 
 const TRUE_VALUES = new Set(['1', 'true', 'on', 'yes', 'oui']);
 const FALSE_VALUES = new Set(['0', 'false', 'off', 'no', 'non']);
@@ -62,7 +62,7 @@ export function serializeMutators(mutators: Mutators): Record<string, string> {
 // --- Réglages d'une room (colonne jsonb `rooms.settings`) ------------------
 
 /** Clé de chaque mutateur dans `rooms.settings` (voir la migration `room_settings`). */
-export const SETTINGS_KEYS: Record<MutatorKey, string> = { touchMove: 'touch_move', clairvoyance: 'clairvoyance' };
+const SETTINGS_KEYS: Record<MutatorKey, string> = { touchMove: 'touch_move', clairvoyance: 'clairvoyance' };
 
 /**
  * Mutateurs d'une room à partir de sa colonne `settings`. La base valide déjà
@@ -116,7 +116,7 @@ interface TapInput {
 }
 
 /** Vrai quand « Toucher c'est jouer » oblige à jouer le pion sélectionné (il peut bouger). */
-export function isSelectionLocked(mutators: Mutators, selected: Cell | null, moves: readonly Move[]): boolean {
+function isSelectionLocked(mutators: Mutators, selected: Cell | null, moves: readonly Move[]): boolean {
   return mutators.touchMove && selected !== null && moves.length > 0;
 }
 
@@ -150,26 +150,7 @@ export function resolveTap({ game, player, selected, moves, cell, mutators }: Ta
   return { kind: 'clear' };
 }
 
-/** Message du retour discret, à la place de la consigne du tour. */
+/** Message du retour discret d'une touche refusee, affiche par-dessus le bas du plateau. */
 export function tapNoticeText(t: Translator, notice: TapNotice): string {
   return notice === 'illegal' ? t('mutators.illegal') : t('mutators.locked');
-}
-
-/**
- * Consigne pendant son tour : retour discret d'une touche refusée, sinon ce
- * qu'il faut toucher. Sans « Clairvoyance », elle ne parle pas des pointillés.
- */
-export function selectionHint(t: Translator, options: {
-  selected: Cell | null;
-  moves: readonly Move[];
-  notice: TapNotice | null;
-  mutators: Mutators;
-  /** Consigne sans pion sélectionné. */
-  idle: string;
-}): string {
-  const { selected, moves, notice, mutators, idle } = options;
-  if (notice) return tapNoticeText(t, notice);
-  if (!selected) return idle;
-  if (moves.length === 0) return t('mutators.cannotMove');
-  return mutators.clairvoyance ? t('mutators.tapDotted') : t('mutators.tapTarget');
 }

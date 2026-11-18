@@ -5,13 +5,9 @@ import {
   DEFAULT_MUTATORS,
   mutatorsFromSettings,
   parseMutatorParams,
-  selectionHint,
   serializeMutators,
   settingsFromMutators,
 } from '../mutators';
-import { translator } from '@/i18n';
-
-const t = translator('fr');
 
 describe('paramètres d’URL des mutateurs', () => {
   it('garde les valeurs par défaut sans paramètre', () => {
@@ -76,18 +72,5 @@ describe('affichage', () => {
     expect(activeMutators(DEFAULT_MUTATORS)).toEqual(['clairvoyance']);
     expect(activeMutators({ touchMove: true, clairvoyance: false })).toEqual(['touchMove']);
     expect(activeMutators({ touchMove: false, clairvoyance: false })).toEqual([]);
-  });
-
-  it('ne parle pas des pointillés sans Clairvoyance', () => {
-    const base = {
-      selected: { q: 0, r: 0 },
-      moves: [{ from: { q: 0, r: 0 }, path: [{ q: 1, r: 0 }] }],
-      notice: null,
-      idle: 'À toi.',
-    };
-    expect(selectionHint(t, { ...base, mutators: DEFAULT_MUTATORS })).toContain('pointillés');
-    expect(selectionHint(t, { ...base, mutators: { touchMove: false, clairvoyance: false } })).not.toContain('pointillés');
-    expect(selectionHint(t, { ...base, selected: null, mutators: DEFAULT_MUTATORS })).toBe('À toi.');
-    expect(selectionHint(t, { ...base, notice: 'locked', mutators: DEFAULT_MUTATORS })).toContain('Toucher c’est jouer');
   });
 });
