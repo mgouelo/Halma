@@ -1,6 +1,8 @@
 // Profil d'un joueur, ouvert en touchant sa ligne (classements, amis, demandes
 // reçues). Logique pure, testée à part.
 
+import type { Translator } from '@/i18n';
+
 /** Écran du profil d'un joueur : le sien (`/profile`) ou celui d'un autre (`/player/[id]`). */
 export type PlayerHref = '/profile' | { pathname: '/player/[id]'; params: { id: string } };
 
@@ -15,6 +17,6 @@ export function playerHref(userId: string | null | undefined, myId: string | nul
 }
 
 /** Libellé d'accessibilité d'une ligne qui ouvre un profil. */
-export function playerProfileLabel(pseudo: string): string {
-  return `Profil de ${pseudo}`;
+export function playerProfileLabel(t: Translator, pseudo: string): string {
+  return t('nav.profileOf', { name: pseudo });
 }

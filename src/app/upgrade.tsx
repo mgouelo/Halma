@@ -15,10 +15,12 @@ import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
 import { ResendEmailButton } from '@/components/resend-email-button';
 import { Typography } from '@/constants/theme';
+import { rich, useT } from '@/i18n';
 import { getSupabase } from '@/lib/supabase';
 
 /** Un invité ajoute un pseudo, un e-mail et un mot de passe à son compte, sans en changer. */
 export default function UpgradeScreen() {
+  const t = useT();
   const { configured, loading, session, isGuest, refreshProfile } = useAuth();
   const [confirmationSentTo, setConfirmationSentTo] = useState<string | null>(null);
   const { pending, error, run } = useAuthAction();
@@ -56,30 +58,31 @@ export default function UpgradeScreen() {
     if (confirmationSentTo) {
       return (
         <DrawnCard contentStyle={authStyles.card}>
-          <Notice tone="info">
-            Un e-mail de confirmation a été envoyé à {confirmationSentTo}. Clique sur le lien pour terminer, sur ce
-            téléphone ou ailleurs : ton compte invité deviendra alors ton compte, avec ce pseudo et ce mot de passe.
-          </Notice>
-          <Text style={Typography.caption}>
-            L’appli s’en aperçoit toute seule. En attendant, tu peux continuer à jouer en invité.
-          </Text>
+          <Notice tone="info">{t('upgrade.sent', { email: confirmationSentTo })}</Notice>
+          <Text style={Typography.caption}>{t('upgrade.autoDetect')}</Text>
           <ResendEmailButton type="email_change" email={confirmationSentTo} />
-          <DrawnButton label="Retour à l’accueil" onPress={() => router.dismissTo('/')} />
+          <DrawnButton label={t('upgrade.backHome')} onPress={() => router.dismissTo('/')} />
         </DrawnCard>
       );
     }
     if (!session) {
       return (
         <Notice tone="info">
-          Tu n’es pas connecté. <Link href="/sign-in" style={authStyles.inlineLink}>Se connecter</Link>
+          {rich(t('upgrade.notSignedIn'), {
+            link: (text) => (
+              <Link href="/sign-in" style={authStyles.inlineLink}>
+                {text}
+              </Link>
+            ),
+          })}
         </Notice>
       );
     }
-    if (!isGuest) return <Notice tone="info">Ton compte est déjà lié à une adresse e-mail.</Notice>;
+    if (!isGuest) return <Notice tone="info">{t('upgrade.alreadyLinked')}</Notice>;
     return (
       <AccountForm
-        submitLabel="Créer mon compte"
-        pendingLabel="Enregistrement…"
+        submitLabel={t('common.createMyAccount')}
+        pendingLabel={t('common.saving')}
         pending={pending}
         error={error}
         onSubmit={submit}
@@ -90,8 +93,8 @@ export default function UpgradeScreen() {
   return (
     <AuthScreen
       header="back"
-      title="Créer mon compte"
-      subtitle="Choisis un pseudo et ajoute un e-mail : tu conserves ta progression et pourras te reconnecter partout.">
+      title={t('upgrade.title')}
+      subtitle={t('upgrade.subtitle')}>
       {content()}
     </AuthScreen>
   );

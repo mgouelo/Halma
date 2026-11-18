@@ -1,5 +1,6 @@
 import { aiAvatar, type AvatarConfig } from '@/avatar/avatar';
-import { AI_LEVEL_LABELS } from '@/hooks/game-setup';
+import { aiName } from '@/hooks/game-setup';
+import type { Translator } from '@/i18n';
 
 import type { RoomPlayer } from './room-service';
 
@@ -7,12 +8,12 @@ import type { RoomPlayer } from './room-service';
  * Nom d'un participant vu par le joueur `userId` : « Toi », son pseudo,
  * « IA · Moyen », ou « Compte supprimé ».
  */
-export function participantName(player: RoomPlayer | undefined, userId: string): string {
-  if (!player) return '?';
-  if (player.aiLevel) return `IA · ${AI_LEVEL_LABELS[player.aiLevel]}`;
-  if (player.userId === null) return 'Compte supprimé';
-  if (player.userId === userId) return 'Toi';
-  return player.pseudo ?? 'Joueur';
+export function participantName(t: Translator, player: RoomPlayer | undefined, userId: string): string {
+  if (!player) return t('common.unknownPlayer');
+  if (player.aiLevel) return aiName(t, player.aiLevel);
+  if (player.userId === null) return t('common.deletedAccount');
+  if (player.userId === userId) return t('common.you');
+  return player.pseudo ?? t('common.player');
 }
 
 /** Avatar d'un participant : celui de son profil, ou celui d'une IA (avec antennes). */

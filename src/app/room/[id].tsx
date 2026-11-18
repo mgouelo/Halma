@@ -10,8 +10,9 @@ import { Lobby } from '@/components/online/lobby';
 import { OnlineGameView } from '@/components/online/online-game-view';
 import { ErrorState, LoadingState } from '@/components/state-view';
 import { Colors } from '@/constants/theme';
+import { useT } from '@/i18n';
 import { setFlashNotice } from '@/lib/flash-notice';
-import { roomClosedNotice } from '@/rooms/room-service';
+import { describeOnlineError, roomClosedNotice } from '@/rooms/room-service';
 import { useIsClient } from '@/hooks/use-is-client';
 import { useNow, useRoom } from '@/rooms/use-room';
 
@@ -23,21 +24,22 @@ export default function RoomScreen() {
 }
 
 function RoomGate() {
+  const t = useT();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { configured, loading, session } = useAuth();
 
   if (!configured) {
     return (
-      <AuthScreen title="Jouer en ligne" subtitle="Room indisponible.">
+      <AuthScreen title={t('common.playOnline')} subtitle={t('room.unavailable')}>
         <NotConfiguredCard />
       </AuthScreen>
     );
   }
-  if (loading) return <Message text="Chargement…" />;
+  if (loading) return <Message text={t('common.loading')} />;
   if (!session) {
     return (
-      <AuthScreen title="Jouer en ligne" subtitle="Connecte-toi pour rejoindre la room.">
-        <DrawnButton label="Se connecter" onPress={() => router.push('/sign-in')} />
+      <AuthScreen title={t('common.playOnline')} subtitle={t('room.signInToJoin')}>
+        <DrawnButton label={t('common.signIn')} onPress={() => router.push('/sign-in')} />
       </AuthScreen>
     );
   }
@@ -45,6 +47,7 @@ function RoomGate() {
 }
 
 function RoomView({ roomId, userId }: { roomId: string; userId: string }) {
+  const t = useT();
   const { snapshot, status, error, refresh, applyGame } = useRoom(roomId);
   const now = useNow();
   const leaving = useRef(false);
@@ -57,19 +60,19 @@ function RoomView({ roomId, userId }: { roomId: string; userId: string }) {
     router.dismissTo('/');
   }, [closed, snapshot, userId]);
 
-  if (status === 'loading') return <Message text="Connexion à la room…" />;
-  if (closed) return <Message text="Retour à l’accueil…" />;
+  if (status === 'loading') return <Message text={t('room.connecting')} />;
+  if (closed) return <Message text={t('room.backHome')} />;
   if (status === 'missing') {
     return (
-      <AuthScreen title="Room introuvable" subtitle="Elle a été fermée, ou tu n’en fais plus partie.">
-        <DrawnButton label="Jouer en ligne" onPress={() => router.dismissTo('/online')} />
+      <AuthScreen title={t('room.notFound')} subtitle={t('room.notFoundText')}>
+        <DrawnButton label={t('common.playOnline')} onPress={() => router.dismissTo('/online')} />
       </AuthScreen>
     );
   }
   if (!snapshot) {
     return (
-      <AuthScreen title="Room" subtitle="La room n’a pas pu être chargée.">
-        <ErrorState message={error ?? 'Une erreur est survenue.'} onRetry={refresh} />
+      <AuthScreen title={t('room.title')} subtitle={t('room.loadFailed')}>
+        <ErrorState message={error ? describeOnlineError(t, error) : t('error.generic')} onRetry={refresh} />
       </AuthScreen>
     );
   }
@@ -81,10 +84,11 @@ function RoomView({ roomId, userId }: { roomId: string; userId: string }) {
 }
 
 function MatchmakingRedirect() {
+  const t = useT();
   useEffect(() => {
     router.replace('/matchmaking');
   }, []);
-  return <Message text="Recherche d’une partie…" />;
+  return <Message text={t('room.findingGame')} />;
 }
 
 function Message({ text }: { text: string }) {

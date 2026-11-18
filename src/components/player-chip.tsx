@@ -11,7 +11,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import type { AvatarConfig } from '@/avatar/avatar';
-import { Colors, playerColor, Spacing, Stroke, TurnPulseDuration, Typography, WaitingOpacity } from '@/constants/theme';
+import { Colors, playerColor, playerColorName, Spacing, Stroke, TurnPulseDuration, Typography, WaitingOpacity } from '@/constants/theme';
+import { useT } from '@/i18n';
 
 import { Avatar } from './avatar';
 
@@ -44,6 +45,7 @@ const RING_GAP = 0.14;
  * nom, et d'une précision (ex. « IA · Moyen »).
  */
 export function PlayerChip({ player, size = 18, label, detail, avatar, turn, compact = false }: PlayerChipProps) {
+  const t = useT();
   const color = playerColor(player);
   const face = avatar ? (
     <Avatar value={avatar.value} seed={avatar.seed} size={size} background={color.piece} />
@@ -61,7 +63,7 @@ export function PlayerChip({ player, size = 18, label, detail, avatar, turn, com
       )}
       {!compact && (
         <Text style={[Typography.heading, styles.label, turn === 'waiting' && styles.waiting]} numberOfLines={1}>
-          {label ?? color.name}
+          {label ?? playerColorName(t, player)}
         </Text>
       )}
       {!compact && detail && <Text style={Typography.caption}>{detail}</Text>}

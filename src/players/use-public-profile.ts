@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { describeFriendError } from '@/friends/friends-service';
 import { getSupabase } from '@/lib/supabase';
 
 import { fetchPublicProfile, isPlayerNotFound, type PlayerRelation, type PublicProfile } from './public-profile';
@@ -8,12 +7,12 @@ import { fetchPublicProfile, isPlayerNotFound, type PlayerRelation, type PublicP
 export type PublicProfileLoad =
   | { status: 'loading' }
   | { status: 'not_found' }
-  | { status: 'error'; message: string }
+  | { status: 'error'; error: unknown }
   | { status: 'ready'; profile: PublicProfile };
 
 /** État après un échec de lecture : joueur introuvable, ou erreur à réessayer. */
 function failure(error: unknown): PublicProfileLoad {
-  return isPlayerNotFound(error) ? { status: 'not_found' } : { status: 'error', message: describeFriendError(error) };
+  return isPlayerNotFound(error) ? { status: 'not_found' } : { status: 'error', error };
 }
 
 /**

@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-context';
 import { Colors, Shadow, Spacing, Stroke, TouchTarget, Typography } from '@/constants/theme';
-import { PROFILE_BUTTON_LABEL, profileHref } from '@/navigation/nav-bar';
+import { useT } from '@/i18n';
+import { profileHref } from '@/navigation/nav-bar';
 
 import { Avatar } from './avatar';
 import { Silhouette } from './nav-bar/icons';
@@ -17,14 +18,15 @@ const SIZE = TouchTarget;
  * dessinée qui ouvre la connexion. Absent des parties et des rooms.
  */
 export function ProfileButton() {
+  const t = useT();
   const { configured, session, profile } = useAuth();
   const signedIn = Boolean(session);
   return (
     <Pressable
       onPress={() => router.push(profileHref(signedIn))}
       accessibilityRole="button"
-      accessibilityLabel={PROFILE_BUTTON_LABEL}
-      accessibilityHint={signedIn ? 'Ouvre ton profil' : configured ? 'Ouvre la connexion' : undefined}
+      accessibilityLabel={t('nav.profile')}
+      accessibilityHint={signedIn ? t('nav.openProfile') : configured ? t('nav.openSignIn') : undefined}
       hitSlop={4}
       style={styles.wrapper}>
       {({ pressed }) => (
@@ -48,6 +50,7 @@ export function ProfileButton() {
  * avatar (le pseudo ouvre aussi le profil). Centré verticalement sur le titre.
  */
 export function ProfileCorner() {
+  const t = useT();
   const { session, profile } = useAuth();
   return (
     <View style={styles.corner}>
@@ -55,7 +58,7 @@ export function ProfileCorner() {
         <Pressable
           onPress={() => router.push(profileHref(true))}
           accessibilityRole="button"
-          accessibilityLabel={`Profil de ${profile?.pseudo ?? 'joueur'}`}
+          accessibilityLabel={t('nav.profileOf', { name: profile?.pseudo ?? t('common.player') })}
           style={styles.pseudoTouch}>
           <Text style={Typography.heading} numberOfLines={1}>
             {profile?.pseudo ?? '…'}

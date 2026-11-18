@@ -3,6 +3,7 @@
 // de jeu la supprime. Logique pure, testée à part.
 
 import type { GameState } from '@/game';
+import type { Translator } from '@/i18n';
 
 import { isGameInProgress } from './local-game-reducer';
 
@@ -15,20 +16,22 @@ export interface GuardTexts {
   confirmLabel: string;
 }
 
-export const GUARD_TEXTS: Record<GuardKind, GuardTexts> = {
-  leave: {
-    title: 'Quitter la partie ?',
-    message: 'La partie en cours n’est pas sauvegardée : si tu quittes, elle sera perdue.',
-    cancelLabel: 'Continuer la partie',
-    confirmLabel: 'Quitter',
-  },
-  restart: {
-    title: 'Nouvelle partie ?',
-    message: 'La partie en cours sera perdue et tout recommencera depuis le début.',
-    cancelLabel: 'Continuer la partie',
-    confirmLabel: 'Recommencer',
-  },
-};
+/** Textes de la fenêtre de confirmation, dans la langue de `t`. */
+export function guardTexts(t: Translator, kind: GuardKind): GuardTexts {
+  return kind === 'leave'
+    ? {
+        title: t('game.leaveTitle'),
+        message: t('game.leaveMessage'),
+        cancelLabel: t('game.continue'),
+        confirmLabel: t('game.leave'),
+      }
+    : {
+        title: t('game.restartTitle'),
+        message: t('game.restartMessage'),
+        cancelLabel: t('game.continue'),
+        confirmLabel: t('game.restart'),
+      };
+}
 
 /** Faut-il demander confirmation avant de quitter ou de recommencer ? */
 export function needsConfirmation(game: GameState): boolean {

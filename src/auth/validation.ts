@@ -1,6 +1,9 @@
 // Validation des formulaires d'inscription et de connexion (côté client).
 // Les mêmes règles de pseudo sont imposées par la base (voir les migrations
-// profiles et pseudo_accents_and_change).
+// profiles et pseudo_accents_and_change). Les erreurs sont des messages à
+// traduire au moment de l'affichage (`t.msg(error)`).
+
+import { msg, type Msg } from '@/i18n';
 
 /**
  * Caractères permis : lettres sans accent, « é », « è », « É », « È », chiffres,
@@ -14,27 +17,25 @@ export const PSEUDO_MIN_LETTERS = 3;
 export const PSEUDO_MIN_LENGTH = 3;
 export const PSEUDO_MAX_LENGTH = 20;
 export const PASSWORD_MIN_LENGTH = 8;
+/** Délai minimal entre deux changements de pseudo (même valeur que change_pseudo côté base). */
+export const PSEUDO_CHANGE_DELAY_DAYS = 7;
 /** Préfixe réservé aux pseudos générés pour les invités. */
 export const GUEST_PSEUDO_PREFIX = 'invite-';
 
-/** Aide affichée sous le champ pseudo (inscription, création de compte, changement). */
-export const PSEUDO_HINT =
-  '3 à 20 caractères, dont au moins 3 lettres : lettres (accents : é, è, É, È), chiffres, « _ », « - », « . » ou l’apostrophe.';
-
-/** Message d'erreur, ou null si la valeur est valide. */
-export type FieldError = string | null;
+/** Message d'erreur à traduire, ou null si la valeur est valide. */
+export type FieldError = Msg | null;
 
 export function validateEmail(email: string): FieldError {
   const value = email.trim();
-  if (!value) return 'Indique ton adresse e-mail.';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Cette adresse e-mail ne semble pas valide.';
+  if (!value) return msg('validation.emailRequired');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return msg('validation.emailInvalid');
   return null;
 }
 
 export function validatePassword(password: string): FieldError {
-  if (!password) return 'Indique ton mot de passe.';
+  if (!password) return msg('validation.passwordRequired');
   if (password.length < PASSWORD_MIN_LENGTH) {
-    return `Le mot de passe doit faire au moins ${PASSWORD_MIN_LENGTH} caractères.`;
+    return msg('validation.passwordTooShort', { n: PASSWORD_MIN_LENGTH });
   }
   return null;
 }
@@ -75,21 +76,21 @@ export function samePseudo(a: string, b: string): boolean {
 
 export function validatePseudo(pseudo: string): FieldError {
   const value = normalizePseudo(pseudo);
-  if (!value) return 'Choisis un pseudo.';
+  if (!value) return msg('validation.pseudoRequired');
   if (value.length < PSEUDO_MIN_LENGTH || value.length > PSEUDO_MAX_LENGTH) {
-    return `Le pseudo doit faire entre ${PSEUDO_MIN_LENGTH} et ${PSEUDO_MAX_LENGTH} caractères.`;
+    return msg('validation.pseudoLength', { min: PSEUDO_MIN_LENGTH, max: PSEUDO_MAX_LENGTH });
   }
   if (!PSEUDO_PATTERN.test(value)) {
-    return 'Seulement des lettres (accents permis : é, è, É, È), des chiffres, « _ », « - », « . » et l’apostrophe.';
+    return msg('validation.pseudoChars');
   }
   if (value.startsWith("'") || value.endsWith("'")) {
-    return 'Le pseudo ne peut ni commencer ni finir par une apostrophe.';
+    return msg('validation.pseudoApostropheEdge');
   }
-  if (value.includes("''")) return 'Le pseudo ne peut pas contenir deux apostrophes de suite.';
+  if (value.includes("''")) return msg('validation.pseudoDoubleApostrophe');
   if ((value.match(PSEUDO_LETTER) ?? []).length < PSEUDO_MIN_LETTERS) {
-    return `Le pseudo doit contenir au moins ${PSEUDO_MIN_LETTERS} lettres.`;
+    return msg('validation.pseudoLetters', { n: PSEUDO_MIN_LETTERS });
   }
-  if (pseudoKey(value).startsWith(GUEST_PSEUDO_PREFIX)) return 'Ce début de pseudo est réservé aux invités.';
+  if (pseudoKey(value).startsWith(GUEST_PSEUDO_PREFIX)) return msg('validation.pseudoReserved');
   return null;
 }
 
@@ -116,7 +117,7 @@ export function validateSignIn(fields: SignInFields): Record<keyof SignInFields,
   return {
     email: validateEmail(fields.email),
     // À la connexion, on ne rappelle pas la longueur minimale : le serveur tranche.
-    password: fields.password ? null : 'Indique ton mot de passe.',
+    password: fields.password ? null : msg('validation.passwordRequired'),
   };
 }
 
@@ -130,9 +131,9 @@ export function validateNewPassword(fields: NewPasswordFields): Record<keyof New
   return {
     password: validatePassword(fields.password),
     confirmation: !fields.confirmation
-      ? 'Confirme ton nouveau mot de passe.'
+      ? msg('validation.confirmRequired')
       : fields.confirmation !== fields.password
-        ? 'Les deux mots de passe ne sont pas identiques.'
+        ? msg('validation.confirmMismatch')
         : null,
   };
 }

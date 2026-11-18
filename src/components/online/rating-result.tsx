@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
 import { Colors, Fonts, playerColor, Radius, Shadow, Spacing, Stroke, Typography } from '@/constants/theme';
+import { useT } from '@/i18n';
 import type { GameRatingView } from '@/rooms/use-game-rating';
 import { formatPointsDelta, formatScore } from '@/stats/leaderboard';
 
@@ -13,31 +14,36 @@ import { ThinkingDots } from '../state-view';
  * menthe ou rose, n'est qu'un appoint). Rien pour une partie non classée.
  */
 export function RatingResult({ view }: { view: GameRatingView }) {
+  const t = useT();
   if (view.status === 'hidden') return null;
   if (view.status === 'pending') {
     return (
-      <View style={styles.pending} accessible accessibilityLabel="Calcul des points…" accessibilityLiveRegion="polite">
+      <View
+        style={styles.pending}
+        accessible
+        accessibilityLabel={t('game.computingPoints')}
+        accessibilityLiveRegion="polite">
         <ThinkingDots />
-        <Text style={Typography.caption}>Calcul des points…</Text>
+        <Text style={Typography.caption}>{t('game.computingPoints')}</Text>
       </View>
     );
   }
   if (view.status === 'late') {
     return (
       <Text style={[Typography.caption, styles.center]} accessibilityLiveRegion="polite">
-        Tes points arrivent : retrouve-les bientôt sur ton profil.
+        {t('game.pointsLater')}
       </Text>
     );
   }
   const gained = view.delta >= 0;
-  const delta = formatPointsDelta(view.delta);
-  const total = formatScore('points', view.ratingAfter);
+  const delta = formatPointsDelta(t, view.delta);
+  const total = formatScore(t, 'points', view.ratingAfter);
   return (
     <Animated.View
       entering={FadeIn.duration(180)}
       style={styles.result}
       accessible
-      accessibilityLabel={`${delta}. Nouveau total : ${total}.`}
+      accessibilityLabel={t('game.pointsSpoken', { delta, total })}
       accessibilityLiveRegion="polite">
       <Animated.View entering={ZoomIn.duration(220)} style={styles.badgeWrap}>
         <View style={styles.badgeShadow} />
@@ -45,7 +51,7 @@ export function RatingResult({ view }: { view: GameRatingView }) {
           <Text style={styles.delta}>{delta}</Text>
         </View>
       </Animated.View>
-      <Text style={Typography.caption}>Nouveau total : {total}</Text>
+      <Text style={Typography.caption}>{t('game.newTotal', { total })}</Text>
     </Animated.View>
   );
 }

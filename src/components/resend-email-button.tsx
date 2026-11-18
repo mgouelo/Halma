@@ -6,12 +6,14 @@ import { resendConfirmation } from '@/auth/auth-service';
 import { redirectUrl } from '@/auth/redirect';
 import { useAuthAction } from '@/auth/use-auth-action';
 import { Spacing, Typography } from '@/constants/theme';
+import { useT } from '@/i18n';
 import { getSupabase } from '@/lib/supabase';
 
 import { DrawnButton } from './drawn-button';
 
 /** « Renvoyer l'e-mail » de confirmation (inscription, ou e-mail ajouté par un invité), avec son retour. */
 export function ResendEmailButton({ type, email }: { type: 'signup' | 'email_change'; email: string }) {
+  const t = useT();
   const { pending, error, run } = useAuthAction();
   const [sent, setSent] = useState(false);
 
@@ -24,10 +26,10 @@ export function ResendEmailButton({ type, email }: { type: 'signup' | 'email_cha
 
   return (
     <View style={styles.box}>
-      <DrawnButton label={pending ? 'Envoi…' : 'Renvoyer l’e-mail'} busy={pending} size="small" onPress={resend} />
+      <DrawnButton label={pending ? t('common.sending') : t('resend.button')} busy={pending} size="small" onPress={resend} />
       {(sent || error) && (
         <Text style={Typography.caption} accessibilityLiveRegion="polite">
-          {error ?? `E-mail renvoyé à ${email}.`}
+          {error ?? t('resend.sent', { email })}
         </Text>
       )}
     </View>

@@ -3,9 +3,10 @@
 
 import { FunctionsHttpError, isAuthApiError, type Session, type SupabaseClient } from '@supabase/supabase-js';
 
-import { linkErrorMessage, type AuthLink } from './auth-links';
+import type { Language } from '@/i18n';
+
+import type { AuthLink } from './auth-links';
 import { AuthFailure } from './errors';
-import { PSEUDO_ERROR_MESSAGES, tooSoonMessage } from './pseudo-change';
 import { normalizePseudo, type SignInFields, type SignUpFields } from './validation';
 
 export interface Profile {
@@ -25,21 +26,28 @@ export interface SignUpResult {
 /**
  * Inscription par e-mail ; le profil (avec le pseudo) est créé par la base.
  * `emailRedirectTo` : adresse ouverte par le lien de confirmation (/auth/confirmed).
+ * `language` : langue de l'application, gardée dans les métadonnées du compte
+ * (`user_metadata.language`) dès l'inscription, pour que l'e-mail de
+ * confirmation soit écrit dans cette langue (voir docs/emails/).
  */
 export async function signUpWithEmail(
   client: SupabaseClient,
   fields: SignUpFields,
   emailRedirectTo?: string,
+  language?: Language,
 ): Promise<SignUpResult> {
   const pseudo = normalizePseudo(fields.pseudo);
   const { data: available, error: rpcError } = await client.rpc('is_pseudo_available', { candidate: pseudo });
   if (rpcError) throw rpcError;
-  if (available === false) throw new AuthFailure('pseudo_taken', 'Ce pseudo est déjà pris.');
+  if (available === false) throw new AuthFailure('pseudo_taken');
 
   const { data, error } = await client.auth.signUp({
     email: fields.email.trim(),
     password: fields.password,
-    options: { data: { pseudo }, ...(emailRedirectTo ? { emailRedirectTo } : {}) },
+    options: {
+      data: language ? { pseudo, language } : { pseudo },
+      ...(emailRedirectTo ? { emailRedirectTo } : {}),
+    },
   });
   if (error) throw error;
   return { needsEmailConfirmation: data.session === null };
@@ -51,9 +59,30 @@ export async function signInWithEmail(client: SupabaseClient, fields: SignInFiel
 }
 
 /** Connexion invité : compte anonyme, avec un pseudo « invite-xxxxxx » généré par la base. */
-export async function signInAsGuest(client: SupabaseClient): Promise<void> {
-  const { error } = await client.auth.signInAnonymously();
+export async function signInAsGuest(client: SupabaseClient, language?: Language): Promise<void> {
+  const { error } = await client.auth.signInAnonymously(language ? { options: { data: { language } } } : undefined);
   if (error) throw error;
+}
+
+/**
+ * Langue du compte connecté, pour les e-mails (modèles de docs/emails/) :
+ * colonne `profiles.language` (fonction set_my_language, migration
+ * profile_language) et métadonnée `user_metadata.language`, la seule que les
+ * modèles d'e-mails de Supabase savent lire (`{{ .Data.language }}`). Les deux
+ * écritures sont indépendantes : l'une peut réussir sans l'autre (serveur pas
+ * encore migré) ; on réessaie à la prochaine occasion.
+ */
+export async function saveAccountLanguage(client: SupabaseClient, language: Language): Promise<void> {
+  const [column, metadata] = await Promise.allSettled([
+    client.rpc('set_my_language', { p_language: language }).then(({ error }) => {
+      if (error) throw error;
+    }),
+    client.auth.updateUser({ data: { language } }).then(({ error }) => {
+      if (error) throw error;
+    }),
+  ]);
+  if (metadata.status === 'rejected') throw metadata.reason;
+  if (column.status === 'rejected') throw column.reason;
 }
 
 export async function signOut(client: SupabaseClient): Promise<void> {
@@ -67,15 +96,11 @@ const UNIQUE_VIOLATION = '23505';
 /** Traduit un refus de change_pseudo en AuthFailure ; les autres erreurs sont renvoyées telles quelles. */
 function pseudoFailure(error: { code?: string; message?: string; details?: string | null }): unknown {
   const reason = error.message ?? '';
-  if (reason === 'pseudo_taken' || error.code === UNIQUE_VIOLATION) {
-    return new AuthFailure('pseudo_taken', PSEUDO_ERROR_MESSAGES.pseudo_taken);
-  }
-  if (reason === 'pseudo_invalid' || reason === 'pseudo_reserved') {
-    return new AuthFailure(reason, PSEUDO_ERROR_MESSAGES[reason]);
-  }
+  if (reason === 'pseudo_taken' || error.code === UNIQUE_VIOLATION) return new AuthFailure('pseudo_taken');
+  if (reason === 'pseudo_invalid' || reason === 'pseudo_reserved') return new AuthFailure(reason);
   if (reason === 'pseudo_too_soon') {
     const next = error.details ? new Date(error.details) : null;
-    return new AuthFailure('pseudo_too_soon', tooSoonMessage(next && !Number.isNaN(next.getTime()) ? next : null));
+    return new AuthFailure('pseudo_too_soon', { next: next && !Number.isNaN(next.getTime()) ? next : null });
   }
   return error;
 }
@@ -150,15 +175,15 @@ export async function resendConfirmation(
  * Un lien sans jeton, expiré ou déjà utilisé donne une AuthFailure `link_invalid`.
  */
 export async function sessionFromLink(client: SupabaseClient, link: AuthLink): Promise<Session | null> {
-  if (link.kind === 'none') throw new AuthFailure('link_invalid', linkErrorMessage(null));
-  if (link.kind === 'error') throw new AuthFailure('link_invalid', linkErrorMessage(link.code));
+  if (link.kind === 'none') throw new AuthFailure('link_invalid', { linkCode: null });
+  if (link.kind === 'error') throw new AuthFailure('link_invalid', { linkCode: link.code });
   const { data, error } =
     link.kind === 'otp'
       ? await client.auth.verifyOtp({ token_hash: link.tokenHash, type: link.type })
       : await client.auth.setSession({ access_token: link.accessToken, refresh_token: link.refreshToken });
   if (error) {
     // Jeton refusé par le serveur (expiré, déjà utilisé, inconnu).
-    if (isAuthApiError(error) && error.status < 500) throw new AuthFailure('link_invalid', linkErrorMessage(error.code));
+    if (isAuthApiError(error) && error.status < 500) throw new AuthFailure('link_invalid', { linkCode: error.code ?? null });
     throw error;
   }
   return data.session;
@@ -206,7 +231,7 @@ export async function fetchProfile(client: SupabaseClient, userId: string): Prom
     .eq('id', userId)
     .maybeSingle();
   if (error) throw error;
-  if (!data) throw new AuthFailure('profile_missing', 'Profil introuvable.');
+  if (!data) throw new AuthFailure('profile_missing');
   return data as Profile;
 }
 
@@ -224,10 +249,11 @@ export async function updateAvatar(client: SupabaseClient, userId: string, avata
 export async function deleteMyAccount(client: SupabaseClient): Promise<void> {
   const { error } = await client.functions.invoke('delete-account', { method: 'POST' });
   if (error) {
-    // Refus du serveur : le corps de la réponse porte un message en français.
+    // Refus du serveur : le corps de la réponse porte un code stable (le texte est fabriqué par l'écran).
     if (error instanceof FunctionsHttpError) {
       const body = await (error.context as Response).json().catch(() => null);
-      if (typeof body?.message === 'string') throw new AuthFailure('delete_failed', body.message);
+      if (body?.code === 'not_authenticated') throw new AuthFailure('delete_signed_out', {}, body.message);
+      if (typeof body?.code === 'string') throw new AuthFailure('delete_failed', {}, body.message);
     }
     throw error;
   }

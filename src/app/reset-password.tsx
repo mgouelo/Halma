@@ -18,11 +18,8 @@ import { DrawnTextInput } from '@/components/drawn-text-input';
 import { OpenAppButton } from '@/components/open-app-button';
 import { ErrorState, LoadingState } from '@/components/state-view';
 import { playerColor, Typography } from '@/constants/theme';
+import { useT } from '@/i18n';
 import { getSupabase } from '@/lib/supabase';
-
-export const PASSWORD_CHANGED_MESSAGE = 'Mot de passe modifié';
-export const PASSWORD_CHANGED_WEB_BODY =
-  'Ton nouveau mot de passe est enregistré. Tu peux retourner dans l’application et te connecter avec ce nouveau mot de passe.';
 
 /**
  * Lien « mot de passe oublié » : ouvre la session de récupération portée par
@@ -35,6 +32,7 @@ export const PASSWORD_CHANGED_WEB_BODY =
  * repartir tout seul vers l'accueil.
  */
 export default function ResetPasswordScreen() {
+  const t = useT();
   const { configured } = useAuth();
   const link = useIncomingAuthLink(AUTH_LINK_PATHS.resetPassword);
   const verification = useLinkVerification(link, (incoming) => sessionFromLink(getSupabase(), incoming));
@@ -58,13 +56,13 @@ export default function ResetPasswordScreen() {
 
   const content = () => {
     if (!configured) return <NotConfiguredCard />;
-    if (verification.status === 'pending') return <LoadingState label="Vérification du lien…" />;
+    if (verification.status === 'pending') return <LoadingState label={t('reset.verifying')} />;
     if (verification.status === 'error') {
       if (!(verification.error instanceof AuthFailure)) {
         return (
           <ErrorState
-            title="Vérification impossible"
-            message={describeAuthError(verification.error)}
+            title={t('reset.verifyFailed')}
+            message={describeAuthError(t, verification.error)}
             onRetry={verification.retry}
           />
         );
@@ -72,12 +70,12 @@ export default function ResetPasswordScreen() {
       return (
         <DrawnCard contentStyle={authStyles.card}>
           <Text style={Typography.heading} accessibilityRole="header">
-            Lien expiré ou invalide
+            {t('reset.linkInvalid')}
           </Text>
-          <Text style={Typography.body}>{verification.error.message}</Text>
-          <Text style={Typography.caption}>Un lien ne sert qu’une fois et expire au bout d’une heure.</Text>
+          <Text style={Typography.body}>{describeAuthError(t, verification.error)}</Text>
+          <Text style={Typography.caption}>{t('reset.linkOnce')}</Text>
           <DrawnButton
-            label="Recevoir un nouveau lien"
+            label={t('reset.newLink')}
             onPress={() => router.replace('/forgot-password')}
             color={playerColor(0).piece}
           />
@@ -88,15 +86,15 @@ export default function ResetPasswordScreen() {
       return (
         <DrawnCard contentStyle={authStyles.card}>
           <Text style={Typography.title} accessibilityRole="header" accessibilityLiveRegion="polite">
-            {PASSWORD_CHANGED_MESSAGE}
+            {t('reset.changed')}
           </Text>
-          <Text style={Typography.body}>{PASSWORD_CHANGED_WEB_BODY}</Text>
+          <Text style={Typography.body}>{t('reset.changedWeb')}</Text>
           <OpenAppButton />
           <DrawnButton
-            label="Jouer sur le site"
+            label={t('reset.playOnSite')}
             size="small"
             onPress={() => router.dismissTo('/')}
-            accessibilityHint="Ouvre l’accueil du jeu dans ce navigateur"
+            accessibilityHint={t('reset.playOnSiteHint')}
           />
         </DrawnCard>
       );
@@ -105,36 +103,36 @@ export default function ResetPasswordScreen() {
       return (
         <DrawnCard contentStyle={authStyles.card}>
           <Text style={Typography.title} accessibilityRole="header" accessibilityLiveRegion="polite">
-            {PASSWORD_CHANGED_MESSAGE}
+            {t('reset.changed')}
           </Text>
-          <Text style={Typography.body}>Tu es connecté. Retour à l’accueil…</Text>
-          <DrawnButton label="Aller à l’accueil" onPress={() => router.dismissTo('/')} color={playerColor(1).piece} />
+          <Text style={Typography.body}>{t('reset.signedIn')}</Text>
+          <DrawnButton label={t('reset.goHome')} onPress={() => router.dismissTo('/')} color={playerColor(1).piece} />
         </DrawnCard>
       );
     }
     return (
       <DrawnCard contentStyle={authStyles.card}>
         <DrawnTextInput
-          label="Nouveau mot de passe"
+          label={t('reset.newPassword')}
           value={password}
           onChangeText={(value) => {
             setPassword(value);
             setErrors((prev) => ({ ...prev, password: null }));
           }}
-          error={errors.password}
-          hint={`Au moins ${PASSWORD_MIN_LENGTH} caractères.`}
+          error={errors.password ? t.msg(errors.password) : null}
+          hint={t('common.passwordHint', { n: PASSWORD_MIN_LENGTH })}
           revealable
           autoComplete="new-password"
           textContentType="newPassword"
         />
         <DrawnTextInput
-          label="Confirme le mot de passe"
+          label={t('reset.confirmPassword')}
           value={confirmation}
           onChangeText={(value) => {
             setConfirmation(value);
             setErrors((prev) => ({ ...prev, confirmation: null }));
           }}
-          error={errors.confirmation}
+          error={errors.confirmation ? t.msg(errors.confirmation) : null}
           revealable
           autoComplete="new-password"
           textContentType="newPassword"
@@ -142,7 +140,7 @@ export default function ResetPasswordScreen() {
         />
         {error && <Notice>{error}</Notice>}
         <DrawnButton
-          label={pending ? 'Enregistrement…' : 'Enregistrer le mot de passe'}
+          label={pending ? t('common.saving') : t('reset.savePassword')}
           busy={pending}
           onPress={submit}
           color={playerColor(0).piece}
@@ -152,7 +150,7 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <AuthScreen header="back" title="Nouveau mot de passe" subtitle="Choisis le mot de passe de ton compte.">
+    <AuthScreen header="back" title={t('reset.title')} subtitle={t('reset.subtitle')}>
       {content()}
     </AuthScreen>
   );

@@ -2,8 +2,11 @@ import { describe, expect, it } from '@jest/globals';
 
 import { applyMove, createGame, getAllLegalMoves, type GameState } from '@/game';
 
-import { GUARD_TEXTS, needsConfirmation } from '../leave-guard';
+import { guardTexts, needsConfirmation } from '../leave-guard';
 import { initLocalGame, isGameInProgress, localGameReducer } from '../local-game-reducer';
+import { translator } from '@/i18n';
+
+const t = translator('fr');
 
 function afterOneMove(game: GameState): GameState {
   return applyMove(game, getAllLegalMoves(game, game.currentPlayer)[0]);
@@ -31,13 +34,14 @@ describe('confirmation avant de perdre une partie locale', () => {
     expect(needsConfirmation(localGameReducer(played, { type: 'reset' }).game)).toBe(false);
   });
 
-  it('textes clairs, en français, avec le choix sans risque en premier', () => {
-    expect(GUARD_TEXTS.leave).toEqual(
+  it('textes clairs, avec le choix sans risque en premier', () => {
+    expect(guardTexts(t, 'leave')).toEqual(
       expect.objectContaining({ title: 'Quitter la partie ?', cancelLabel: 'Continuer la partie', confirmLabel: 'Quitter' }),
     );
-    expect(GUARD_TEXTS.restart).toEqual(
+    expect(guardTexts(t, 'restart')).toEqual(
       expect.objectContaining({ cancelLabel: 'Continuer la partie', confirmLabel: 'Recommencer' }),
     );
-    expect(GUARD_TEXTS.leave.message).toMatch(/perdue/);
+    expect(guardTexts(t, 'leave').message).toMatch(/perdue/);
+    expect(guardTexts(translator('de'), 'leave').title).toBe('Partie verlassen?');
   });
 });

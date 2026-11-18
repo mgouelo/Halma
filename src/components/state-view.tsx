@@ -11,6 +11,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { useT } from '@/i18n';
 import { Colors, Fonts, playerColor, Radius, Spacing, Stroke, TouchTarget, Typography } from '@/constants/theme';
 
 import { DrawnButton } from './drawn-button';
@@ -49,7 +50,9 @@ export function ThinkingDots() {
 }
 
 /** Écran (ou zone) en cours de chargement. */
-export function LoadingState({ label = 'Chargement…' }: { label?: string }) {
+export function LoadingState({ label: labelProp }: { label?: string }) {
+  const t = useT();
+  const label = labelProp ?? t('common.loading');
   return (
     <Animated.View
       entering={FadeIn.delay(150)}
@@ -66,7 +69,7 @@ export function LoadingState({ label = 'Chargement…' }: { label?: string }) {
 
 /** Échec de chargement, avec un bouton pour réessayer. */
 export function ErrorState({
-  title = 'Impossible de charger',
+  title,
   message,
   onRetry,
 }: {
@@ -74,16 +77,17 @@ export function ErrorState({
   message: string;
   onRetry?: () => void;
 }) {
+  const t = useT();
   return (
     <Animated.View entering={FadeIn}>
       <DrawnCard contentStyle={styles.card}>
         <Text style={Typography.heading} accessibilityRole="header">
-          {title}
+          {title ?? t('common.loadFailed')}
         </Text>
         <Text style={Typography.body} accessibilityLiveRegion="polite">
           {message}
         </Text>
-        {onRetry && <DrawnButton label="Réessayer" size="small" onPress={onRetry} style={styles.retry} />}
+        {onRetry && <DrawnButton label={t('common.retry')} size="small" onPress={onRetry} style={styles.retry} />}
       </DrawnCard>
     </Animated.View>
   );

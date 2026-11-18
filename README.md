@@ -68,7 +68,7 @@ Aucune adresse n'est écrite en dur dans le code.
      tout de suite (sinon l'application affiche « vérifie tes e-mails ») ;
    - activer **Allow anonymous sign-ins** pour le mode invité ;
    - mettre la longueur minimale des mots de passe à 8, comme l'application.
-4. Régler les adresses des liens envoyés par e-mail, l'envoi des e-mails et leurs modèles en français :
+4. Régler les adresses des liens envoyés par e-mail, l'envoi des e-mails et leurs modèles (quatre langues) :
    voir « E-mails d'authentification : réglages Supabase » plus bas (étape par étape).
 5. Déployer l'Edge Function du jeu en ligne, **depuis la racine du dépôt** (elle importe `src/online/` et
    `src/game/`, que la CLI embarque en suivant les imports) :
@@ -125,7 +125,7 @@ Aucune adresse n'est écrite en dur dans le code.
   `is_pseudo_available` permet de tester un pseudo avant l'inscription (le joueur connecté ne se gêne pas
   lui-même : `Zoe` peut devenir `Zoé`).
 - Le code : `src/lib/supabase.ts` (client, session enregistrée avec AsyncStorage), `src/auth/`
-  (validation, appels à Supabase, messages d'erreur en français, contexte `useAuth()`).
+  (validation, appels à Supabase, messages d'erreur traduits à partir de leur code, contexte `useAuth()`).
 
 ### Du compte invité au compte e-mail
 
@@ -228,8 +228,10 @@ client garde `detectSessionInUrl: false` : c'est l'écran du lien qui ouvre la s
    La clé reste dans Supabase, jamais dans le dépôt ni dans `.env`. Ensuite, ajuster *Authentication → Rate
    Limits → emails sent per hour*. La réception (`contact@halma-game.com`) passe par Cloudflare Email Routing,
    qui transfère vers la boîte du projet : rien à faire dans Supabase.
-3. **Modèles en français** : *Authentication → Email Templates*, coller le sujet et le HTML de `docs/emails/`
-   (voir `docs/emails/README.md`) dans *Confirm signup*, *Change Email Address* et *Reset Password*.
+3. **Modèles multilingues** (français, anglais, allemand, espagnol) : *Authentication → Email Templates*,
+   coller le sujet de `docs/emails/multilingue/sujets.md` et le HTML de `docs/emails/multilingue/` dans
+   *Confirm signup*, *Change Email Address* et *Reset Password* (voir `docs/emails/README.md` : la langue vient
+   des métadonnées du compte, le français par défaut).
 4. **Durée des liens** : *Authentication → Providers → Email*, *Email OTP Expiration* à `3600` secondes (une heure,
    comme l'annoncent les e-mails).
 5. **Essai** : s'inscrire dans l'application sur le téléphone et ouvrir le lien sur l'ordinateur (l'appli doit
@@ -939,6 +941,81 @@ Les illustrations ajoutent environ 0,8 Mo au bundle Hermes.
 Tests : `src/avatar/__tests__/` vérifie la relecture de l'avatar, le rendu des couleurs, et fait lire chacun
 des 86 morceaux par le parseur XML de `react-native-svg`, celui qu'utilise `SvgXml` sur mobile.
 
+## Traductions
+
+L'application parle **français** (langue de référence), **anglais**, **allemand** et **espagnol**. Ton des textes :
+tutoiement en français, et l'équivalent décontracté ailleurs (« you » familier, « du », « tú »).
+
+### Comment ça marche
+
+- **Bibliothèque** : aucune, une solution maison de quelques fonctions (`src/i18n/`). Raisons : clés et variables
+  vérifiées par `tsc` sans configuration, rien à ajouter au paquet, règles de pluriel des quatre langues écrites à
+  la main (`pluralForm`), compatible React Native Web, rendu statique et React Compiler.
+- **Messages** : un fichier par langue, `fr.ts`, `en.ts`, `de.ts`, `es.ts`, des clés à plat (`'game.move'`).
+  **Le français est la source** : le type des autres langues (`Messages`) vient de `fr.ts`, donc une clé manquante
+  ou en trop dans `en.ts`, `de.ts` ou `es.ts` est une erreur de `tsc`. Un test vérifie en plus que chaque langue a
+  exactement les mêmes variables (`{n}`, `{name}`…) et balises (`<link>…</link>`) que le français
+  (`src/i18n/__tests__/messages.test.ts`).
+- **Dans un écran** : `const t = useT();` puis `t('game.move', { n: 3 })`. Les variables sont typées : oublier `n`
+  ne compile pas. Chaque composant qui affiche du texte appelle `useT()` lui-même : l'identité de `t` change avec la
+  langue, et les fonctions qui le reçoivent (`formatRank(t, rang)`) sont recalculées même mémoïsées par le React
+  Compiler. Pas de `t` global dans les composants.
+- **Pluriels** : `{ one: '{count} victoire', other: '{count} victoires' }`, appelé avec `{ count }`. Français : 0
+  et 1 au singulier ; anglais, allemand, espagnol : 1 seulement (`pluralForm`).
+- **Nombres, rangs, dates** : les nombres des variables sont écrits par `Intl.NumberFormat` dans la locale active
+  (« 1 500 », « 1,500 », « 1.500 ») ; les rangs par `formatOrdinal` (« 1er », « 1st », « 1. », « 1.º ») ; les dates
+  par `formatDay` et `formatTime` (`Intl.DateTimeFormat`, « 1er » en français).
+- **Messages gardés pour plus tard** (notice affichée sur l'écran suivant, erreur de champ) : `msg('clé', {…})`,
+  traduit à l'affichage par `t.msg(…)`. Les erreurs du serveur sont gardées brutes et traduites à l'affichage à
+  partir de leur **code** (`describeOnlineError(t, e)`, `describeAuthError(t, e)`, `describeFriendError(t, e)`,
+  `describeLeaderboardError(t, e)`) : un changement de langue les traduit aussi, et aucun texte du serveur n'est
+  affiché. Les fonctions SQL lèvent des codes courts ; les Edge Functions renvoient `{ ok: false, code, message }` :
+  `message` (en français, pour les journaux et les versions déjà installées de l'application) n'est plus affiché.
+- **Texte avec un lien** : `rich(t('signIn.guestWarning'), { link: (texte) => <Link …>{texte}</Link> })`.
+- **Choix de la langue** (`src/i18n/language.ts`) : préférence enregistrée par le joueur (AsyncStorage,
+  `halma.language`), sinon langue de l'appareil ou du navigateur (`expo-localization`, la première que
+  l'application parle), sinon le français. Sur mobile, l'écran de démarrage attend la relecture de la préférence ;
+  la langue de l'appareil est relue au retour au premier plan (Android permet de la changer sans relancer).
+- **Sélecteur** (`src/components/language-picker.tsx`) : sur le profil (connecté, invité ou non) et sur l'écran de
+  connexion ; chaque langue écrite dans sa propre langue. Le changement s'applique tout de suite, sans redémarrer.
+- **Web** : le HTML exporté est en français (`<html lang="fr">`) ; l'hydratation se fait en français (pas d'écart),
+  puis l'application passe à la langue du joueur et met à jour `document.documentElement.lang`, le titre de
+  l'onglet, la description et `og:locale` (`PageHead`).
+- **Compte** : la langue choisie dans le sélecteur est enregistrée sur le compte connecté (invité compris) ; sur
+  un appareil sans choix, c'est la langue du compte qui s'applique, pas celle de l'appareil :
+  colonne privée `profiles.language` (migration `profile_language`, fonctions `set_my_language` et `my_language` ;
+  les autres joueurs ne la voient pas) et métadonnée `user_metadata.language`, que lisent les modèles d'e-mails
+  (voir « E-mails d'authentification » et `docs/emails/README.md`).
+- **Pages légales** : une version par langue (`PRIVACY_DOCS`, `TERMS_DOCS` dans `src/legal/`), même structure ; le
+  français fait foi, les traductions sont à faire relire (champs `[TO BE COMPLETED]`, `[ZU ERGÄNZEN]`,
+  `[POR COMPLETAR]`).
+- **Tests** : l'appareil simulé est en français (`jest.setup.ts`) ; les tests d'autres langues prennent
+  `translator('en')` ou changent la langue (`applyLanguage('de')`, voir `src/i18n/__tests__/screens.test.tsx`).
+
+### Ajouter une clé
+
+1. L'ajouter dans `src/i18n/fr.ts` (au bon endroit, par écran).
+2. `npx tsc --noEmit` signale les trois autres fichiers : y ajouter la traduction (mêmes variables).
+3. L'utiliser avec `t('ma.cle', { … })`.
+
+### Ajouter une langue
+
+1. L'ajouter à `LANGUAGES`, `LANGUAGE_NAMES` (son nom dans sa langue) et `LANGUAGE_LOCALES` (`src/i18n/types.ts`).
+2. Créer `src/i18n/<code>.ts` (`export const xx: Messages = { … }`, `tsc` guide jusqu'à la dernière clé), et
+   l'ajouter à `MESSAGES` (`translate.ts`), avec ses règles dans `pluralForm` et `formatOrdinal` si besoin.
+3. Pages légales : une version dans `src/legal/privacy.ts` et `terms.ts`, et sa marque dans `PLACEHOLDER_MARKERS`
+   et `PLACEHOLDER` (`document.ts`).
+4. E-mails : les trois sources `docs/emails/<modèle>.<code>.html`, la langue dans `OTHER_LANGUAGES`
+   (`scripts/email-templates.cjs`), puis `node scripts/email-templates.cjs`.
+5. Base : la liste des langues de `profiles_language_check` et de `set_my_language` (nouvelle migration).
+
+### Ce qui n'est pas traduit
+
+- Pseudos, codes de room, noms de licences et de bibliothèques, textes des licences (en anglais d'origine).
+- Les raisons détaillées d'un coup refusé par le moteur (`src/game/`) et les messages des Edge Functions : ils ne
+  servent qu'aux journaux (l'écran affiche le texte du code d'erreur).
+- Les messages pour développeurs (`EXPO_PUBLIC_SUPABASE_URL` manquante…).
+
 ## Interface : conventions
 
 - **Police** : [Fredoka](https://github.com/hafontia/Fredoka-One) (SIL Open Font License 1.1), ronde et ludique
@@ -969,7 +1046,8 @@ des 86 morceaux par le parseur XML de `react-native-svg`, celui qu'utilise `SvgX
   - contrastes vérifiés par un test (`src/constants/__tests__/theme.test.ts`) : texte noir sur blanc et sur tous
     les pastels (≥ 7:1), texte gris sur blanc et sur les teintes pâles (≥ 4,5:1) ;
   - libellés et rôles pour les lecteurs d'écran (boutons, onglets, choix, joueurs de la partie, chargement) ;
-  - web : `lang="fr"`, anneau de focus noir bien visible au clavier (`src/app/+html.tsx`).
+  - web : `lang` de la page selon la langue active (voir « Traductions »), anneau de focus noir bien visible au
+    clavier (`src/app/+html.tsx`).
   - Limite connue : le plateau lui-même n'est pas jouable au lecteur d'écran (121 cases sans libellé).
 - **Grand écran** (à partir de 900 points de large : tablette, ordinateur) : l'accueil passe en deux colonnes
   (plateau à gauche), les parties affichent un panneau latéral (tour, joueurs, actions) à côté d'un grand
@@ -1252,6 +1330,7 @@ Toujours installer les paquets Expo avec `npx expo install <paquet>` pour obteni
 - `src/credits/` : données de la page Crédits (générées par `scripts/generate-licenses.mjs`) ; `src/legal/` : textes
   de la politique de confidentialité et des conditions d'utilisation (brouillons).
 - `src/lib/flash-notice.ts` : message à usage unique affiché sur l'écran suivant (room fermée par l'hôte).
+- `src/i18n/` : traductions (fr, en, de, es), langue active et sélecteur (voir « Traductions »).
 - `src/components/` : composants d'affichage, dont `board/` (plateau SVG, pion animé, calcul de mise en page), `game-layout.tsx` (mise en page des parties, téléphone et grand écran) et `state-view.tsx` (chargement, erreurs).
 - `src/mutators/` : mutateurs de partie (options d'interface, URL, `rooms.settings`, décision d'une touche) ; `src/components/mutator-settings.tsx` : interrupteurs et badges.
 - `src/hooks/` : état d'interface de la partie (sélection, animation, tour des IA), qui délègue règles et IA à `src/game/` ; paramètres de partie (`game-setup.ts`) ; confirmation avant de quitter ou recommencer une partie locale (`leave-guard.ts`, `use-leave-guard.ts`).

@@ -9,6 +9,9 @@ import {
   turnOrderLabel,
 } from '../game-setup';
 import { initLocalGame } from '../local-game-reducer';
+import { translator } from '@/i18n';
+
+const t = translator('fr');
 
 describe('paramètres de partie', () => {
   it('sans paramètre : deux humains', () => {
@@ -61,6 +64,6 @@ describe('partie entre amis (même appareil)', () => {
   });
 
   it('écrit l’ordre du tour en toutes lettres', () => {
-    expect([0, 1, 2, 5].map(turnOrderLabel)).toEqual(['1er', '2e', '3e', '6e']);
+    expect([0, 1, 2, 5].map((player) => turnOrderLabel(t, player))).toEqual(['1er', '2e', '3e', '6e']);
   });
 });

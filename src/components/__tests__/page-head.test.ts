@@ -11,7 +11,7 @@ describe('titre et description des pages web', () => {
     expect(pageTitle(SITE_NAME)).toBe(SITE_NAME);
   });
 
-  it('la description par défaut est celle de app.json', () => {
+  it('la description par défaut (française, rendu statique) est celle de app.json', () => {
     const app = JSON.parse(readFileSync(join(__dirname, '../../../app.json'), 'utf8'));
     expect(app.expo.web.description.replace(/'/g, '’')).toBe(SITE_DESCRIPTION);
   });

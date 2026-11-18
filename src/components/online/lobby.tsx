@@ -11,9 +11,10 @@ import { DrawnCard } from '@/components/drawn-card';
 import { MutatorSettings } from '@/components/mutator-settings';
 import { PlayerChip } from '@/components/player-chip';
 import { SegmentedPicker } from '@/components/segmented-picker';
-import { Colors, MaxContentWidth, playerColor, Spacing, Stroke, Typography } from '@/constants/theme';
+import { Colors, MaxContentWidth, playerColor, playerColorName, Spacing, Stroke, Typography } from '@/constants/theme';
 import { AI_LEVELS, type AiLevel } from '@/game';
-import { AI_LEVEL_LABELS } from '@/hooks/game-setup';
+import { aiLevelLabels } from '@/hooks/game-setup';
+import { useT } from '@/i18n';
 import { getSupabase } from '@/lib/supabase';
 import { MAX_PARTICIPANTS, MIN_PARTICIPANTS, type StoredGame } from '@/online';
 import { participantAvatar, participantName } from '@/rooms/names';
@@ -21,10 +22,10 @@ import { isOnline } from '@/rooms/presence';
 import {
   addAi,
   leaveRoom,
-  leaveRoomPrompt,
   removeAi,
   setAiLevel,
   setRoomMutators,
+  shouldConfirmLeave,
   startGame,
   type RoomPlayer,
   type RoomSnapshot,
@@ -44,6 +45,7 @@ interface LobbyProps {
 
 /** Salle d'attente : code à partager, participants, IA (pour l'hôte), lancement. */
 export function Lobby({ snapshot, userId, now, onGame, refresh, leavingRef }: LobbyProps) {
+  const t = useT();
   const { room, players } = snapshot;
   const isHost = room.hostId === userId;
   const count = players.length;
@@ -51,7 +53,7 @@ export function Lobby({ snapshot, userId, now, onGame, refresh, leavingRef }: Lo
   const client = getSupabase();
 
   const share = () => {
-    Share.share({ message: `Viens jouer aux dames chinoises sur Halma ! Code de la room : ${room.code}` }).catch(
+    Share.share({ message: t('lobby.shareMessage', { code: room.code }) }).catch(
       () => {},
     );
   };
@@ -66,7 +68,7 @@ export function Lobby({ snapshot, userId, now, onGame, refresh, leavingRef }: Lo
       refresh();
     });
   const [confirmLeave, setConfirmLeave] = useState(false);
-  const prompt = leaveRoomPrompt(snapshot, userId);
+  const prompt = shouldConfirmLeave(snapshot, userId);
   // L'hôte ferme la room (supprimée pour tous) ; un autre joueur la quitte simplement.
   const leave = async () => {
     setConfirmLeave(false);
@@ -82,29 +84,27 @@ export function Lobby({ snapshot, userId, now, onGame, refresh, leavingRef }: Lo
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <DrawnButton label="‹ Retour" size="small" onPress={() => router.dismissTo('/online')} />
+          <DrawnButton label={t('common.back')} size="small" onPress={() => router.dismissTo('/online')} />
         </View>
 
         <View style={styles.titles}>
           <Text style={Typography.title} accessibilityRole="header">
-            Salle d’attente
+            {t('lobby.title')}
           </Text>
-          <Text style={Typography.caption}>
-            {isHost ? 'Partage le code, ajoute des IA si besoin, puis lance la partie.' : 'L’hôte lancera la partie.'}
-          </Text>
+          <Text style={Typography.caption}>{isHost ? t('lobby.hostText') : t('lobby.guestText')}</Text>
         </View>
 
         <DrawnCard contentStyle={styles.codeCard}>
-          <Text style={Typography.caption}>Code de la room</Text>
-          <Text style={styles.code} selectable accessibilityLabel={`Code ${room.code.split('').join(' ')}`}>
+          <Text style={Typography.caption}>{t('lobby.code')}</Text>
+          <Text style={styles.code} selectable accessibilityLabel={t('lobby.codeSpoken', { letters: room.code.split('').join(' ') })}>
             {room.code}
           </Text>
-          <DrawnButton label="Partager le code" size="small" onPress={share} color={playerColor(1).piece} />
+          <DrawnButton label={t('lobby.shareCode')} size="small" onPress={share} color={playerColor(1).piece} />
         </DrawnCard>
 
         <DrawnCard contentStyle={styles.card}>
           <Text style={Typography.heading}>
-            Participants · {count}/{MAX_PARTICIPANTS}
+            {t('lobby.participants', { count, max: MAX_PARTICIPANTS })}
           </Text>
           {players.map((player, index) => (
             <ParticipantRow
@@ -122,23 +122,19 @@ export function Lobby({ snapshot, userId, now, onGame, refresh, leavingRef }: Lo
           ))}
           {isHost && count < MAX_PARTICIPANTS && (
             <DrawnButton
-              label="+ Ajouter une IA"
+              label={t('lobby.addAi')}
               size="small"
               onPress={() => act(() => addAi(client, room.id, 'medium'))}
             />
           )}
-          {count === 5 && <Text style={Typography.caption}>À 5, une branche du plateau reste vide.</Text>}
+          {count === 5 && <Text style={Typography.caption}>{t('lobby.fiveEmptyBranch')}</Text>}
         </DrawnCard>
 
         <MutatorSettings
           value={room.mutators}
           onChange={isHost ? (key, value) => act(() => setRoomMutators(client, room.id, { [key]: value })) : undefined}
           disabled={pending}
-          caption={
-            isHost
-              ? 'Pour tous les joueurs, figés au lancement de la partie.'
-              : 'Réglés par l’hôte, figés au lancement de la partie.'
-          }
+          caption={isHost ? t('lobby.mutatorsHost') : t('lobby.mutatorsGuest')}
         />
 
         {error && <Notice>{error}</Notice>}
@@ -148,39 +144,37 @@ export function Lobby({ snapshot, userId, now, onGame, refresh, leavingRef }: Lo
         {isHost ? (
           count >= MIN_PARTICIPANTS ? (
             <DrawnButton
-              label={`Lancer la partie à ${count}`}
+              label={t('lobby.launchWith', { count })}
               busy={pending}
               onPress={start}
               color={playerColor(0).piece}
             />
           ) : (
             <Text style={[Typography.caption, styles.center]}>
-              Attends un autre joueur ou ajoute une IA pour lancer la partie.
+              {t('lobby.needPlayers')}
             </Text>
           )
         ) : (
           <Text style={[Typography.caption, styles.center]} accessibilityLiveRegion="polite">
-            En attente du lancement par l’hôte…
+            {t('lobby.waitingHost')}
           </Text>
         )}
         <DrawnButton
-          label="Quitter la room"
+          label={t('online.leaveRoom')}
           size="small"
           onPress={prompt ? () => setConfirmLeave(true) : leave}
           disabled={pending}
-          accessibilityHint={
-            isHost ? 'En tant qu’hôte, supprime la room.' : 'Tu pourras la rejoindre à nouveau avec son code.'
-          }
+          accessibilityHint={isHost ? t('online.hostDeletesHint') : t('lobby.rejoinHint')}
           style={styles.leave}
         />
       </View>
       {prompt && (
         <ConfirmDialog
           visible={confirmLeave}
-          title={prompt.title}
-          message={prompt.message}
-          cancelLabel="Rester dans la room"
-          confirmLabel={prompt.confirmLabel}
+          title={t('online.closeRoomTitle')}
+          message={t('online.closeRoomMessage')}
+          cancelLabel={t('lobby.stay')}
+          confirmLabel={t('online.closeRoom')}
           onCancel={() => setConfirmLeave(false)}
           onConfirm={leave}
         />
@@ -201,11 +195,12 @@ interface ParticipantRowProps {
 }
 
 function ParticipantRow({ player, index, userId, hostId, online, editable, onLevel, onRemove }: ParticipantRowProps) {
+  const t = useT();
   const details = [
-    player.userId === hostId ? 'hôte' : null,
-    player.userId !== null && !online ? 'déconnecté' : null,
+    player.userId === hostId ? t('lobby.host') : null,
+    player.userId !== null && !online ? t('lobby.disconnected') : null,
   ].filter(Boolean);
-  const name = participantName(player, userId);
+  const name = participantName(t, player, userId);
   return (
     // Arrivées et départs animés : on voit qui rejoint la room.
     <Animated.View
@@ -218,25 +213,25 @@ function ParticipantRow({ player, index, userId, hostId, online, editable, onLev
           <PlayerChip
             player={index}
             size={44}
-            label={player.aiLevel ? 'IA' : name}
+            label={player.aiLevel ? t('ai.short') : name}
             detail={details.length > 0 ? details.join(' · ') : undefined}
             avatar={{ value: participantAvatar(player), seed: player.userId ?? player.id }}
           />
         </View>
-        {player.aiLevel && editable && <DrawnButton label="Retirer" size="small" onPress={onRemove} />}
+        {player.aiLevel && editable && <DrawnButton label={t('common.remove')} size="small" onPress={onRemove} />}
       </View>
       {player.aiLevel &&
         (editable ? (
           <SegmentedPicker
             options={AI_LEVELS}
-            labels={AI_LEVEL_LABELS}
+            labels={aiLevelLabels(t)}
             value={player.aiLevel}
             onChange={onLevel}
             color={playerColor(index).piece}
-            accessibilityLabel={`Niveau de l’IA ${playerColor(index).name}`}
+            accessibilityLabel={t('ai.levelOf', { color: playerColorName(t, index) })}
           />
         ) : (
-          <Text style={Typography.caption}>Niveau {AI_LEVEL_LABELS[player.aiLevel].toLowerCase()}</Text>
+          <Text style={Typography.caption}>{t(`ai.levelText.${player.aiLevel}`)}</Text>
         ))}
     </Animated.View>
   );

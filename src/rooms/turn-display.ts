@@ -1,6 +1,7 @@
 // Textes du tour en ligne : bannière et titre de l'onglet du navigateur.
 
 import type { PlayerId } from '@/game';
+import type { Translator } from '@/i18n';
 
 export interface OnlineTurn {
   /** Partie terminée (victoire, forfait ou arrêt). */
@@ -19,15 +20,12 @@ export function isMyTurn(turn: OnlineTurn): boolean {
   return !turn.finished && turn.me !== null && turn.currentPlayer === turn.me && !turn.forfeited.includes(turn.me);
 }
 
-/** Texte au-dessus du joueur dont c'est le tour, quand ce n'est pas toi. */
-export const WAITING_LEAD = 'En attente de';
-
 /**
  * Titre de l'onglet du navigateur pendant une partie en ligne, pour voir d'un
  * coup d'œil, depuis un autre onglet, que c'est à toi.
  */
-export function onlineTabTitle(turn: OnlineTurn): string {
-  if (turn.finished) return 'Partie terminée · Halma';
-  if (isMyTurn(turn)) return '● À toi de jouer ! · Halma';
-  return `${WAITING_LEAD} ${turn.currentName} · Halma`;
+export function onlineTabTitle(t: Translator, turn: OnlineTurn): string {
+  if (turn.finished) return t('game.tabFinished');
+  if (isMyTurn(turn)) return t('game.tabYourTurn');
+  return t('game.tabWaiting', { name: turn.currentName });
 }

@@ -5,6 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { deleteMyAccount } from '@/auth/auth-service';
 import { useAuthAction } from '@/auth/use-auth-action';
 import { Colors, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
+import { useT } from '@/i18n';
 import { getSupabase } from '@/lib/supabase';
 
 import { Notice } from './auth-screen';
@@ -15,6 +16,7 @@ import { DrawnButton } from './drawn-button';
  * confirmation, qui explique ce qui sera perdu ; seul le second supprime.
  */
 export function DeleteAccount({ pseudo, isGuest }: { pseudo: string; isGuest: boolean }) {
+  const t = useT();
   const [confirming, setConfirming] = useState(false);
   const { pending, error, run } = useAuthAction();
 
@@ -25,32 +27,30 @@ export function DeleteAccount({ pseudo, isGuest }: { pseudo: string; isGuest: bo
   if (!confirming) {
     return (
       <DrawnButton
-        label="Supprimer mon compte"
+        label={t('profile.deleteAccount')}
         onPress={() => setConfirming(true)}
-        accessibilityHint="Demande une confirmation avant de supprimer"
+        accessibilityHint={t('profile.deleteHint')}
       />
     );
   }
   return (
     <View style={styles.box} accessibilityLiveRegion="polite">
       <Text style={Typography.heading} accessibilityRole="header">
-        Supprimer le compte {pseudo} ?
+        {t('profile.deleteTitle', { name: pseudo })}
       </Text>
       <Text style={Typography.body}>
-        C’est définitif. Ton profil, ton avatar, tes statistiques et ta place dans les classements seront effacés. Tu
-        abandonnes tes parties en cours ; dans les parties des autres, ta place apparaîtra comme « Compte supprimé ».
-        {isGuest ? '' : ' Ton adresse e-mail sera supprimée de nos serveurs.'}
+        {isGuest ? t('profile.deleteText') : `${t('profile.deleteText')} ${t('profile.deleteEmailText')}`}
       </Text>
       {error && <Notice>{error}</Notice>}
       <View style={styles.actions}>
         <DrawnButton
-          label={pending ? 'Suppression…' : 'Oui, supprimer définitivement'}
+          label={pending ? t('profile.deleting') : t('profile.deleteConfirm')}
           busy={pending}
           onPress={confirm}
           color={Colors.paper}
           size="small"
         />
-        <DrawnButton label="Annuler" size="small" onPress={() => setConfirming(false)} disabled={pending} />
+        <DrawnButton label={t('common.cancel')} size="small" onPress={() => setConfirming(false)} disabled={pending} />
       </View>
     </View>
   );

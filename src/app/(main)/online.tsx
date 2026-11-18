@@ -9,6 +9,7 @@ import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
 import { DrawnTextInput } from '@/components/drawn-text-input';
 import { playerColor, Spacing, Typography } from '@/constants/theme';
+import { msg, useT, type Msg } from '@/i18n';
 import { getSupabase } from '@/lib/supabase';
 import { OnlineError } from '@/online';
 import {
@@ -31,21 +32,20 @@ function openRoom(id: string) {
 }
 
 export default function OnlineScreen() {
+  const t = useT();
   const { configured, loading, session } = useAuth();
 
   return (
-    <AuthScreen title="Jouer en ligne" subtitle="De 2 à 6 participants, amis et IA, chacun sur son appareil.">
+    <AuthScreen title={t('common.playOnline')} subtitle={t('online.subtitle')}>
       {!configured ? (
         <NotConfiguredCard />
       ) : loading ? (
         <LoadingState />
       ) : !session ? (
         <DrawnCard contentStyle={authStyles.card}>
-          <Text style={Typography.heading}>Connecte-toi d’abord</Text>
-          <Text style={Typography.body}>
-            Les autres joueurs voient ton pseudo dans la room. Tu peux aussi jouer en invité, sans e-mail.
-          </Text>
-          <DrawnButton label="Se connecter" onPress={() => router.push('/sign-in')} color={playerColor(1).piece} />
+          <Text style={Typography.heading}>{t('online.signInFirst')}</Text>
+          <Text style={Typography.body}>{t('online.signInText')}</Text>
+          <DrawnButton label={t('common.signIn')} onPress={() => router.push('/sign-in')} color={playerColor(1).piece} />
         </DrawnCard>
       ) : (
         <OnlineMenu userId={session.user.id} />
@@ -55,11 +55,13 @@ export default function OnlineScreen() {
 }
 
 function OnlineMenu({ userId }: { userId: string }) {
+  const t = useT();
   const [code, setCode] = useState('');
-  const [codeError, setCodeError] = useState<string | null>(null);
+  const [codeError, setCodeError] = useState<Msg | null>(null);
   // undefined : pas encore lu ; null : aucune room active.
   const [active, setActive] = useState<ActiveRoom | null | undefined>(undefined);
-  const [activeError, setActiveError] = useState<string | null>(null);
+  // Erreur brute de lecture (traduite à l'affichage), enveloppée : null veut dire « pas d'erreur ».
+  const [activeError, setActiveError] = useState<{ error: unknown } | null>(null);
   // Recherche en cours (file ou compte à rebours) : on la reprend ou on l'annule.
   const [search, setSearch] = useState<MatchmakingStatus | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -79,7 +81,7 @@ function OnlineMenu({ userId }: { userId: string }) {
         setActiveError(null);
       })
       .catch((e: unknown) => {
-        if (current) setActiveError(describeOnlineError(e));
+        if (current) setActiveError({ error: e });
       });
     return () => {
       current = false;
@@ -105,7 +107,7 @@ function OnlineMenu({ userId }: { userId: string }) {
   const joinAndOpen = () => {
     const normalized = normalizeRoomCode(code);
     if (!isValidRoomCode(normalized)) {
-      setCodeError(`Le code compte ${ROOM_CODE_LENGTH} lettres ou chiffres (par exemple K7QM3X).`);
+      setCodeError(msg('online.codeFormat', { n: ROOM_CODE_LENGTH }));
       return;
     }
     join.run(async () => {
@@ -128,7 +130,13 @@ function OnlineMenu({ userId }: { userId: string }) {
   };
 
   if (activeError && active === undefined) {
-    return <ErrorState title="Room indisponible" message={activeError} onRetry={loadActive} />;
+    return (
+      <ErrorState
+        title={t('online.roomUnavailable')}
+        message={describeOnlineError(t, activeError.error)}
+        onRetry={loadActive}
+      />
+    );
   }
   if (active === undefined) return <LoadingState />;
 
@@ -136,16 +144,14 @@ function OnlineMenu({ userId }: { userId: string }) {
   if (search) {
     return (
       <DrawnCard contentStyle={authStyles.card}>
-        <Text style={Typography.heading}>Recherche en cours</Text>
+        <Text style={Typography.heading}>{t('online.searching')}</Text>
         <Text style={Typography.caption}>
-          {search.phase === 'matched'
-            ? 'Des joueurs t’attendent : la partie va commencer.'
-            : 'Tu cherches une partie. Tu ne peux pas créer ni rejoindre de room en même temps.'}
+          {search.phase === 'matched' ? t('online.matchedWaiting') : t('online.searchingText')}
         </Text>
         {cancelSearch.error && <Notice>{cancelSearch.error}</Notice>}
-        <DrawnButton label="Reprendre" color={playerColor(2).piece} onPress={() => router.push('/matchmaking')} />
+        <DrawnButton label={t('online.resume')} color={playerColor(2).piece} onPress={() => router.push('/matchmaking')} />
         <DrawnButton
-          label={cancelSearch.pending ? 'Annulation…' : 'Annuler la recherche'}
+          label={cancelSearch.pending ? t('common.cancelling') : t('online.cancelSearch')}
           size="small"
           busy={cancelSearch.pending}
           onPress={async () => {
@@ -165,40 +171,38 @@ function OnlineMenu({ userId }: { userId: string }) {
     const isHost = active.hostId === userId;
     return (
       <DrawnCard contentStyle={authStyles.card}>
-        <Text style={Typography.heading}>Ta room</Text>
+        <Text style={Typography.heading}>{t('online.yourRoom')}</Text>
         <View style={styles.roomRow}>
           <View style={styles.flex}>
             <Text style={[Typography.heading, styles.code]}>{active.code}</Text>
-            <Text style={Typography.caption}>{playing ? 'Partie en cours' : 'Salle d’attente'}</Text>
+            <Text style={Typography.caption}>{playing ? t('online.gameInProgress') : t('online.waitingRoom')}</Text>
           </View>
           <DrawnButton
-            label={playing ? 'Reprendre' : 'Ouvrir'}
+            label={playing ? t('online.resume') : t('online.open')}
             size="small"
             color={playerColor(2).piece}
             onPress={() => openRoom(active.id)}
           />
         </View>
         <Text style={Typography.caption}>
-          {playing
-            ? 'Tu ne peux être que dans une room à la fois. Pour quitter une partie en cours, abandonne-la depuis l’écran de jeu.'
-            : 'Tu ne peux être que dans une room à la fois : reprends-la, ou quitte-la pour en créer ou rejoindre une autre.'}
+          {playing ? t('online.oneRoomPlaying') : t('online.oneRoomWaiting')}
         </Text>
         {leave.error && <Notice>{leave.error}</Notice>}
         {!playing && (
           <DrawnButton
-            label={leave.pending ? 'Sortie…' : 'Quitter la room'}
+            label={leave.pending ? t('online.leaving') : t('online.leaveRoom')}
             size="small"
             busy={leave.pending}
             onPress={isHost ? () => setConfirmLeave(true) : () => leaveActive(active)}
-            accessibilityHint={isHost ? 'En tant qu’hôte, supprime la room.' : undefined}
+            accessibilityHint={isHost ? t('online.hostDeletesHint') : undefined}
           />
         )}
         <ConfirmDialog
           visible={confirmLeave}
-          title="Fermer la room ?"
-          message="Tu es l’hôte : si tu quittes, la room est supprimée et les autres joueurs sont renvoyés à l’accueil."
-          cancelLabel="Garder la room"
-          confirmLabel="Fermer la room"
+          title={t('online.closeRoomTitle')}
+          message={t('online.closeRoomMessage')}
+          cancelLabel={t('online.keepRoom')}
+          confirmLabel={t('online.closeRoom')}
           onCancel={() => setConfirmLeave(false)}
           onConfirm={() => leaveActive(active)}
         />
@@ -209,21 +213,17 @@ function OnlineMenu({ userId }: { userId: string }) {
   return (
     <>
       <DrawnCard contentStyle={authStyles.card}>
-        <Text style={Typography.heading}>Trouver une partie</Text>
-        <Text style={Typography.caption}>
-          Rejoins d’autres joueurs qui cherchent aussi, de 2 à 6, sans IA. La partie compte pour les points.
-        </Text>
-        <DrawnButton label="Trouver une partie" onPress={() => router.push('/matchmaking')} color={playerColor(3).piece} />
+        <Text style={Typography.heading}>{t('online.findGame')}</Text>
+        <Text style={Typography.caption}>{t('online.findGameText')}</Text>
+        <DrawnButton label={t('online.findGame')} onPress={() => router.push('/matchmaking')} color={playerColor(3).piece} />
       </DrawnCard>
 
       <DrawnCard contentStyle={authStyles.card}>
-        <Text style={Typography.heading}>Créer une room</Text>
-        <Text style={Typography.caption}>
-          Tu reçois un code court à partager. Tu pourras ajouter des IA avant de lancer la partie.
-        </Text>
+        <Text style={Typography.heading}>{t('online.createRoom')}</Text>
+        <Text style={Typography.caption}>{t('online.createRoomText')}</Text>
         {create.error && <Notice>{create.error}</Notice>}
         <DrawnButton
-          label={create.pending ? 'Création…' : 'Créer une room'}
+          label={create.pending ? t('online.creating') : t('online.createRoom')}
           busy={create.pending}
           onPress={createAndOpen}
           color={playerColor(0).piece}
@@ -232,13 +232,13 @@ function OnlineMenu({ userId }: { userId: string }) {
 
       <DrawnCard contentStyle={authStyles.card}>
         <DrawnTextInput
-          label="Rejoindre avec un code"
+          label={t('online.joinWithCode')}
           value={code}
           onChangeText={(value) => {
             setCode(value.toUpperCase());
             setCodeError(null);
           }}
-          error={codeError}
+          error={codeError ? t.msg(codeError) : null}
           placeholder="K7QM3X"
           autoCapitalize="characters"
           autoCorrect={false}
@@ -248,7 +248,11 @@ function OnlineMenu({ userId }: { userId: string }) {
           style={styles.code}
         />
         {join.error && <Notice>{join.error}</Notice>}
-        <DrawnButton label={join.pending ? 'Connexion…' : 'Rejoindre'} onPress={joinAndOpen} busy={join.pending} />
+        <DrawnButton
+          label={join.pending ? t('online.joining') : t('online.join')}
+          onPress={joinAndOpen}
+          busy={join.pending}
+        />
       </DrawnCard>
     </>
   );

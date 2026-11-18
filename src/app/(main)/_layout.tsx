@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { NavBar } from '@/components/nav-bar/nav-bar';
 import { NavBarContext } from '@/components/nav-bar/screen-edges';
 import { Colors } from '@/constants/theme';
+import { useT } from '@/i18n';
 
 /**
  * Écrans avec la barre de navigation du bas : accueil, jouer en ligne, réglage
@@ -15,6 +16,7 @@ import { Colors } from '@/constants/theme';
  * « ‹ Retour ».
  */
 export default function MainLayout() {
+  const t = useT();
   const [barHeight, setBarHeight] = useState(0);
   return (
     <View style={styles.screen}>
@@ -24,12 +26,12 @@ export default function MainLayout() {
             headerShown: false,
             contentStyle: { backgroundColor: Colors.paper },
           }}>
-          <Stack.Screen name="index" options={{ title: 'Halma' }} />
-          <Stack.Screen name="online" options={{ title: 'Jouer en ligne' }} />
-          <Stack.Screen name="ai-setup" options={{ title: 'Jouer contre l’IA' }} />
-          <Stack.Screen name="local-setup" options={{ title: 'Entre amis' }} />
-          <Stack.Screen name="friends" options={{ title: 'Amis' }} />
-          <Stack.Screen name="leaderboard" options={{ title: 'Classements' }} />
+          <Stack.Screen name="index" options={{ title: t('common.appName') }} />
+          <Stack.Screen name="online" options={{ title: t('page.online') }} />
+          <Stack.Screen name="ai-setup" options={{ title: t('page.aiSetup') }} />
+          <Stack.Screen name="local-setup" options={{ title: t('page.localSetup') }} />
+          <Stack.Screen name="friends" options={{ title: t('page.friends') }} />
+          <Stack.Screen name="leaderboard" options={{ title: t('page.leaderboard') }} />
         </Stack>
       </NavBarContext.Provider>
       {/* Posée par-dessus le contenu, fond transparent : on voit défiler les écrans dessous. */}

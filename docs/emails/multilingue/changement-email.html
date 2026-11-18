@@ -1,0 +1,64 @@
+<!-- FICHIER GÉNÉRÉ par scripts/email-templates.cjs à partir de docs/emails/changement-email*.html : ne pas le modifier à la main.
+     Sujet : voir docs/emails/multilingue/sujets.md -->
+{{- $lang := printf "%v" .Data.language -}}
+{{- if eq $lang "en" }}
+<div lang="en" style="margin:0;padding:24px 12px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+  <div style="max-width:480px;margin:0 auto;border:3px solid #111111;border-radius:24px;padding:28px 24px;background:#ffffff;box-shadow:4px 4px 0 #111111;">
+    <p style="margin:0 0 4px;font-size:28px;font-weight:bold;letter-spacing:-0.5px;">Halma</p>
+    <p style="margin:0 0 24px;font-size:13px;color:#555555;">Chinese checkers</p>
+    <p style="margin:0 0 12px;font-size:20px;font-weight:bold;">Keep your progress</p>
+    <p style="margin:0;font-size:16px;line-height:1.5;">You asked to link the address {{ .NewEmail }} to your Halma account. Tap the button to confirm: your guest account becomes your account, with your stats and your avatar. The app will notice on its own.</p>
+    <p style="margin:24px 0;">
+      <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email_change" style="display:inline-block;padding:14px 24px;border:3px solid #111111;border-radius:999px;background:#A9CBEF;color:#111111;font-size:17px;font-weight:bold;text-decoration:none;">Confirm my address</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:13px;color:#555555;">Button not working? Copy this link into your browser or onto your phone:<br>
+      <span style="word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email_change</span></p>
+    <p style="margin:16px 0 0;font-size:13px;color:#555555;">Wasn’t you? Ignore this email: nothing will change.</p>
+  </div>
+</div>
+{{- else if eq $lang "de" }}
+<div lang="de" style="margin:0;padding:24px 12px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+  <div style="max-width:480px;margin:0 auto;border:3px solid #111111;border-radius:24px;padding:28px 24px;background:#ffffff;box-shadow:4px 4px 0 #111111;">
+    <p style="margin:0 0 4px;font-size:28px;font-weight:bold;letter-spacing:-0.5px;">Halma</p>
+    <p style="margin:0 0 24px;font-size:13px;color:#555555;">Sternhalma</p>
+    <p style="margin:0 0 12px;font-size:20px;font-weight:bold;">Behalte deinen Fortschritt</p>
+    <p style="margin:0;font-size:16px;line-height:1.5;">Du möchtest die Adresse {{ .NewEmail }} mit deinem Halma-Konto verknüpfen. Tipp zum Bestätigen auf den Button: Dein Gastkonto wird zu deinem Konto, mit deinen Statistiken und deinem Avatar. Die App merkt es von selbst.</p>
+    <p style="margin:24px 0;">
+      <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email_change" style="display:inline-block;padding:14px 24px;border:3px solid #111111;border-radius:999px;background:#A9CBEF;color:#111111;font-size:17px;font-weight:bold;text-decoration:none;">Meine Adresse bestätigen</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:13px;color:#555555;">Der Button funktioniert nicht? Kopier diesen Link in deinen Browser oder auf dein Handy:<br>
+      <span style="word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email_change</span></p>
+    <p style="margin:16px 0 0;font-size:13px;color:#555555;">Das warst nicht du? Ignorier diese E-Mail: Es ändert sich nichts.</p>
+  </div>
+</div>
+{{- else if eq $lang "es" }}
+<div lang="es" style="margin:0;padding:24px 12px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+  <div style="max-width:480px;margin:0 auto;border:3px solid #111111;border-radius:24px;padding:28px 24px;background:#ffffff;box-shadow:4px 4px 0 #111111;">
+    <p style="margin:0 0 4px;font-size:28px;font-weight:bold;letter-spacing:-0.5px;">Halma</p>
+    <p style="margin:0 0 24px;font-size:13px;color:#555555;">Damas chinas</p>
+    <p style="margin:0 0 12px;font-size:20px;font-weight:bold;">Conserva tu progreso</p>
+    <p style="margin:0;font-size:16px;line-height:1.5;">Has pedido vincular la dirección {{ .NewEmail }} a tu cuenta de Halma. Toca el botón para confirmar: tu cuenta de invitado se convierte en tu cuenta, con tus estadísticas y tu avatar. La aplicación se dará cuenta sola.</p>
+    <p style="margin:24px 0;">
+      <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email_change" style="display:inline-block;padding:14px 24px;border:3px solid #111111;border-radius:999px;background:#A9CBEF;color:#111111;font-size:17px;font-weight:bold;text-decoration:none;">Confirmar mi dirección</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:13px;color:#555555;">¿El botón no funciona? Copia este enlace en tu navegador o en tu móvil:<br>
+      <span style="word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email_change</span></p>
+    <p style="margin:16px 0 0;font-size:13px;color:#555555;">¿No has sido tú? Ignora este correo: no cambiará nada.</p>
+  </div>
+</div>
+{{- else }}
+<div lang="fr" style="margin:0;padding:24px 12px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+  <div style="max-width:480px;margin:0 auto;border:3px solid #111111;border-radius:24px;padding:28px 24px;background:#ffffff;box-shadow:4px 4px 0 #111111;">
+    <p style="margin:0 0 4px;font-size:28px;font-weight:bold;letter-spacing:-0.5px;">Halma</p>
+    <p style="margin:0 0 24px;font-size:13px;color:#555555;">Dames chinoises</p>
+    <p style="margin:0 0 12px;font-size:20px;font-weight:bold;">Garde ta progression</p>
+    <p style="margin:0;font-size:16px;line-height:1.5;">Tu as demandé à lier l’adresse {{ .NewEmail }} à ton compte Halma. Touche le bouton pour confirmer : ton compte invité devient ton compte, avec tes statistiques et ton avatar. L’appli s’en apercevra toute seule.</p>
+    <p style="margin:24px 0;">
+      <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email_change" style="display:inline-block;padding:14px 24px;border:3px solid #111111;border-radius:999px;background:#A9CBEF;color:#111111;font-size:17px;font-weight:bold;text-decoration:none;">Confirmer mon adresse</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:13px;color:#555555;">Le bouton ne marche pas ? Copie ce lien dans ton navigateur ou sur ton téléphone :<br>
+      <span style="word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email_change</span></p>
+    <p style="margin:16px 0 0;font-size:13px;color:#555555;">Ce n’est pas toi ? Ignore cet e-mail : rien ne changera.</p>
+  </div>
+</div>
+{{- end }}

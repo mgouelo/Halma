@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { playerHref, playerProfileLabel } from '../player';
+import { translator } from '@/i18n';
 
 describe('profil d’un joueur depuis une ligne', () => {
   it('un autre joueur : son profil public', () => {
@@ -18,6 +19,7 @@ describe('profil d’un joueur depuis une ligne', () => {
   });
 
   it('libellé d’accessibilité', () => {
-    expect(playerProfileLabel('Zoé')).toBe('Profil de Zoé');
+    expect(playerProfileLabel(translator('fr'), 'Zoé')).toBe('Profil de Zoé');
+    expect(playerProfileLabel(translator('en'), 'Zoé')).toBe('Zoé’s profile');
   });
 });

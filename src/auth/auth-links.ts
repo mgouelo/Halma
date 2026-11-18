@@ -112,22 +112,6 @@ export function stripAuthParams(url: string): string {
   return queryIndex >= 0 ? base.slice(0, queryIndex) : base;
 }
 
-export const EXPIRED_LINK_MESSAGE = 'Ce lien a expiré ou a déjà servi.';
-export const INVALID_LINK_MESSAGE = 'Ce lien n’est pas valide. Ouvre le dernier e-mail reçu, ou demande un nouveau lien.';
-
-/** Message pour un lien inutilisable (erreur dans le lien, ou refus à la vérification). */
-export function linkErrorMessage(code: string | null | undefined): string {
-  switch (code) {
-    case 'otp_expired':
-    case 'access_denied':
-    case 'flow_state_expired':
-    case 'flow_state_not_found':
-      return EXPIRED_LINK_MESSAGE;
-    default:
-      return INVALID_LINK_MESSAGE;
-  }
-}
-
 /** Vrai si le lien mène bien à cette route (`halma://auth/confirmed`, `https://…/auth/confirmed`, `exp://…/--/auth/confirmed`). */
 export function linkMatchesPath(url: string, path: AuthLinkPath): boolean {
   return stripAuthParams(url).replace(/\/+$/, '').endsWith(path);

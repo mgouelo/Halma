@@ -1,0 +1,15 @@
+<!-- Supabase > Authentication > Email Templates > Reset Password. Langue : en. Sujet : « Your new Halma password » -->
+<div lang="en" style="margin:0;padding:24px 12px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+  <div style="max-width:480px;margin:0 auto;border:3px solid #111111;border-radius:24px;padding:28px 24px;background:#ffffff;box-shadow:4px 4px 0 #111111;">
+    <p style="margin:0 0 4px;font-size:28px;font-weight:bold;letter-spacing:-0.5px;">Halma</p>
+    <p style="margin:0 0 24px;font-size:13px;color:#555555;">Chinese checkers</p>
+    <p style="margin:0 0 12px;font-size:20px;font-weight:bold;">Forgot your password?</p>
+    <p style="margin:0;font-size:16px;line-height:1.5;">Someone (probably you) asked to change the password of the Halma account linked to {{ .Email }}. Tap the button to choose a new one. The link only works once and expires after an hour.</p>
+    <p style="margin:24px 0;">
+      <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=recovery" style="display:inline-block;padding:14px 24px;border:3px solid #111111;border-radius:999px;background:#F6B8C8;color:#111111;font-size:17px;font-weight:bold;text-decoration:none;">Choose a new password</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:13px;color:#555555;">Button not working? Copy this link into your browser or onto your phone:<br>
+      <span style="word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=recovery</span></p>
+    <p style="margin:16px 0 0;font-size:13px;color:#555555;">Didn’t ask for anything? Ignore this email: your password stays the same.</p>
+  </div>
+</div>

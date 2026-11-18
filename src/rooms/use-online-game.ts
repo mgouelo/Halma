@@ -7,7 +7,7 @@ import type { StoredGame } from '@/online';
 
 import { initOnlineGame, onlineGameReducer, type PendingMove } from './online-game-reducer';
 import { FORFEIT_CHECK_INTERVAL_MS, planTicks, AI_TURN_FALLBACK_MS } from './presence';
-import { describeOnlineError, playMove, resignGame, tickGame, type RoomPlayer } from './room-service';
+import { playMove, resignGame, tickGame, type RoomPlayer } from './room-service';
 
 interface OnlineGameOptions {
   roomId: string;
@@ -44,7 +44,7 @@ export function useOnlineGame({ roomId, server, players, userId, now, onGame, mu
     sent.current = pending;
     playMove(getSupabase(), roomId, pending.move, pending.turn)
       .then(onGame)
-      .catch((error: unknown) => dispatch({ type: 'rejected', pending, message: describeOnlineError(error) }));
+      .catch((error: unknown) => dispatch({ type: 'rejected', pending, error }));
   }, [pending, roomId, onGame]);
 
   // Coup d'une IA : demandé au serveur quand l'animation du coup précédent est finie.

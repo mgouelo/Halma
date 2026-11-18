@@ -2,13 +2,14 @@ import type { Session } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { AppState, Platform } from 'react-native';
 
+import { applyLanguage, getLanguagePreference, isLanguage, useLanguage } from '@/i18n';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { createDailyLoginTracker } from '@/stats/daily-login';
 import { recordDailyLogin } from '@/stats/stats-service';
 
 import { setFlashNotice } from '@/lib/flash-notice';
 
-import { fetchProfile, guestEmailConfirmed, type Profile } from './auth-service';
+import { fetchProfile, guestEmailConfirmed, saveAccountLanguage, type Profile } from './auth-service';
 import { CONFIRMED_NOTICE, GUEST_POLL_MS } from './confirmation-timing';
 import { forgetPendingConfirmation } from './pending-confirmation';
 import { useConfirmationWatcher } from './use-confirmation-watcher';
@@ -141,6 +142,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.remove();
     };
   }, [userId]);
+
+  // Langue du compte (e-mails d'authentification) :
+  // - sans choix fait sur cet appareil, c'est la langue du compte qui s'applique
+  //   (choisie ailleurs) ; la langue de l'appareil ne l'écrase pas ;
+  // - un choix fait sur cet appareil est enregistré sur le compte ;
+  // - un compte sans langue (créé avant la traduction) reçoit celle affichée.
+  // Hors ligne ou serveur pas encore migré : on réessaie au prochain changement
+  // de session ou de langue.
+  const language = useLanguage();
+  const preference = getLanguagePreference();
+  const accountLanguage = session?.user.user_metadata?.language;
+  const languageToAdopt = userId && preference === null && isLanguage(accountLanguage) ? accountLanguage : null;
+  const languageToSave =
+    userId && (!isLanguage(accountLanguage) || (preference !== null && accountLanguage !== language)) ? language : null;
+  useEffect(() => {
+    if (languageToAdopt) applyLanguage(languageToAdopt);
+  }, [languageToAdopt]);
+  useEffect(() => {
+    if (!languageToSave) return;
+    saveAccountLanguage(getSupabase(), languageToSave).catch(() => {});
+  }, [userId, languageToSave]);
 
   const value: AuthState = {
     configured: isSupabaseConfigured,

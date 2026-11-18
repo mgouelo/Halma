@@ -2,17 +2,18 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { changePseudo, type Profile } from '@/auth/auth-service';
-import { nextPseudoChange, PSEUDO_CHANGE_DELAY_DAYS, tooSoonMessage } from '@/auth/pseudo-change';
+import { tooSoonMessage } from '@/auth/errors';
+import { nextPseudoChange, PSEUDO_CHANGE_DELAY_DAYS } from '@/auth/pseudo-change';
 import { useAuthAction } from '@/auth/use-auth-action';
 import {
   GUEST_PSEUDO_PREFIX,
   normalizePseudo,
   normalizePseudoInput,
-  PSEUDO_HINT,
   PSEUDO_MAX_LENGTH,
   validatePseudo,
 } from '@/auth/validation';
 import { Colors, playerColor, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
+import { msg, useT, type Msg } from '@/i18n';
 import { getSupabase } from '@/lib/supabase';
 
 import { Notice } from './auth-screen';
@@ -25,26 +26,25 @@ interface ChangePseudoProps {
   onChanged: () => void;
 }
 
-export const SAME_PSEUDO_ERROR = 'C’est déjà ton pseudo.';
-
 /**
  * « Changer mon pseudo », sur le profil : le bouton ouvre un champ dans la
  * carte. Mêmes règles qu'à l'inscription ; la base impose en plus 7 jours
  * entre deux changements (annoncés ici à l'avance quand on le sait).
  */
 export function ChangePseudo({ profile, onChanged }: ChangePseudoProps) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
-  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<Msg | null>(null);
   const [confirmed, setConfirmed] = useState<string | null>(null);
-  const { pending, error, setError, run } = useAuthAction();
+  const { pending, error, clearError, run } = useAuthAction();
 
   const next = nextPseudoChange(profile);
   const isGuestPseudo = profile.pseudo.startsWith(GUEST_PSEUDO_PREFIX);
 
   const open = () => {
     setConfirmed(null);
-    setError(null);
+    clearError();
     setFieldError(null);
     setValue(isGuestPseudo ? '' : profile.pseudo);
     setEditing(true);
@@ -55,7 +55,7 @@ export function ChangePseudo({ profile, onChanged }: ChangePseudoProps) {
     const wanted = normalizePseudo(value);
     const invalid = validatePseudo(wanted);
     if (invalid) return setFieldError(invalid);
-    if (wanted === profile.pseudo) return setFieldError(SAME_PSEUDO_ERROR);
+    if (wanted === profile.pseudo) return setFieldError(msg('pseudo.same'));
     let saved = wanted;
     const ok = await run(async () => {
       saved = await changePseudo(getSupabase(), wanted);
@@ -69,15 +69,17 @@ export function ChangePseudo({ profile, onChanged }: ChangePseudoProps) {
   if (!editing) {
     return (
       <View style={styles.closed}>
-        {confirmed && <Notice tone="info">C’est fait : ton pseudo est maintenant « {confirmed} ».</Notice>}
+        {confirmed && <Notice tone="info">{t('pseudo.changed', { pseudo: confirmed })}</Notice>}
         <DrawnButton
-          label="Changer mon pseudo"
+          label={t('pseudo.change')}
           size="small"
           onPress={open}
           disabled={next !== null}
-          accessibilityHint={next ? tooSoonMessage(next) : 'Ouvre un champ pour choisir un nouveau pseudo'}
+          accessibilityHint={next ? tooSoonMessage(t, PSEUDO_CHANGE_DELAY_DAYS, next) : t('pseudo.changeHint')}
         />
-        {next && <Text style={[Typography.caption, styles.center]}>{tooSoonMessage(next)}</Text>}
+        {next && (
+          <Text style={[Typography.caption, styles.center]}>{tooSoonMessage(t, PSEUDO_CHANGE_DELAY_DAYS, next)}</Text>
+        )}
       </View>
     );
   }
@@ -85,14 +87,14 @@ export function ChangePseudo({ profile, onChanged }: ChangePseudoProps) {
   return (
     <View style={styles.box}>
       <DrawnTextInput
-        label="Nouveau pseudo"
+        label={t('pseudo.new')}
         value={value}
         onChangeText={(text) => {
           setValue(normalizePseudoInput(text));
           setFieldError(null);
         }}
-        error={fieldError}
-        hint={PSEUDO_HINT}
+        error={fieldError ? t.msg(fieldError) : null}
+        hint={t('pseudo.hint')}
         autoCapitalize="none"
         autoCorrect={false}
         autoComplete="username-new"
@@ -102,20 +104,18 @@ export function ChangePseudo({ profile, onChanged }: ChangePseudoProps) {
         onSubmitEditing={submit}
       />
       {!isGuestPseudo && (
-        <Text style={Typography.caption}>
-          Ensuite, tu devras attendre {PSEUDO_CHANGE_DELAY_DAYS} jours avant de le changer de nouveau.
-        </Text>
+        <Text style={Typography.caption}>{t('pseudo.waitAfter', { count: PSEUDO_CHANGE_DELAY_DAYS })}</Text>
       )}
       {error && <Notice>{error}</Notice>}
       <View style={styles.actions}>
         <DrawnButton
-          label={pending ? 'Enregistrement…' : 'Enregistrer'}
+          label={pending ? t('common.saving') : t('common.save')}
           busy={pending}
           onPress={submit}
           color={playerColor(0).piece}
           size="small"
         />
-        <DrawnButton label="Annuler" size="small" onPress={() => setEditing(false)} disabled={pending} />
+        <DrawnButton label={t('common.cancel')} size="small" onPress={() => setEditing(false)} disabled={pending} />
       </View>
     </View>
   );

@@ -1,0 +1,15 @@
+<!-- Supabase > Authentication > Email Templates > Confirm signup. Langue : de. Sujet : « Bestätige dein Halma-Konto » -->
+<div lang="de" style="margin:0;padding:24px 12px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+  <div style="max-width:480px;margin:0 auto;border:3px solid #111111;border-radius:24px;padding:28px 24px;background:#ffffff;box-shadow:4px 4px 0 #111111;">
+    <p style="margin:0 0 4px;font-size:28px;font-weight:bold;letter-spacing:-0.5px;">Halma</p>
+    <p style="margin:0 0 24px;font-size:13px;color:#555555;">Sternhalma</p>
+    <p style="margin:0 0 12px;font-size:20px;font-weight:bold;">Willkommen!</p>
+    <p style="margin:0;font-size:16px;line-height:1.5;">Nur noch ein Schritt, um dein Halma-Konto mit der Adresse {{ .Email }} zu erstellen: Tipp auf den Button unten. Die App merkt es von selbst, auch wenn du diese E-Mail auf einem anderen Gerät öffnest.</p>
+    <p style="margin:24px 0;">
+      <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email" style="display:inline-block;padding:14px 24px;border:3px solid #111111;border-radius:999px;background:#A9CBEF;color:#111111;font-size:17px;font-weight:bold;text-decoration:none;">Mein Konto bestätigen</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:13px;color:#555555;">Der Button funktioniert nicht? Kopier diesen Link in deinen Browser oder auf dein Handy:<br>
+      <span style="word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email</span></p>
+    <p style="margin:16px 0 0;font-size:13px;color:#555555;">Du hast kein Halma-Konto erstellt? Dann ignorier diese E-Mail einfach.</p>
+  </div>
+</div>

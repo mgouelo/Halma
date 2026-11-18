@@ -2,7 +2,12 @@ import { describe, expect, it, jest } from '@jest/globals';
 import { FunctionsFetchError, FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js';
 
 import { deleteMyAccount } from '../auth-service';
-import { AuthFailure, describeAuthError, NETWORK_ERROR } from '../errors';
+import { translator } from '@/i18n';
+
+import { AuthFailure, describeAuthError } from '../errors';
+
+const t = translator('fr');
+const NETWORK_ERROR = 'Impossible de joindre le serveur. Vérifie ta connexion.';
 
 function fakeClient(error: unknown = null) {
   const client = {
@@ -20,20 +25,21 @@ describe('deleteMyAccount', () => {
     expect(client.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
   });
 
-  it('affiche le message du serveur en cas de refus, sans se déconnecter', async () => {
+  it('traduit le code du refus du serveur (pas son message), sans se déconnecter', async () => {
     const response = new Response(JSON.stringify({ ok: false, code: 'server_error', message: 'La suppression a échoué.' }), {
       status: 500,
     });
     const { client, asSupabase } = fakeClient(new FunctionsHttpError(response));
     const error = await deleteMyAccount(asSupabase).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(AuthFailure);
-    expect(describeAuthError(error)).toBe('La suppression a échoué.');
+    expect(describeAuthError(t, error)).toBe('La suppression a échoué. Réessaie dans un moment.');
+    expect(describeAuthError(translator('es'), error)).toBe('No se ha podido eliminar la cuenta. Inténtalo de nuevo en un rato.');
     expect(client.auth.signOut).not.toHaveBeenCalled();
   });
 
   it('signale une coupure réseau', async () => {
     const { asSupabase } = fakeClient(new FunctionsFetchError(new TypeError('Network request failed')));
     const error = await deleteMyAccount(asSupabase).catch((e: unknown) => e);
-    expect(describeAuthError(error)).toBe(NETWORK_ERROR);
+    expect(describeAuthError(t, error)).toBe(NETWORK_ERROR);
   });
 });

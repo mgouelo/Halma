@@ -12,20 +12,24 @@ import {
   updatePassword,
   updateAvatar,
   refreshAccount,
+  saveAccountLanguage,
   signInAsGuest,
   signInWithEmail,
   signOut,
   signUpWithEmail,
   upgradeGuest,
 } from '../auth-service';
-import {
-  AuthFailure,
-  describeAuthError,
-  GENERIC_ERROR,
-  NETWORK_ERROR,
-  PROFILE_CREATION_ERROR,
-  SERVER_ERROR,
-} from '../errors';
+import { translator } from '@/i18n';
+
+import { AuthFailure, describeAuthError as describe_ } from '../errors';
+
+const t = translator('fr');
+const describeAuthError = (error: unknown) => describe_(t, error);
+const GENERIC_ERROR = 'Une erreur est survenue. Réessaie.';
+const NETWORK_ERROR = 'Impossible de joindre le serveur. Vérifie ta connexion.';
+const SERVER_ERROR = 'Le serveur rencontre un problème. Réessaie dans un moment.';
+const PROFILE_CREATION_ERROR =
+  'Impossible de créer le compte : ce pseudo vient sans doute d’être pris. Essaies-en un autre.';
 
 type Result = { data: unknown; error: unknown };
 const ok = (data: unknown = {}): Result => ({ data, error: null });
@@ -76,6 +80,16 @@ describe('signUpWithEmail', () => {
     });
   });
 
+  it('garde la langue de l’application dans les métadonnées (e-mail de confirmation dans cette langue)', async () => {
+    const { client, asSupabase } = fakeClient();
+    await signUpWithEmail(asSupabase, fields, 'https://halma-game.com/auth/confirmed', 'de');
+    expect(client.auth.signUp).toHaveBeenCalledWith({
+      email: 'alice@example.com',
+      password: 'motdepasse',
+      options: { data: { pseudo: 'Alice', language: 'de' }, emailRedirectTo: 'https://halma-game.com/auth/confirmed' },
+    });
+  });
+
   it('signale quand l’e-mail doit être confirmé (pas de session)', async () => {
     const { asSupabase } = fakeClient({ signUp: ok({ session: null, user: { id: 'u1' } }) });
     await expect(signUpWithEmail(asSupabase, fields)).resolves.toEqual({ needsEmailConfirmation: true });
@@ -113,6 +127,12 @@ describe('connexion, invité, déconnexion', () => {
     expect(client.auth.signInAnonymously).toHaveBeenCalled();
   });
 
+  it('un invité garde lui aussi la langue de l’application dans ses métadonnées', async () => {
+    const { client, asSupabase } = fakeClient();
+    await signInAsGuest(asSupabase, 'es');
+    expect(client.auth.signInAnonymously).toHaveBeenCalledWith({ options: { data: { language: 'es' } } });
+  });
+
   it('se déconnecte', async () => {
     const { client, asSupabase } = fakeClient();
     await signOut(asSupabase);
@@ -136,7 +156,7 @@ describe('changePseudo', () => {
     const { asSupabase } = fakeClient({ rpc: { data: null, error: { code: 'P0001', message: reason, details: null } } });
     const failure = await changePseudo(asSupabase, 'Bobby').catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(AuthFailure);
-    expect(failure).toMatchObject({ code: reason, message });
+    expect(failure).toMatchObject({ code: reason });
     expect(describeAuthError(failure)).toBe(message);
   });
 
@@ -152,8 +172,9 @@ describe('changePseudo', () => {
     });
     const failure = await changePseudo(asSupabase, 'Bobby').catch((error: unknown) => error);
     expect(failure).toMatchObject({ code: 'pseudo_too_soon' });
-    expect((failure as Error).message).toContain('une fois tous les 7 jours');
-    expect((failure as Error).message).toContain('21 novembre à 15 h 38');
+    expect(describeAuthError(failure)).toContain('une fois tous les 7 jours');
+    expect(describeAuthError(failure)).toContain('21 novembre à 15 h 38');
+    expect(describe_(translator('de'), failure)).toContain('alle 7 Tage');
   });
 
   it('remonte les autres erreurs telles quelles', async () => {
@@ -239,7 +260,7 @@ describe('describeAuthError', () => {
   it('traduit les erreurs connues', () => {
     expect(describeAuthError(new AuthApiError('x', 400, 'invalid_credentials'))).toBe('E-mail ou mot de passe incorrect.');
     expect(describeAuthError(new AuthApiError('x', 422, 'anonymous_provider_disabled'))).toMatch(/invité/);
-    expect(describeAuthError(new AuthFailure('pseudo_taken', 'Ce pseudo est déjà pris.'))).toBe('Ce pseudo est déjà pris.');
+    expect(describeAuthError(new AuthFailure('pseudo_taken'))).toBe('Ce pseudo est déjà pris.');
   });
 
   it('distingue l’échec de création du profil (pseudo pris entre-temps) d’une panne réseau', () => {
@@ -343,7 +364,7 @@ describe('session ouverte par un lien', () => {
     await expect(sessionFromLink(asSupabase, { kind: 'none' })).rejects.toMatchObject({ code: 'link_invalid' });
     await expect(
       sessionFromLink(asSupabase, { kind: 'error', code: 'otp_expired', description: null }),
-    ).rejects.toMatchObject({ code: 'link_invalid', message: 'Ce lien a expiré ou a déjà servi.' });
+    ).rejects.toMatchObject({ code: 'link_invalid', detail: { linkCode: 'otp_expired' } });
     expect(client.auth.verifyOtp).not.toHaveBeenCalled();
   });
 
@@ -391,5 +412,21 @@ describe('détection de la validation', () => {
     const { client, asSupabase } = fakeClient();
     await expect(guestEmailConfirmed(asSupabase)).resolves.toBe(true);
     expect(client.auth.refreshSession).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('saveAccountLanguage', () => {
+  it('enregistre la langue sur le profil (set_my_language) et dans les métadonnées du compte', async () => {
+    const { client, asSupabase } = fakeClient({ rpc: ok(null) });
+    await saveAccountLanguage(asSupabase, 'en');
+    expect(client.rpc).toHaveBeenCalledWith('set_my_language', { p_language: 'en' });
+    expect(client.auth.updateUser).toHaveBeenCalledWith({ data: { language: 'en' } });
+  });
+
+  it('les métadonnées sont enregistrées même si la base n’est pas encore migrée, et l’erreur remonte', async () => {
+    const missing = { code: 'PGRST202', message: 'Could not find the function public.set_my_language' };
+    const { client, asSupabase } = fakeClient({ rpc: { data: null, error: missing } });
+    await expect(saveAccountLanguage(asSupabase, 'de')).rejects.toBe(missing);
+    expect(client.auth.updateUser).toHaveBeenCalledWith({ data: { language: 'de' } });
   });
 });

@@ -10,12 +10,14 @@ import { useNavBarInset, useScreenEdges } from '@/components/nav-bar/screen-edge
 import { PlayerChip } from '@/components/player-chip';
 import { SegmentedPicker } from '@/components/segmented-picker';
 import { Stepper } from '@/components/stepper';
-import { Colors, MaxContentWidth, playerColor, Spacing, Stroke, Typography } from '@/constants/theme';
+import { Colors, MaxContentWidth, playerColor, playerColorName, Spacing, Stroke, Typography } from '@/constants/theme';
 import { AI_LEVELS, type AiLevel } from '@/game';
-import { AI_LEVEL_LABELS, MAX_AI_COUNT, MIN_AI_COUNT, serializeAiLevels } from '@/hooks/game-setup';
+import { aiLevelLabels, MAX_AI_COUNT, MIN_AI_COUNT, serializeAiLevels } from '@/hooks/game-setup';
+import { useT } from '@/i18n';
 import { DEFAULT_MUTATORS, serializeMutators, type Mutators } from '@/mutators/mutators';
 
 export default function AiSetupScreen() {
+  const t = useT();
   const [count, setCount] = useState(1);
   const edges = useScreenEdges();
   const navInset = useNavBarInset();
@@ -36,20 +38,21 @@ export default function AiSetupScreen() {
     <SafeAreaView style={styles.screen} edges={edges}>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: Spacing.four + navInset }]}>
         <View style={styles.header}>
-          <DrawnButton label="‹ Accueil" size="small" onPress={() => router.back()} />
+          <DrawnButton label={t('common.home')} size="small" onPress={() => router.back()} />
         </View>
 
         <Text style={Typography.title} accessibilityRole="header">
-          Jouer contre l’IA
+          {t('setup.aiTitle')}
         </Text>
 
         <DrawnCard contentStyle={styles.card}>
           <View style={styles.countRow}>
             <View style={styles.flex}>
-              <Text style={Typography.heading}>Nombre d’IA</Text>
+              <Text style={Typography.heading}>{t('setup.aiCount')}</Text>
               <Text style={Typography.caption}>
-                {count + 1} joueurs sur le plateau
-                {count === 4 ? ', une branche reste vide' : ''}
+                {count === 4
+                  ? t('setup.boardPlayersEmptyBranch', { count: count + 1 })
+                  : t('setup.boardPlayers', { count: count + 1 })}
               </Text>
             </View>
             <Stepper
@@ -57,25 +60,25 @@ export default function AiSetupScreen() {
               min={MIN_AI_COUNT}
               max={MAX_AI_COUNT}
               onChange={setCount}
-              accessibilityLabel="Nombre d’IA"
+              accessibilityLabel={t('setup.aiCount')}
             />
           </View>
         </DrawnCard>
 
         <DrawnCard contentStyle={styles.card}>
-          <PlayerChip player={0} detail="Toi, en bas" />
+          <PlayerChip player={0} detail={t('setup.youAtBottom')} />
           {levels.slice(0, count).map((level, index) => {
             const player = index + 1;
             return (
               <View key={player} style={styles.aiRow}>
-                <PlayerChip player={player} detail="IA" />
+                <PlayerChip player={player} detail={t('ai.short')} />
                 <SegmentedPicker
                   options={AI_LEVELS}
-                  labels={AI_LEVEL_LABELS}
+                  labels={aiLevelLabels(t)}
                   value={level}
                   onChange={(value) => setLevel(index, value)}
                   color={playerColor(player).piece}
-                  accessibilityLabel={`Niveau de l’IA ${playerColor(player).name}`}
+                  accessibilityLabel={t('ai.levelOf', { color: playerColorName(t, player) })}
                 />
               </View>
             );
@@ -84,12 +87,12 @@ export default function AiSetupScreen() {
         <MutatorSettings
           value={mutators}
           onChange={(key, value) => setMutators((prev) => ({ ...prev, [key]: value }))}
-          caption="Options de la partie, pour tous les joueurs."
+          caption={t('setup.options')}
         />
       </ScrollView>
 
       <View style={styles.footer}>
-        <DrawnButton label="Lancer la partie" onPress={start} color={playerColor(0).piece} />
+        <DrawnButton label={t('common.launchGame')} onPress={start} color={playerColor(0).piece} />
       </View>
     </SafeAreaView>
   );

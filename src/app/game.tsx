@@ -13,18 +13,19 @@ import { GameLayout } from '@/components/game-layout';
 import { MutatorBadges } from '@/components/mutator-settings';
 import { PlayersBar } from '@/components/players-bar';
 import { VictoryOverlay } from '@/components/victory-overlay';
-import { Colors, playerColor, Typography } from '@/constants/theme';
-import { AI_LEVEL_LABELS, parseControllers } from '@/hooks/game-setup';
-import { GUARD_TEXTS, needsConfirmation } from '@/hooks/leave-guard';
+import { Colors, playerColor, playerColorName, Typography } from '@/constants/theme';
+import { aiName, parseControllers } from '@/hooks/game-setup';
+import { guardTexts, needsConfirmation } from '@/hooks/leave-guard';
 import type { Controller } from '@/hooks/local-game-reducer';
 import { useIsClient } from '@/hooks/use-is-client';
 import { useLeaveGuard } from '@/hooks/use-leave-guard';
 import { useLocalGame } from '@/hooks/use-local-game';
-import { parseMutatorParams, TAP_NOTICE_TEXTS, type Mutators } from '@/mutators/mutators';
+import { useT, type Translator } from '@/i18n';
+import { parseMutatorParams, tapNoticeText, type Mutators } from '@/mutators/mutators';
 
-function describeController(controller: Controller, vsAi: boolean): string | undefined {
-  if (controller !== 'human') return `IA · ${AI_LEVEL_LABELS[controller]}`;
-  return vsAi ? 'Toi' : undefined;
+function describeController(t: Translator, controller: Controller, vsAi: boolean): string | undefined {
+  if (controller !== 'human') return aiName(t, controller);
+  return vsAi ? t('common.you') : undefined;
 }
 
 export default function GameScreen() {
@@ -35,6 +36,7 @@ export default function GameScreen() {
 }
 
 function GameView() {
+  const t = useT();
   const params = useLocalSearchParams<{ ai?: string; players?: string; touch?: string; clairvoyance?: string }>();
   const [controllers] = useState(() => parseControllers(params.ai, params.players));
   const [mutators] = useState<Mutators>(() => parseMutatorParams(params));
@@ -63,9 +65,9 @@ function GameView() {
     finished || animating
       ? null
       : notice
-        ? TAP_NOTICE_TEXTS[notice]
+        ? tapNoticeText(t, notice)
         : selected && moves.length === 0
-          ? 'Ce pion ne peut pas bouger.'
+          ? t('mutators.cannotMove')
           : null;
 
   return (
@@ -73,21 +75,21 @@ function GameView() {
       onHome={goHome}
       header={
         <View style={styles.header}>
-          <Text style={Typography.caption}>Coup {game.turn + 1}</Text>
+          <Text style={Typography.caption}>{t('game.move', { n: game.turn + 1 })}</Text>
         </View>
       }
       players={
         <PlayersBar
           entries={game.players.map((player) => {
             const isCurrent = player.id === game.currentPlayer && !finished;
-            const detail = describeController(controllers[player.id], vsAi);
+            const detail = describeController(t, controllers[player.id], vsAi);
             return {
               player: player.id,
               // Contre l'IA : avatars ; entre amis sur le même écran : pastilles de couleur.
               avatar: vsAi ? avatarOf(player.id) : undefined,
               detail: isCurrent ? detail : undefined,
               turn: finished ? undefined : isCurrent ? 'active' : 'waiting',
-              accessibilityLabel: `${playerColor(player.id).name}${detail ? `, ${detail}` : ''}${isCurrent ? ', à son tour' : ''}`,
+              accessibilityLabel: `${playerColorName(t, player.id)}${detail ? `, ${detail}` : ''}${isCurrent ? t('game.itsTheirTurn') : ''}`,
             };
           })}
         />
@@ -106,15 +108,15 @@ function GameView() {
         onAnimationEnd: animationEnd,
       }}
       footer={
-        <DrawnButton label="Nouvelle partie" size="small" onPress={guard.requestRestart} style={styles.reset} />
+        <DrawnButton label={t('game.newGame')} size="small" onPress={guard.requestRestart} style={styles.reset} />
       }
       overlay={
         <>
           {showVictory && (
             <VictoryOverlay
               winner={game.winner!}
-              title={vsAi && !winnerIsHuman ? 'Perdu !' : 'Victoire !'}
-              winnerDetail={vsAi ? describeController(controllers[game.winner!], vsAi) : undefined}
+              title={vsAi && !winnerIsHuman ? t('game.defeat') : t('game.victory')}
+              winnerDetail={vsAi ? describeController(t, controllers[game.winner!], vsAi) : undefined}
               winnerAvatar={vsAi ? avatarOf(game.winner!) : undefined}
               moveCount={winnerMoves}
               onReplay={reset}
@@ -123,7 +125,7 @@ function GameView() {
           )}
           <ConfirmDialog
             visible={guard.kind !== null}
-            {...GUARD_TEXTS[guard.kind ?? 'leave']}
+            {...guardTexts(t, guard.kind ?? 'leave')}
             onCancel={guard.cancel}
             onConfirm={guard.confirm}
           />

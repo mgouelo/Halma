@@ -18,7 +18,11 @@ import {
   serializeAvatar,
   type AvatarConfig,
 } from '../avatar';
+import { translator } from '@/i18n';
+
 import { partLabel } from '../labels';
+
+const t = translator('fr');
 
 /** Balises et attributs du SVG, pour vérifier ce que reçoit react-native-svg. */
 type Node = { tag: string; props: Record<string, unknown>; children: (Node | string)[] | null };
@@ -157,7 +161,7 @@ describe('rendu pour react-native-svg', () => {
 describe('libellés', () => {
   it('chaque morceau a un libellé français', () => {
     for (const slot of AVATAR_SLOTS) {
-      for (const part of partsForSlot(slot)) expect(partLabel(slot, part.id)).not.toBe(part.name);
+      for (const part of partsForSlot(slot)) expect(partLabel(t, slot, part.id)).not.toBe(part.name);
     }
   });
 });
@@ -165,7 +169,8 @@ describe('libellés', () => {
 describe('aiAvatar', () => {
   it('reconnaissable (antennes) et stable pour une même IA', () => {
     expect(aiAvatar('p1')).toEqual(aiAvatar('p1'));
-    expect(partLabel('item', aiAvatar('p1').selections.item)).toBe('Antennes');
-    expect(partLabel('item', aiAvatar('p2').selections.item)).toBe('Antennes');
+    expect(partLabel(t, 'item', aiAvatar('p1').selections.item)).toBe('Antennes');
+    expect(partLabel(t, 'item', aiAvatar('p2').selections.item)).toBe('Antennes');
+    expect(partLabel(translator('en'), 'item', aiAvatar('p2').selections.item)).toBe('Antennae');
   });
 });

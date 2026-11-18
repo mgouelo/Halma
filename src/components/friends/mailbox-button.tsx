@@ -3,6 +3,7 @@ import Svg, { Path, Rect } from 'react-native-svg';
 
 import { Colors, Fonts, playerColor, Shadow, Stroke, TouchTarget } from '@/constants/theme';
 import { badgeLabel } from '@/friends/friends-service';
+import { useT } from '@/i18n';
 
 /** Épaisseur du trait dans la boîte 48 × 48 pour qu'il mesure `width` points à l'écran. */
 function strokeFor(width: number, size: number) {
@@ -42,15 +43,15 @@ const SIZE = 52;
  * nombre de demandes (le libellé le dit aussi : pas seulement un dessin).
  */
 export function MailboxButton({ count, onPress }: { count: number; onPress: () => void }) {
+  const t = useT();
   const badge = badgeLabel(count);
-  const label =
-    count === 0 ? 'Demandes d’ami : aucune' : `Demandes d’ami : ${count} en attente`;
+  const label = count === 0 ? t('friends.mailboxNone') : t('friends.mailboxCount', { count });
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityHint="Affiche les demandes d’ami reçues"
+      accessibilityHint={t('friends.mailboxHint')}
       hitSlop={4}
       style={styles.wrapper}>
       {({ pressed }) => (

@@ -15,11 +15,13 @@ import { Colors, MaxContentWidth, MaxWideContentWidth, playerColor, Spacing, Typ
 import { createGame } from '@/game';
 import { useMeasuredSize } from '@/hooks/use-measured-size';
 import { useWideLayout } from '@/hooks/use-wide-layout';
+import { useT } from '@/i18n';
 
 /** Sous cette hauteur, le plateau décoratif disparaît : il ne serait plus qu'une tache. */
 const MIN_PREVIEW_HEIGHT = 140;
 
 export default function HomeScreen() {
+  const t = useT();
   const area = useMeasuredSize();
   const wide = useWideLayout();
   const edges = useScreenEdges();
@@ -33,9 +35,9 @@ export default function HomeScreen() {
       <View style={styles.titleRow}>
         <View style={styles.titles}>
           <Text style={Typography.display} accessibilityRole="header">
-            Halma
+            {t('common.appName')}
           </Text>
-          <Text style={Typography.caption}>Dames chinoises</Text>
+          <Text style={Typography.caption}>{t('common.tagline')}</Text>
         </View>
         {/* En haut à droite : pseudo et avatar du joueur (ouvrent le profil). */}
         <ProfileCorner />
@@ -56,23 +58,23 @@ export default function HomeScreen() {
   const modes = (
     <View style={styles.modes}>
       <DrawnCard contentStyle={styles.card}>
-        <Text style={Typography.heading}>En ligne</Text>
-        <Text style={Typography.caption}>Crée une room ou rejoins tes amis avec un code, IA en renfort.</Text>
-        <DrawnButton label="Jouer en ligne" onPress={() => router.push('/online')} color={playerColor(1).piece} />
+        <Text style={Typography.heading}>{t('home.onlineTitle')}</Text>
+        <Text style={Typography.caption}>{t('home.onlineText')}</Text>
+        <DrawnButton label={t('common.playOnline')} onPress={() => router.push('/online')} color={playerColor(1).piece} />
       </DrawnCard>
       <DrawnCard contentStyle={styles.card}>
-        <Text style={Typography.heading}>Hors ligne</Text>
-        <Text style={Typography.caption}>Contre 1 à 5 IA (trois niveaux), ou de 2 à 6 amis sur le même appareil.</Text>
+        <Text style={Typography.heading}>{t('home.offlineTitle')}</Text>
+        <Text style={Typography.caption}>{t('home.offlineText')}</Text>
         <View style={styles.buttonRow}>
           <DrawnButton
-            label="Contre l’IA"
+            label={t('home.vsAi')}
             onPress={() => router.push('/ai-setup')}
             color={playerColor(0).piece}
             size="small"
             style={styles.flexButton}
           />
           <DrawnButton
-            label="Entre amis"
+            label={t('home.withFriends')}
             onPress={() => router.push('/local-setup')}
             size="small"
             style={styles.flexButton}

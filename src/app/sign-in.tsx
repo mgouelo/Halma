@@ -12,9 +12,12 @@ import { DrawnButton } from '@/components/drawn-button';
 import { DrawnCard } from '@/components/drawn-card';
 import { DrawnTextInput } from '@/components/drawn-text-input';
 import { playerColor, Typography } from '@/constants/theme';
+import { LanguagePicker } from '@/components/language-picker';
+import { getLanguage, rich, useT } from '@/i18n';
 import { getSupabase } from '@/lib/supabase';
 
 export default function SignInScreen() {
+  const t = useT();
   const { configured, isGuest } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,38 +38,43 @@ export default function SignInScreen() {
   };
 
   const playAsGuest = async () => {
-    if (await run(() => signInAsGuest(getSupabase()))) router.dismissTo('/');
+    if (await run(() => signInAsGuest(getSupabase(), getLanguage()))) router.dismissTo('/');
   };
 
   return (
-    <AuthScreen header="back" title="Connexion" subtitle="Retrouve ta progression et tes parties.">
+    <AuthScreen header="back" title={t('signIn.title')} subtitle={t('signIn.subtitle')}>
       {!configured ? (
         <NotConfiguredCard />
       ) : (
         <>
           {isGuest && (
             <Notice tone="info">
-              Tu joues en invité : te connecter à un autre compte fera perdre ce compte invité. Pour conserver ta progression,{' '}
-              <Link href="/upgrade" style={authStyles.inlineLink}>crée plutôt ton compte</Link>.
+              {rich(t('signIn.guestWarning'), {
+                link: (text) => (
+                  <Link href="/upgrade" style={authStyles.inlineLink}>
+                    {text}
+                  </Link>
+                ),
+              })}
             </Notice>
           )}
           <DrawnCard contentStyle={authStyles.card}>
             <DrawnTextInput
-              label="E-mail"
+              label={t('common.email')}
               value={email}
               onChangeText={edit('email', setEmail)}
-              error={errors.email}
+              error={errors.email ? t.msg(errors.email) : null}
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
               textContentType="emailAddress"
-              placeholder="toi@exemple.fr"
+              placeholder={t('common.emailPlaceholder')}
             />
             <DrawnTextInput
-              label="Mot de passe"
+              label={t('common.password')}
               value={password}
               onChangeText={edit('password', setPassword)}
-              error={errors.password}
+              error={errors.password ? t.msg(errors.password) : null}
               revealable
               autoComplete="current-password"
               textContentType="password"
@@ -74,7 +82,7 @@ export default function SignInScreen() {
             />
             {error && <Notice>{error}</Notice>}
             <DrawnButton
-              label={pending ? 'Connexion…' : 'Se connecter'}
+              label={pending ? t('common.signingIn') : t('common.signIn')}
               busy={pending}
               onPress={submit}
               color={playerColor(0).piece}
@@ -82,23 +90,22 @@ export default function SignInScreen() {
             <Link
               href={{ pathname: '/forgot-password', params: email.trim() ? { email: email.trim() } : {} }}
               style={authStyles.link}
-              accessibilityHint="Reçois un lien par e-mail pour choisir un nouveau mot de passe">
-              Mot de passe oublié ?
+              accessibilityHint={t('signIn.forgotHint')}>
+              {t('signIn.forgot')}
             </Link>
           </DrawnCard>
 
           <View style={authStyles.links}>
             <Link href="/sign-up" replace style={authStyles.link}>
-              Pas encore de compte ? Inscris-toi
+              {t('signIn.noAccount')}
             </Link>
-            <Text style={Typography.caption}>ou</Text>
-            <DrawnButton label="Jouer en invité" size="small" onPress={playAsGuest} disabled={pending} />
-            <Text style={[Typography.caption, authStyles.center]}>
-              Un compte invité reçoit un pseudo automatique. Il reste lié à cet appareil.
-            </Text>
+            <Text style={Typography.caption}>{t('signIn.or')}</Text>
+            <DrawnButton label={t('signIn.guest')} size="small" onPress={playAsGuest} disabled={pending} />
+            <Text style={[Typography.caption, authStyles.center]}>{t('signIn.guestText')}</Text>
           </View>
         </>
       )}
+      <LanguagePicker />
       <AboutLinks />
     </AuthScreen>
   );

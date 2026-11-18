@@ -138,7 +138,7 @@ describe('changer de pseudo depuis le profil', () => {
   });
 
   it('affiche le refus du serveur (pseudo déjà pris)', async () => {
-    mockChangePseudo.mockRejectedValue(new AuthFailure('pseudo_taken', 'Ce pseudo est déjà pris.'));
+    mockChangePseudo.mockRejectedValue(new AuthFailure('pseudo_taken'));
     render(<ProfileScreen />);
     fireEvent.press(screen.getByRole('button', { name: 'Changer mon pseudo' }));
     fireEvent.changeText(screen.getByDisplayValue('Alice'), 'Élodie');

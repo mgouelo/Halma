@@ -7,13 +7,12 @@ import {
   AUTH_LINK_PATHS,
   authLinkFromParams,
   authRedirectUrl,
-  EXPIRED_LINK_MESSAGE,
-  INVALID_LINK_MESSAGE,
-  linkErrorMessage,
   linkMatchesPath,
   parseAuthLink,
   stripAuthParams,
 } from '../auth-links';
+import { linkErrorMessage } from '../errors';
+import { translator } from '@/i18n';
 
 describe('adresses de redirection', () => {
   it('le schéma est celui de app.json', () => {
@@ -139,9 +138,13 @@ describe('analyse des liens', () => {
   });
 
   it('messages des liens inutilisables', () => {
-    expect(linkErrorMessage('otp_expired')).toBe(EXPIRED_LINK_MESSAGE);
-    expect(linkErrorMessage('access_denied')).toBe(EXPIRED_LINK_MESSAGE);
-    expect(linkErrorMessage(null)).toBe(INVALID_LINK_MESSAGE);
-    expect(linkErrorMessage('bad_jwt')).toBe(INVALID_LINK_MESSAGE);
+    const t = translator('fr');
+    const expired = 'Ce lien a expiré ou a déjà servi.';
+    const invalid = 'Ce lien n’est pas valide. Ouvre le dernier e-mail reçu, ou demande un nouveau lien.';
+    expect(linkErrorMessage(t, 'otp_expired')).toBe(expired);
+    expect(linkErrorMessage(t, 'access_denied')).toBe(expired);
+    expect(linkErrorMessage(t, null)).toBe(invalid);
+    expect(linkErrorMessage(t, 'bad_jwt')).toBe(invalid);
+    expect(linkErrorMessage(translator('en'), 'otp_expired')).toBe('This link has expired or has already been used.');
   });
 });

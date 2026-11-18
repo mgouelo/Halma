@@ -203,7 +203,7 @@ describe('nouveau mot de passe', () => {
 
   it('lien expiré : message clair et bouton pour redemander un lien', async () => {
     mockLinkingUrl = resetLink;
-    mocked(sessionFromLink).mockRejectedValue(new AuthFailure('link_invalid', 'Ce lien a expiré ou a déjà servi.'));
+    mocked(sessionFromLink).mockRejectedValue(new AuthFailure('link_invalid', { linkCode: 'otp_expired' }));
     render(<ResetPassword />);
     await waitFor(() => expect(screen.getByText('Lien expiré ou invalide')).toBeTruthy());
     expect(screen.getByText('Ce lien a expiré ou a déjà servi.')).toBeTruthy();
@@ -324,6 +324,7 @@ describe('inscription en attente de validation', () => {
       { main: true },
       { pseudo: 'Zoé', email: 'zoe@example.com', password: 'motdepasse' },
       'halma://auth/confirmed',
+      'fr',
     );
     await expect(readPendingConfirmation()).resolves.toEqual({ email: 'zoe@example.com', kind: 'signup' });
     expect(screen.queryByRole('button', { name: 'J’ai confirmé' })).toBeNull();
@@ -337,7 +338,7 @@ describe('inscription en attente de validation', () => {
       jest.advanceTimersByTime(15_000);
     });
     await waitFor(() => expect(mockRouter.dismissTo).toHaveBeenCalledWith('/'));
-    expect(getFlashNotice()).toBe('Compte validé ! Bienvenue dans Halma.');
+    expect(getFlashNotice()).toEqual({ key: 'confirmed.notice' });
   });
 
   it('avec EXPO_PUBLIC_SITE_URL : la confirmation mène au site (https)', async () => {
@@ -351,6 +352,7 @@ describe('inscription en attente de validation', () => {
       { main: true },
       { pseudo: 'Zoé', email: 'zoe@example.com', password: 'motdepasse' },
       'https://halma-game.com/auth/confirmed',
+      'fr',
     );
   });
 

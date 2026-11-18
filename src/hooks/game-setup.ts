@@ -4,6 +4,7 @@
 // niveau listé, dans l'ordre des places).
 
 import { AI_LEVELS, type AiLevel } from '@/game';
+import { formatOrdinal, type Translator } from '@/i18n';
 
 import { TWO_HUMANS, type Controller } from './local-game-reducer';
 
@@ -14,11 +15,15 @@ export const MAX_AI_COUNT = 5;
 export const MIN_HUMAN_COUNT = 2;
 export const MAX_HUMAN_COUNT = 6;
 
-export const AI_LEVEL_LABELS: Record<AiLevel, string> = {
-  easy: 'Facile',
-  medium: 'Moyen',
-  hard: 'Difficile',
-};
+/** Libellés des niveaux d'IA (« Facile », « Moyen », « Difficile »), pour les sélecteurs. */
+export function aiLevelLabels(t: Translator): Record<AiLevel, string> {
+  return { easy: t('ai.easy'), medium: t('ai.medium'), hard: t('ai.hard') };
+}
+
+/** Nom affiché d'une IA : « IA · Moyen ». */
+export function aiName(t: Translator, level: AiLevel): string {
+  return t('ai.name', { level: aiLevelLabels(t)[level] });
+}
 
 function isAiLevel(value: string): value is AiLevel {
   return (AI_LEVELS as readonly string[]).includes(value);
@@ -68,7 +73,7 @@ export function parseControllers(
   return [...TWO_HUMANS];
 }
 
-/** Rang dans l'ordre du tour, écrit en toutes lettres : « 1er », « 2e »… */
-export function turnOrderLabel(player: number): string {
-  return player === 0 ? '1er' : `${player + 1}e`;
+/** Rang dans l'ordre du tour, écrit à la façon de la langue : « 1er », « 2e »… ; « 1st », « 2nd »… */
+export function turnOrderLabel(t: Translator, player: number): string {
+  return formatOrdinal(t.language, player + 1);
 }

@@ -4,8 +4,9 @@ import { act, renderHook } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import { signOut } from '../auth-service';
-import { NETWORK_ERROR } from '../errors';
 import { useSignOut } from '../use-sign-out';
+
+const NETWORK_ERROR = 'Impossible de joindre le serveur. Vérifie ta connexion.';
 
 jest.mock('expo-router', () => ({ router: { dismissTo: jest.fn(), push: jest.fn() } }));
 jest.mock('@/lib/supabase', () => ({ getSupabase: () => ({}) }));

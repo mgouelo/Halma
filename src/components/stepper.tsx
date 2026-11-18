@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Colors, Radius, Spacing, Stroke, TouchTarget, Typography } from '@/constants/theme';
+import { useT } from '@/i18n';
 
 interface StepperProps {
   value: number;
@@ -31,11 +32,12 @@ export function Stepper({ value, min, max, onChange, accessibilityLabel }: Stepp
 }
 
 function StepButton({ label, disabled, onPress }: { label: string; disabled: boolean; onPress: () => void }) {
+  const t = useT();
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      accessibilityLabel={label === '+' ? 'Plus' : 'Moins'}
+      accessibilityLabel={label === '+' ? t('common.plus') : t('common.minus')}
       accessibilityState={{ disabled }}
       style={({ pressed }) => [styles.button, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>
       <Text style={[Typography.title, disabled && styles.labelDisabled]}>{label}</Text>

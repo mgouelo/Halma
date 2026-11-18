@@ -14,7 +14,9 @@ import { DrawnCard } from '@/components/drawn-card';
 import { ProfileStats } from '@/components/profile-stats';
 import { ResendEmailButton } from '@/components/resend-email-button';
 import { ErrorState, LoadingState } from '@/components/state-view';
+import { LanguagePicker } from '@/components/language-picker';
 import { playerColor, Typography } from '@/constants/theme';
+import { useT } from '@/i18n';
 
 /**
  * Profil du joueur connecté, invité compris : avatar, pseudo (et son
@@ -24,73 +26,71 @@ import { playerColor, Typography } from '@/constants/theme';
  * de la barre : écran sans barre, avec un seul bouton « ‹ Retour ».
  */
 export default function ProfileScreen() {
+  const t = useT();
   const { configured, loading, session, profile, isGuest, pendingEmail, profileError, refreshProfile } = useAuth();
   const signOut = useSignOut(isGuest);
 
   if (!configured) {
     return (
-      <AuthScreen header="back" title="Profil" subtitle="Comptes indisponibles.">
+      <AuthScreen header="back" title={t('profile.title')} subtitle={t('common.accountsUnavailable')}>
         <NotConfiguredCard />
+        <LanguagePicker />
         <AboutLinks />
       </AuthScreen>
     );
   }
   if (!loading && !session) {
     return (
-      <AuthScreen header="back" title="Profil" subtitle="Tu n’es pas connecté.">
-        <DrawnButton label="Se connecter" onPress={() => router.push('/sign-in')} />
+      <AuthScreen header="back" title={t('profile.title')} subtitle={t('common.notSignedIn')}>
+        <DrawnButton label={t('common.signIn')} onPress={() => router.push('/sign-in')} />
+        <LanguagePicker />
         <AboutLinks />
       </AuthScreen>
     );
   }
   return (
-    <AuthScreen header="back" title="Profil" subtitle={isGuest ? 'Compte invité' : 'Compte e-mail'}>
+    <AuthScreen
+      header="back"
+      title={t('profile.title')}
+      subtitle={isGuest ? t('profile.guestAccount') : t('profile.emailAccount')}>
       {profile ? (
         <DrawnCard contentStyle={[authStyles.card, styles.card]}>
-          <Avatar value={profile.avatar} seed={profile.id} size={144} accessibilityLabel={`Avatar de ${profile.pseudo}`} />
+          <Avatar value={profile.avatar} seed={profile.id} size={144} accessibilityLabel={t('profile.avatarOf', { name: profile.pseudo })} />
           <Text style={Typography.title}>{profile.pseudo}</Text>
           <ChangePseudo profile={profile} onChanged={refreshProfile} />
           <DrawnButton
-            label={profile.avatar ? 'Modifier mon avatar' : 'Créer mon avatar'}
+            label={profile.avatar ? t('profile.editAvatar') : t('profile.createAvatar')}
             onPress={() => router.push('/avatar')}
             color={playerColor(0).piece}
           />
           {!profile.avatar && (
-            <Text style={[Typography.caption, authStyles.center]}>
-              Pour l’instant, ton avatar est tiré au hasard à partir de ton compte.
-            </Text>
+            <Text style={[Typography.caption, authStyles.center]}>{t('profile.randomAvatar')}</Text>
           )}
         </DrawnCard>
       ) : profileError ? (
         <ErrorState
-          title="Profil indisponible"
-          message="Impossible de lire ton profil. Vérifie ta connexion."
+          title={t('profile.unavailable')}
+          message={t('profile.readFailed')}
           onRetry={refreshProfile}
         />
       ) : (
-        <LoadingState label="Chargement du profil…" />
+        <LoadingState label={t('profile.loading')} />
       )}
       {isGuest && (
         <DrawnCard contentStyle={authStyles.card}>
           <Text style={Typography.heading} accessibilityRole="header">
-            Conserve ta progression
+            {t('profile.keepProgress')}
           </Text>
           {pendingEmail ? (
             <>
-              <Text style={Typography.body}>
-                Confirmation envoyée à {pendingEmail} : clique sur le lien reçu pour terminer la création de ton
-                compte. L’appli s’en apercevra toute seule.
-              </Text>
+              <Text style={Typography.body}>{t('profile.confirmationSent', { email: pendingEmail })}</Text>
               <ResendEmailButton type="email_change" email={pendingEmail} />
             </>
           ) : (
             <>
-              <Text style={Typography.body}>
-                Tu joues en invité : ce compte n’existe que sur cet appareil. Crée ton compte pour garder tes
-                statistiques et ton avatar, et entrer dans les classements.
-              </Text>
+              <Text style={Typography.body}>{t('profile.guestText')}</Text>
               <DrawnButton
-                label="Créer mon compte"
+                label={t('common.createMyAccount')}
                 onPress={() => router.push('/upgrade')}
                 color={playerColor(1).piece}
               />
@@ -102,18 +102,19 @@ export default function ProfileScreen() {
       {session && (
         <DrawnCard contentStyle={authStyles.card}>
           <Text style={Typography.heading} accessibilityRole="header">
-            Compte
+            {t('profile.account')}
           </Text>
           {signOut.error && <Notice>{signOut.error}</Notice>}
           <DrawnButton
-            label={signOut.pending ? 'Déconnexion…' : 'Se déconnecter'}
+            label={signOut.pending ? t('profile.signingOut') : t('profile.signOut')}
             busy={signOut.pending}
             onPress={signOut.request}
-            accessibilityHint={isGuest ? 'Un compte invité ne peut pas être retrouvé après déconnexion.' : undefined}
+            accessibilityHint={isGuest ? t('profile.guestSignOutHint') : undefined}
           />
           {profile && <DeleteAccount pseudo={profile.pseudo} isGuest={isGuest} />}
         </DrawnCard>
       )}
+      <LanguagePicker />
       <SignOutDialog controller={signOut} />
       <AboutLinks />
     </AuthScreen>

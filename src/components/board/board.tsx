@@ -2,6 +2,7 @@ import { memo, useMemo, useRef } from 'react';
 import { View, type GestureResponderEvent } from 'react-native';
 import Svg, { Circle, G, Polygon } from 'react-native-svg';
 
+import { useT } from '@/i18n';
 import { Colors, GoalTintOpacity, playerColor, Shadow, Stroke } from '@/constants/theme';
 import {
   ALL_CELLS,
@@ -192,13 +193,14 @@ const TAP_SLOP = 10;
  * marche sur iOS, Android et le web.
  */
 function TouchZone({ layout, onCellPress }: { layout: BoardLayout; onCellPress: (cell: Cell) => void }) {
+  const t = useT();
   const start = useRef<{ x: number; y: number } | null>(null);
   return (
     <View
       style={{ position: 'absolute', top: 0, left: 0, width: layout.width, height: layout.height }}
       accessible
-      accessibilityLabel="Plateau de jeu"
-      accessibilityHint="Touche un de tes pions, puis une case atteignable."
+      accessibilityLabel={t('game.board')}
+      accessibilityHint={t('game.boardHint')}
       onStartShouldSetResponder={() => true}
       onResponderGrant={(event: GestureResponderEvent) => {
         start.current = { x: event.nativeEvent.locationX, y: event.nativeEvent.locationY };

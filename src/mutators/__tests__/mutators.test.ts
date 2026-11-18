@@ -9,6 +9,9 @@ import {
   serializeMutators,
   settingsFromMutators,
 } from '../mutators';
+import { translator } from '@/i18n';
+
+const t = translator('fr');
 
 describe('paramètres d’URL des mutateurs', () => {
   it('garde les valeurs par défaut sans paramètre', () => {
@@ -82,9 +85,9 @@ describe('affichage', () => {
       notice: null,
       idle: 'À toi.',
     };
-    expect(selectionHint({ ...base, mutators: DEFAULT_MUTATORS })).toContain('pointillés');
-    expect(selectionHint({ ...base, mutators: { touchMove: false, clairvoyance: false } })).not.toContain('pointillés');
-    expect(selectionHint({ ...base, selected: null, mutators: DEFAULT_MUTATORS })).toBe('À toi.');
-    expect(selectionHint({ ...base, notice: 'locked', mutators: DEFAULT_MUTATORS })).toContain('Toucher c’est jouer');
+    expect(selectionHint(t, { ...base, mutators: DEFAULT_MUTATORS })).toContain('pointillés');
+    expect(selectionHint(t, { ...base, mutators: { touchMove: false, clairvoyance: false } })).not.toContain('pointillés');
+    expect(selectionHint(t, { ...base, selected: null, mutators: DEFAULT_MUTATORS })).toBe('À toi.');
+    expect(selectionHint(t, { ...base, notice: 'locked', mutators: DEFAULT_MUTATORS })).toContain('Toucher c’est jouer');
   });
 });

@@ -2,6 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import type { AvatarConfig } from '@/avatar/avatar';
 import { Colors, Radius, Spacing, Stroke } from '@/constants/theme';
+import { useT } from '@/i18n';
 
 import { PlayerChip } from './player-chip';
 
@@ -29,9 +30,10 @@ const AVATAR_SIZE = 30;
  * Le joueur courant est entouré en noir.
  */
 export function PlayersBar({ entries }: { entries: readonly PlayersBarEntry[] }) {
+  const t = useT();
   const crowded = entries.length > MAX_NAMED;
   return (
-    <View style={styles.row} accessibilityRole="list" accessibilityLabel="Joueurs">
+    <View style={styles.row} accessibilityRole="list" accessibilityLabel={t('game.players')}>
       {entries.map((entry) => {
         const current = entry.turn === 'active';
         const compact = crowded && !current;

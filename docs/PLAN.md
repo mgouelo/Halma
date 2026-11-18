@@ -262,6 +262,16 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
   `get_friends` et `get_friend_requests` (anciennes colonnes inchangées).
 - Classement : numéro de position sur chaque ligne, podium compris ; « Tu es 61e » dans le bloc « C'est toi ».
 
+## Étape 20 : traduction en anglais, allemand et espagnol (fait)
+
+- `src/i18n/` maison (pas de dépendance) : un fichier de messages par langue, le français source du type (clés et
+  variables vérifiées par `tsc` et par un test), pluriels, nombres, rangs et dates selon la langue.
+- Langue : préférence enregistrée > langue de l'appareil (`expo-localization`) > français ; sélecteur sur le profil
+  et l'écran de connexion, appliqué tout de suite ; `<html lang>` suit la langue sur le web.
+- Erreurs traduites côté client à partir de leur code (SQL, Edge Functions, Supabase Auth).
+- Langue du compte (colonne privée `profiles.language`, métadonnée `language`) pour les e-mails : modèles
+  multilingues (Go templates) dans `docs/emails/multilingue/`. Pages légales traduites (brouillons à relire).
+
 ## Plus tard
 
 - Invitation directe d'un ami dans une room.

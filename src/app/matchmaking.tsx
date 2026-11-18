@@ -14,19 +14,22 @@ import { StarLogo } from '@/components/nav-bar/icons';
 import { LoadingState, ThinkingDots } from '@/components/state-view';
 import { Colors, Fonts, MaxContentWidth, playerColor, Shadow, Spacing, Stroke, Typography } from '@/constants/theme';
 import { useIsClient } from '@/hooks/use-is-client';
+import { useT } from '@/i18n';
 import { goBack } from '@/navigation/back';
 import { countdownSeconds, formatElapsed, searchElapsedMs, shouldAskToKeepWaiting } from '@/rooms/matchmaking';
 import { participantAvatar } from '@/rooms/names';
+import { describeOnlineError } from '@/rooms/room-service';
 import { useMatchmaking } from '@/rooms/use-matchmaking';
 
 /** « Trouver une partie » : file d'attente, puis compte à rebours avant le départ. */
 export default function MatchmakingScreen() {
+  const t = useT();
   const isClient = useIsClient();
   const { configured, loading, session } = useAuth();
   if (!isClient) return <SafeAreaView style={styles.screen} />;
   if (!configured) {
     return (
-      <AuthScreen header="back" title="Trouver une partie" subtitle="Jeu en ligne indisponible.">
+      <AuthScreen header="back" title={t('online.findGame')} subtitle={t('matchmaking.unavailable')}>
         <NotConfiguredCard />
       </AuthScreen>
     );
@@ -34,8 +37,8 @@ export default function MatchmakingScreen() {
   if (loading) return <LoadingState />;
   if (!session) {
     return (
-      <AuthScreen header="back" title="Trouver une partie" subtitle="Connecte-toi pour jouer en ligne.">
-        <DrawnButton label="Se connecter" onPress={() => router.push('/sign-in')} color={playerColor(1).piece} />
+      <AuthScreen header="back" title={t('online.findGame')} subtitle={t('matchmaking.signIn')}>
+        <DrawnButton label={t('common.signIn')} onPress={() => router.push('/sign-in')} color={playerColor(1).piece} />
       </AuthScreen>
     );
   }
@@ -47,6 +50,7 @@ function openRoom(roomId: string) {
 }
 
 function Search({ userId }: { userId: string }) {
+  const t = useT();
   const { state, players, now, cancel, cancelling } = useMatchmaking(userId, openRoom);
   const [keptWaitingAt, setKeptWaitingAt] = useState<number | null>(null);
 
@@ -57,16 +61,16 @@ function Search({ userId }: { userId: string }) {
 
   let body;
   if (state.kind === 'joining') {
-    body = <LoadingState label="Entrée dans la file…" />;
+    body = <LoadingState label={t('matchmaking.joining')} />;
   } else if (state.kind === 'error') {
     body = (
       <DrawnCard contentStyle={styles.card}>
         <Text style={Typography.heading} accessibilityRole="header">
-          Recherche impossible
+          {t('matchmaking.impossible')}
         </Text>
-        <Text style={Typography.body}>{state.message}</Text>
+        <Text style={Typography.body}>{describeOnlineError(t, state.error)}</Text>
         <DrawnButton
-          label={state.alreadyInRoom ? 'Voir ma room' : 'Retour'}
+          label={state.alreadyInRoom ? t('matchmaking.seeRoom') : t('matchmaking.back')}
           onPress={() => router.replace('/online')}
           color={playerColor(1).piece}
         />
@@ -78,18 +82,18 @@ function Search({ userId }: { userId: string }) {
       <Animated.View entering={FadeIn.duration(200)} style={styles.stack}>
         <DrawnCard contentStyle={[styles.card, styles.center]}>
           <Text style={[Typography.title, styles.text]} accessibilityRole="header">
-            Adversaire trouvé !
+            {t('matchmaking.found')}
           </Text>
           <Countdown seconds={seconds} />
           <Text style={[Typography.body, styles.text]} accessibilityLiveRegion="polite">
-            {seconds > 0 ? `La partie commence dans ${seconds} s.` : 'Lancement de la partie…'}
+            {seconds > 0 ? t('matchmaking.startsIn', { n: seconds }) : t('matchmaking.starting')}
           </Text>
-          <Text style={[Typography.caption, styles.text]}>
-            D’autres joueurs en recherche peuvent encore arriver, jusqu’à 6.
-          </Text>
+          <Text style={[Typography.caption, styles.text]}>{t('matchmaking.moreMayJoin')}</Text>
         </DrawnCard>
         <DrawnCard contentStyle={styles.card}>
-          <Text style={Typography.heading}>Joueurs · {Math.max(players.length, state.status.players)}/6</Text>
+          <Text style={Typography.heading}>
+            {t('matchmaking.players', { count: Math.max(players.length, state.status.players) })}
+          </Text>
           {players.map((player, index) => (
             <View key={player.id} style={styles.player}>
               <Avatar
@@ -99,17 +103,17 @@ function Search({ userId }: { userId: string }) {
                 background={playerColor(index).piece}
               />
               <Text style={[Typography.heading, styles.flex]} numberOfLines={1}>
-                {player.pseudo ?? 'Joueur'}
-                {player.userId === userId ? ' (toi)' : ''}
+                {player.pseudo ?? t('common.player')}
+                {player.userId === userId ? t('common.youSuffix') : ''}
               </Text>
             </View>
           ))}
         </DrawnCard>
         <DrawnButton
-          label={cancelling ? 'Annulation…' : 'Annuler'}
+          label={cancelling ? t('common.cancelling') : t('common.cancel')}
           busy={cancelling}
           onPress={leave}
-          accessibilityHint="Quitte la partie avant son départ"
+          accessibilityHint={t('matchmaking.leaveHint')}
         />
       </Animated.View>
     );
@@ -120,23 +124,28 @@ function Search({ userId }: { userId: string }) {
         <DrawnCard contentStyle={[styles.card, styles.center]}>
           <StarLogo size={96} />
           <Text style={[Typography.title, styles.text]} accessibilityRole="header">
-            Recherche d’un adversaire…
+            {t('matchmaking.searching')}
           </Text>
-          <View style={styles.row} accessibilityLabel={`Recherche depuis ${formatElapsed(elapsed)}`} accessible>
+          <View
+            style={styles.row}
+            accessibilityLabel={t('matchmaking.searchingFor', { time: formatElapsed(elapsed) })}
+            accessible>
             <ThinkingDots />
-            <Text style={Typography.caption}>Recherche depuis {formatElapsed(elapsed)}</Text>
+            <Text style={Typography.caption}>{t('matchmaking.searchingFor', { time: formatElapsed(elapsed) })}</Text>
           </View>
-          <Text style={[Typography.caption, styles.text]}>
-            Dès qu’un autre joueur cherche aussi, vous êtes réunis. Pas d’IA : que des humains, de 2 à 6.
-          </Text>
+          <Text style={[Typography.caption, styles.text]}>{t('matchmaking.howItWorks')}</Text>
         </DrawnCard>
-        <DrawnButton label={cancelling ? 'Annulation…' : 'Annuler'} busy={cancelling} onPress={leave} />
+        <DrawnButton
+          label={cancelling ? t('common.cancelling') : t('common.cancel')}
+          busy={cancelling}
+          onPress={leave}
+        />
         <ConfirmDialog
           visible={shouldAskToKeepWaiting(state.status, now, keptWaitingAt)}
-          title="Toujours personne…"
-          message="Aucun autre joueur ne cherche de partie pour l’instant. Tu peux continuer d’attendre ou revenir plus tard."
-          cancelLabel="Continuer d’attendre"
-          confirmLabel="Annuler la recherche"
+          title={t('matchmaking.nobodyTitle')}
+          message={t('matchmaking.nobodyMessage')}
+          cancelLabel={t('matchmaking.keepWaiting')}
+          confirmLabel={t('online.cancelSearch')}
           onCancel={() => setKeptWaitingAt(Date.now())}
           onConfirm={leave}
         />
@@ -149,9 +158,9 @@ function Search({ userId }: { userId: string }) {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.titles}>
           <Text style={Typography.title} accessibilityRole="header">
-            Trouver une partie
+            {t('online.findGame')}
           </Text>
-          <Text style={Typography.caption}>Partie en ligne entre joueurs, comptée pour les points.</Text>
+          <Text style={Typography.caption}>{t('matchmaking.subtitle')}</Text>
         </View>
         {body}
       </ScrollView>
@@ -163,8 +172,9 @@ const RING = 120;
 
 /** Compte à rebours : le nombre de secondes dans un grand pion pastel au trait noir. */
 function Countdown({ seconds }: { seconds: number }) {
+  const t = useT();
   return (
-    <View style={styles.ringWrap} accessible accessibilityLabel={`${seconds} secondes avant le départ`}>
+    <View style={styles.ringWrap} accessible accessibilityLabel={t('matchmaking.countdown', { count: seconds })}>
       <View style={styles.ringShadow} />
       <Animated.View key={seconds} entering={ZoomIn.duration(180)} style={styles.ring}>
         <Text style={styles.ringText}>{seconds}</Text>

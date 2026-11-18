@@ -5,7 +5,8 @@ import { describe, expect, it, jest } from '@jest/globals';
 import { render, screen } from '@testing-library/react-native';
 
 import { AccountForm } from '../account-form';
-import { SHOW_PASSWORD_LABEL } from '../drawn-text-input';
+
+const SHOW_PASSWORD_LABEL = 'Afficher le mot de passe';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 jest.mock('react-native-reanimated', () => require('@/hooks/__test-utils__/reanimated'));

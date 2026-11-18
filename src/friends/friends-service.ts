@@ -1,11 +1,12 @@
 // Amis : appels aux fonctions SQL de la migration friends (aucune écriture
 // directe : tout passe par elles), au-dessus d'un client Supabase passé en
-// paramètre (le vrai en production, un faux dans les tests), et messages en
-// français. Réservé aux comptes e-mail : rien n'est envoyé pour un invité.
+// paramètre (le vrai en production, un faux dans les tests), et messages
+// traduits. Réservé aux comptes e-mail : rien n'est envoyé pour un invité.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { normalizePseudo } from '@/auth/validation';
+import { msg, type Msg, type Translator } from '@/i18n';
 
 export interface Friend {
   /** Identifiant de l'amitié (sert à retirer l'ami). */
@@ -29,38 +30,37 @@ export interface FriendRequest {
   userId: string | null;
 }
 
-/** Codes d'erreur courts des fonctions SQL, et leur traduction. */
-export const FRIEND_ERROR_MESSAGES = {
-  pseudo_unknown: 'Aucun joueur ne porte ce pseudo.',
-  self_request: 'C’est toi ! Choisis le pseudo d’un autre joueur.',
-  not_eligible: 'Ce joueur joue en invité : il pourra avoir des amis une fois son compte créé.',
-  already_friends: 'Vous êtes déjà amis.',
-  already_requested: 'Demande déjà envoyée : elle attend sa réponse.',
-  recently_refused: 'Ce joueur a refusé ta demande. Réessaie dans 24 heures.',
-  too_many_sent: 'Tu as déjà 20 demandes en attente. Attends des réponses avant d’en envoyer d’autres.',
-  request_not_found: 'Cette demande n’existe plus.',
-  friend_not_found: 'Cet ami n’est déjà plus dans ta liste.',
-  guest_not_allowed: 'Crée ton compte pour avoir des amis.',
-  player_not_found: 'Ce joueur n’existe pas ou n’a plus de compte.',
-  not_authenticated: 'Connecte-toi pour retrouver tes amis.',
-} as const;
+/** Codes d'erreur courts des fonctions SQL d'amis (le texte est dans src/i18n, clés `error.friends.*`). */
+export const FRIEND_ERROR_CODES = [
+  'pseudo_unknown',
+  'self_request',
+  'not_eligible',
+  'already_friends',
+  'already_requested',
+  'recently_refused',
+  'too_many_sent',
+  'request_not_found',
+  'friend_not_found',
+  'guest_not_allowed',
+  'player_not_found',
+  'not_authenticated',
+] as const;
 
-export type FriendErrorCode = keyof typeof FRIEND_ERROR_MESSAGES;
+export type FriendErrorCode = (typeof FRIEND_ERROR_CODES)[number];
 
-export const DEFAULT_FRIEND_ERROR = 'Impossible de joindre le serveur. Vérifie ta connexion.';
+function isFriendErrorCode(value: unknown): value is FriendErrorCode {
+  return typeof value === 'string' && (FRIEND_ERROR_CODES as readonly string[]).includes(value);
+}
 
-/** Message à afficher pour une erreur des fonctions d'amis. */
-export function describeFriendError(error: unknown): string {
+/** Texte d'une erreur des fonctions d'amis, traduit à partir de son code. */
+export function describeFriendError(t: Translator, error: unknown): string {
   const message = (error as { message?: unknown } | null)?.message;
-  if (typeof message === 'string' && Object.prototype.hasOwnProperty.call(FRIEND_ERROR_MESSAGES, message)) {
-    return FRIEND_ERROR_MESSAGES[message as FriendErrorCode];
-  }
-  return DEFAULT_FRIEND_ERROR;
+  return isFriendErrorCode(message) ? t(`error.friends.${message}`) : t('error.network');
 }
 
 /** Vérification avant l'envoi : un pseudo à chercher (le serveur dit s'il existe). */
-export function validateFriendPseudo(pseudo: string): string | null {
-  return normalizePseudo(pseudo) ? null : 'Écris le pseudo de ton ami.';
+export function validateFriendPseudo(pseudo: string): Msg | null {
+  return normalizePseudo(pseudo) ? null : msg('friends.validation');
 }
 
 /** Amis triés par points, le plus haut d'abord ; à égalité, par rang puis pseudo (comme le serveur). */
@@ -140,14 +140,14 @@ export async function removeFriend(client: SupabaseClient, friendshipId: string)
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Âge d'une demande : « à l'instant », « il y a 5 min », « il y a 3 h », « hier », « il y a 4 jours ». */
-export function formatRequestAge(createdAt: string, now: number = Date.now()): string {
+export function formatRequestAge(t: Translator, createdAt: string, now: number = Date.now()): string {
   const elapsed = Math.max(0, now - Date.parse(createdAt));
   if (Number.isNaN(elapsed)) return '';
   const minutes = Math.floor(elapsed / 60_000);
-  if (minutes < 1) return 'à l’instant';
-  if (minutes < 60) return `il y a ${minutes} min`;
+  if (minutes < 1) return t('friends.ageNow');
+  if (minutes < 60) return t('friends.ageMinutes', { n: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `il y a ${hours} h`;
+  if (hours < 24) return t('friends.ageHours', { n: hours });
   const days = Math.floor(elapsed / DAY_MS);
-  return days === 1 ? 'hier' : `il y a ${days} jours`;
+  return days === 1 ? t('friends.ageYesterday') : t('friends.ageDays', { count: days });
 }

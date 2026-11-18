@@ -4,12 +4,12 @@ import {
   hasErrors,
   normalizePseudoInput,
   PASSWORD_MIN_LENGTH,
-  PSEUDO_HINT,
   validateSignUp,
   type FieldError,
   type SignUpFields,
 } from '@/auth/validation';
 import { playerColor } from '@/constants/theme';
+import { useT } from '@/i18n';
 
 import { authStyles, Notice } from './auth-screen';
 import { DrawnButton } from './drawn-button';
@@ -27,6 +27,7 @@ interface AccountFormProps {
 
 /** Formulaire pseudo + e-mail + mot de passe (inscription, ou invité qui crée son compte). */
 export function AccountForm({ submitLabel, pendingLabel, pending, error, onSubmit }: AccountFormProps) {
+  const t = useT();
   const [pseudo, setPseudo] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -49,33 +50,33 @@ export function AccountForm({ submitLabel, pendingLabel, pending, error, onSubmi
   return (
     <DrawnCard contentStyle={authStyles.card}>
       <DrawnTextInput
-        label="Pseudo"
+        label={t('common.pseudo')}
         value={pseudo}
         onChangeText={edit('pseudo', (value) => setPseudo(normalizePseudoInput(value)))}
-        error={errors.pseudo}
-        hint={PSEUDO_HINT}
+        error={errors.pseudo ? t.msg(errors.pseudo) : null}
+        hint={t('pseudo.hint')}
         autoCapitalize="none"
         autoComplete="username-new"
         textContentType="username"
         maxLength={20}
       />
       <DrawnTextInput
-        label="E-mail"
+        label={t('common.email')}
         value={email}
         onChangeText={edit('email', setEmail)}
-        error={errors.email}
+        error={errors.email ? t.msg(errors.email) : null}
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
         textContentType="emailAddress"
-        placeholder="toi@exemple.fr"
+        placeholder={t('common.emailPlaceholder')}
       />
       <DrawnTextInput
-        label="Mot de passe"
+        label={t('common.password')}
         value={password}
         onChangeText={edit('password', setPassword)}
-        error={errors.password}
-        hint={`Au moins ${PASSWORD_MIN_LENGTH} caractères.`}
+        error={errors.password ? t.msg(errors.password) : null}
+        hint={t('common.passwordHint', { n: PASSWORD_MIN_LENGTH })}
         revealable
         autoComplete="new-password"
         textContentType="newPassword"

@@ -4,18 +4,14 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '@/auth/auth-context';
 import { Colors, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
 import { getSupabase } from '@/lib/supabase';
-import { formatRank, formatValue } from '@/stats/leaderboard';
+import { useT } from '@/i18n';
+import { formatRank, formatValue, rankSpoken } from '@/stats/leaderboard';
 import { fetchMyRating, fetchMyStats, type MyRating, type PlayerStats } from '@/stats/stats-service';
 import { displayedStreak, parisDay } from '@/stats/streak';
 
 import { DrawnCard } from './drawn-card';
 import { BestFlameIcon, FlameIcon, PodiumIcon, PointsIcon, StartFlagIcon, TrophyIcon } from './stat-icons';
 import { ErrorState, LoadingState } from './state-view';
-
-/** Rang lu par le lecteur d'écran : « 3e place », ou « pas encore classé ». */
-export function rankSpoken(rank: number | null): string {
-  return rank === null ? 'pas encore classé' : `${formatRank(rank)} place`;
-}
 
 type Load = { status: 'loading' } | { status: 'error' } | { status: 'ready'; stats: PlayerStats; rating: MyRating };
 
@@ -38,8 +34,9 @@ export function StatTile({
   /** Valeur lue par le lecteur d'écran, si elle diffère de l'affichage. */
   spoken?: string;
 }) {
+  const t = useT();
   return (
-    <View style={styles.tile} accessible accessibilityLabel={`${label} : ${spoken ?? value}`}>
+    <View style={styles.tile} accessible accessibilityLabel={t('stats.tileSpoken', { label, value: spoken ?? value })}>
       <View style={styles.valueRow}>
         <Icon size={ICON_SIZE} />
         <Text style={styles.value}>{value}</Text>
@@ -51,10 +48,11 @@ export function StatTile({
 
 /** Carte « Statistiques » : titre, grille de cases, puis des notes éventuelles. */
 export function StatsCard({ children, notes }: { children: ReactNode; notes?: ReactNode }) {
+  const t = useT();
   return (
     <DrawnCard contentStyle={styles.card}>
       <Text style={Typography.heading} accessibilityRole="header">
-        Statistiques
+        {t('stats.title')}
       </Text>
       <View style={styles.grid}>{children}</View>
       {notes}
@@ -64,6 +62,7 @@ export function StatsCard({ children, notes }: { children: ReactNode; notes?: Re
 
 /** Statistiques du joueur connecté, sur son profil. */
 export function ProfileStats({ userId }: { userId: string }) {
+  const t = useT();
   const { statsVersion, isGuest } = useAuth();
   const [load, setLoad] = useState<Load>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -85,8 +84,8 @@ export function ProfileStats({ userId }: { userId: string }) {
   if (load.status === 'error') {
     return (
       <ErrorState
-        title="Statistiques indisponibles"
-        message="Impossible de lire tes statistiques. Vérifie ta connexion."
+        title={t('stats.unavailable')}
+        message={t('stats.readFailed')}
         onRetry={() => {
           setLoad({ status: 'loading' });
           setAttempt((n) => n + 1);
@@ -94,32 +93,32 @@ export function ProfileStats({ userId }: { userId: string }) {
       />
     );
   }
-  if (load.status === 'loading') return <LoadingState label="Chargement des statistiques…" />;
+  if (load.status === 'loading') return <LoadingState label={t('stats.loading')} />;
   const { stats, rating } = load;
-  const rankNote = isGuest
-    ? 'Les invités n’apparaissent pas dans les classements : crée ton compte pour y entrer avec tes points.'
-    : rating.rank === null
-      ? 'Joue une partie classée (au moins deux joueurs) pour entrer au classement des points.'
-      : null;
+  const rankNote = isGuest ? t('stats.guestNote') : rating.rank === null ? t('stats.unrankedNote') : null;
   return (
     <StatsCard
       notes={
         <>
           {rankNote && <Text style={Typography.caption}>{rankNote}</Text>}
-          <Text style={Typography.caption}>Parties en ligne seulement.</Text>
+          <Text style={Typography.caption}>{t('common.onlineOnly')}</Text>
         </>
       }>
-      <StatTile value={formatValue(rating.points)} label="Points" Icon={PointsIcon} />
+      <StatTile value={formatValue(t, rating.points)} label={t('stats.points')} Icon={PointsIcon} />
       <StatTile
-        value={formatRank(rating.rank)}
-        spoken={rankSpoken(rating.rank)}
-        label="Rang aux points"
+        value={formatRank(t, rating.rank)}
+        spoken={rankSpoken(t, rating.rank)}
+        label={t('stats.rank')}
         Icon={PodiumIcon}
       />
-      <StatTile value={stats.wins} label="Victoires" Icon={TrophyIcon} />
-      <StatTile value={stats.gamesStarted} label="Parties lancées" Icon={StartFlagIcon} />
-      <StatTile value={displayedStreak(stats, parisDay(new Date()))} label="Série actuelle (jours)" Icon={FlameIcon} />
-      <StatTile value={stats.bestStreak} label="Meilleure série (jours)" Icon={BestFlameIcon} />
+      <StatTile value={formatValue(t, stats.wins)} label={t('stats.wins')} Icon={TrophyIcon} />
+      <StatTile value={formatValue(t, stats.gamesStarted)} label={t('stats.gamesStarted')} Icon={StartFlagIcon} />
+      <StatTile
+        value={formatValue(t, displayedStreak(stats, parisDay(new Date())))}
+        label={t('stats.currentStreak')}
+        Icon={FlameIcon}
+      />
+      <StatTile value={formatValue(t, stats.bestStreak)} label={t('stats.bestStreak')} Icon={BestFlameIcon} />
     </StatsCard>
   );
 }

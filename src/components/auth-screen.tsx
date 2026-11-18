@@ -5,6 +5,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors, Fonts, MaxContentWidth, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
+import { useT } from '@/i18n';
 
 import { BackButton } from './back-button';
 import { DrawnButton } from './drawn-button';
@@ -26,6 +27,7 @@ interface AuthScreenProps {
 
 /** Cadre commun des écrans de compte (connexion, inscription, profil, jouer en ligne…). */
 export function AuthScreen({ title, subtitle, header = 'home', children }: AuthScreenProps) {
+  const t = useT();
   const edges = useScreenEdges();
   const navInset = useNavBarInset();
   return (
@@ -38,7 +40,7 @@ export function AuthScreen({ title, subtitle, header = 'home', children }: AuthS
           {header === 'back' && <BackButton />}
           {header === 'home' && (
             <View style={styles.header}>
-              <DrawnButton label="‹ Accueil" size="small" onPress={() => router.dismissTo('/')} />
+              <DrawnButton label={t('common.home')} size="small" onPress={() => router.dismissTo('/')} />
             </View>
           )}
           <View style={styles.titles}>
@@ -68,16 +70,12 @@ export function Notice({ children, tone = 'error' }: { children: ReactNode; tone
 
 /** Carte affichée quand Supabase n'est pas configuré. */
 export function NotConfiguredCard() {
+  const t = useT();
   return (
     <DrawnCard contentStyle={styles.card}>
-      <Text style={Typography.heading}>Comptes indisponibles</Text>
-      <Text style={Typography.body}>
-        Le serveur n’est pas configuré dans cette version de l’application. Tu peux quand même jouer hors ligne,
-        contre l’IA ou entre amis.
-      </Text>
-      <Text style={Typography.caption}>
-        Développeurs : définissez EXPO_PUBLIC_SUPABASE_URL et EXPO_PUBLIC_SUPABASE_ANON_KEY (voir le README).
-      </Text>
+      <Text style={Typography.heading}>{t('notConfigured.title')}</Text>
+      <Text style={Typography.body}>{t('notConfigured.text')}</Text>
+      <Text style={Typography.caption}>{t('notConfigured.dev')}</Text>
     </DrawnCard>
   );
 }

@@ -1,21 +1,20 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Colors, Fonts, Radius, Spacing, Stroke, Typography } from '@/constants/theme';
+import { useT } from '@/i18n';
 import type { LegalDocument } from '@/legal/document';
 
 import { Bullet, DocScreen, DocSection, Paragraph } from './doc-screen';
 
 /** Page légale (confidentialité, conditions), avec un bandeau tant que c'est un brouillon. */
 export function LegalScreen({ doc }: { doc: LegalDocument }) {
+  const t = useT();
   return (
-    <DocScreen title={doc.title} subtitle={`Version : ${doc.version}`} description={doc.description}>
+    <DocScreen title={doc.title} subtitle={t('legal.version', { version: doc.version })} description={doc.description}>
       {doc.draft && (
         <View style={styles.draft} accessibilityRole="alert">
-          <Text style={styles.draftTitle}>Brouillon à faire relire</Text>
-          <Text style={Typography.body}>
-            Ce texte n’a pas encore été relu. Les passages entre crochets [À COMPLÉTER] restent à remplir par
-            l’éditeur de l’application.
-          </Text>
+          <Text style={styles.draftTitle}>{t('legal.draftTitle')}</Text>
+          <Text style={Typography.body}>{t('legal.draftText')}</Text>
         </View>
       )}
       {doc.sections.map((section) => (

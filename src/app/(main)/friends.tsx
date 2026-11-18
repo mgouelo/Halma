@@ -38,9 +38,10 @@ import {
   type FriendRequest,
 } from '@/friends/friends-service';
 import { useFriends } from '@/friends/use-friends';
+import { msg, useT, type Msg } from '@/i18n';
 import { getSupabase } from '@/lib/supabase';
 import { playerHref, playerProfileLabel } from '@/navigation/player';
-import { formatRank, formatScore, formatValue } from '@/stats/leaderboard';
+import { formatRank, formatScore, formatUnit, formatValue } from '@/stats/leaderboard';
 
 /**
  * Amis : liste triée par points (avec le rang de chacun parmi tous les joueurs
@@ -49,6 +50,7 @@ import { formatRank, formatScore, formatValue } from '@/stats/leaderboard';
  * aucune requête d'amis n'est envoyée.
  */
 export default function FriendsScreen() {
+  const t = useT();
   const edges = useScreenEdges();
   const navInset = useNavBarInset();
   const { configured, loading, session, isGuest } = useAuth();
@@ -58,24 +60,24 @@ export default function FriendsScreen() {
   if (!configured) {
     body = <NotConfiguredCard />;
   } else if (loading) {
-    body = <LoadingState label="Chargement…" />;
+    body = <LoadingState label={t('common.loading')} />;
   } else if (isGuest) {
     body = (
       <EmptyState
         icon={<FriendsIcon size={88} />}
-        title="Tes amis t’attendent"
-        message="Les amis sont réservés aux comptes. Crée le tien (tu gardes ta progression d’invité) pour ajouter des amis et comparer vos points."
-        action={{ label: 'Créer mon compte', onPress: () => router.push('/upgrade'), color: playerColor(1).piece }}
+        title={t('friends.guestTitle')}
+        message={t('friends.guestText')}
+        action={{ label: t('common.createMyAccount'), onPress: () => router.push('/upgrade'), color: playerColor(1).piece }}
       />
     );
   } else if (!userId) {
     body = (
       <EmptyState
         icon={<FriendsIcon size={88} />}
-        title="Joue avec tes amis"
-        message="Connecte-toi pour ajouter des amis et comparer vos points."
-        action={{ label: 'Se connecter', onPress: () => router.push('/sign-in'), color: playerColor(1).piece }}
-        secondaryAction={{ label: 'Créer un compte', onPress: () => router.push('/sign-up') }}
+        title={t('friends.signedOutTitle')}
+        message={t('friends.signedOutText')}
+        action={{ label: t('common.signIn'), onPress: () => router.push('/sign-in'), color: playerColor(1).piece }}
+        secondaryAction={{ label: t('common.createAccount'), onPress: () => router.push('/sign-up') }}
       />
     );
   } else {
@@ -88,9 +90,9 @@ export default function FriendsScreen() {
         <View style={styles.titleRow}>
           <View style={styles.titles}>
             <Text style={Typography.title} accessibilityRole="header">
-              Amis
+              {t('friends.title')}
             </Text>
-            <Text style={styles.tagline}>Seul on va vite, entre amis on saute plus loin.</Text>
+            <Text style={styles.tagline}>{t('friends.tagline')}</Text>
           </View>
           <ProfileButton />
         </View>
@@ -120,6 +122,7 @@ function ProfileTouch({
   details: string;
   children: ReactNode;
 }) {
+  const t = useT();
   const href = playerHref(userId, myId);
   if (!href) {
     return (
@@ -132,7 +135,7 @@ function ProfileTouch({
     <Pressable
       onPress={() => router.push(href)}
       accessibilityRole="button"
-      accessibilityLabel={playerProfileLabel(pseudo)}
+      accessibilityLabel={playerProfileLabel(t, pseudo)}
       accessibilityValue={{ text: details }}
       style={({ pressed }) => [styles.rowMain, styles.rowTouch, pressed && styles.rowPressed]}>
       {children}
@@ -141,14 +144,21 @@ function ProfileTouch({
 }
 
 function FriendsPanel({ userId }: { userId: string }) {
+  const t = useT();
   const { load, reload } = useFriends(userId);
   const [view, setView] = useState<'friends' | 'requests'>('friends');
   const [removing, setRemoving] = useState<Friend | null>(null);
-  const [removeError, setRemoveError] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<{ error: unknown } | null>(null);
 
-  if (load.status === 'loading') return <LoadingState label="Chargement de tes amis…" />;
+  if (load.status === 'loading') return <LoadingState label={t('friends.loading')} />;
   if (load.status === 'error') {
-    return <ErrorState title="Amis indisponibles" message={load.message} onRetry={() => reload(false)} />;
+    return (
+      <ErrorState
+        title={t('friends.unavailable')}
+        message={describeFriendError(t, load.error)}
+        onRetry={() => reload(false)}
+      />
+    );
   }
   const { friends, requests } = load;
 
@@ -160,7 +170,7 @@ function FriendsPanel({ userId }: { userId: string }) {
       await removeFriend(getSupabase(), friend.friendshipId);
       setRemoveError(null);
     } catch (error) {
-      setRemoveError(describeFriendError(error));
+      setRemoveError({ error });
     }
     reload(true);
   };
@@ -169,9 +179,9 @@ function FriendsPanel({ userId }: { userId: string }) {
     return (
       <>
         <View style={styles.toolbar}>
-          <DrawnButton label="‹ Mes amis" size="small" onPress={() => setView('friends')} />
+          <DrawnButton label={t('friends.myFriendsBack')} size="small" onPress={() => setView('friends')} />
           <Text style={[Typography.heading, styles.flex]} accessibilityRole="header">
-            Demandes reçues
+            {t('friends.requests')}
           </Text>
         </View>
         <RequestList requests={requests} myId={userId} onChange={() => reload(true)} />
@@ -184,16 +194,16 @@ function FriendsPanel({ userId }: { userId: string }) {
       <AddFriend onSent={() => reload(true)} />
       <View style={styles.toolbar}>
         <Text style={[Typography.heading, styles.flex]} accessibilityRole="header">
-          Mes amis{friends.length > 0 ? ` (${friends.length})` : ''}
+          {friends.length > 0 ? t('friends.myFriendsCount', { count: friends.length }) : t('friends.myFriends')}
         </Text>
         <MailboxButton count={requests.length} onPress={() => setView('requests')} />
       </View>
-      {removeError && <Notice>{removeError}</Notice>}
+      {removeError && <Notice>{describeFriendError(t, removeError.error)}</Notice>}
       {friends.length === 0 ? (
         <EmptyState
           icon={<FriendsIcon size={72} />}
-          title="Pas encore d’amis"
-          message="Ajoute un ami avec son pseudo, juste au-dessus. Tes amis apparaîtront ici, triés par points."
+          title={t('friends.noneTitle')}
+          message={t('friends.noneText')}
         />
       ) : (
         <DrawnCard contentStyle={styles.rows}>
@@ -210,10 +220,10 @@ function FriendsPanel({ userId }: { userId: string }) {
       )}
       <ConfirmDialog
         visible={removing !== null}
-        title={`Retirer ${removing?.pseudo ?? ''} de tes amis ?`}
-        message="Vous ne serez plus amis. Tu pourras lui renvoyer une demande plus tard."
-        cancelLabel="Garder"
-        confirmLabel="Retirer"
+        title={t('friends.removeTitle', { name: removing?.pseudo ?? '' })}
+        message={t('friends.removeMessage')}
+        cancelLabel={t('common.keep')}
+        confirmLabel={t('common.remove')}
         onCancel={() => setRemoving(null)}
         onConfirm={confirmRemove}
       />
@@ -223,9 +233,11 @@ function FriendsPanel({ userId }: { userId: string }) {
 
 /** Champ « Ajouter un ami » : un pseudo, jamais de liste de joueurs. */
 function AddFriend({ onSent }: { onSent: () => void }) {
+  const t = useT();
   const [pseudo, setPseudo] = useState('');
-  const [fieldError, setFieldError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ tone: 'info' | 'error'; text: string } | null>(null);
+  const [fieldError, setFieldError] = useState<Msg | null>(null);
+  // Réussite : un message à traduire ; échec : l'erreur brute, traduite à l'affichage.
+  const [result, setResult] = useState<{ tone: 'info'; text: Msg } | { tone: 'error'; error: unknown } | null>(null);
   const [pending, setPending] = useState(false);
 
   const submit = async () => {
@@ -241,14 +253,12 @@ function AddFriend({ onSent }: { onSent: () => void }) {
       setResult({
         tone: 'info',
         text:
-          outcome === 'accepted'
-            ? `${name} t’avait déjà demandé en ami : vous êtes maintenant amis !`
-            : `Demande envoyée à ${name}.`,
+          outcome === 'accepted' ? msg('friends.alreadyAsked', { name }) : msg('friends.requestSentTo', { name }),
       });
       setPseudo('');
       onSent();
     } catch (error) {
-      setResult({ tone: 'error', text: describeFriendError(error) });
+      setResult({ tone: 'error', error });
     } finally {
       setPending(false);
     }
@@ -257,24 +267,28 @@ function AddFriend({ onSent }: { onSent: () => void }) {
   return (
     <DrawnCard contentStyle={styles.card}>
       <DrawnTextInput
-        label="Ajouter un ami"
+        label={t('friends.add')}
         value={pseudo}
         onChangeText={(value) => {
           setPseudo(normalizePseudoInput(value));
           setFieldError(null);
           setResult(null);
         }}
-        error={fieldError}
-        hint="Son pseudo exact, accents et majuscules sans importance."
-        placeholder="Pseudo"
+        error={fieldError ? t.msg(fieldError) : null}
+        hint={t('friends.addHint')}
+        placeholder={t('common.pseudo')}
         autoCapitalize="none"
         autoCorrect={false}
         maxLength={30}
         onSubmitEditing={submit}
       />
-      {result && <Notice tone={result.tone}>{result.text}</Notice>}
+      {result && (
+        <Notice tone={result.tone}>
+          {result.tone === 'info' ? t.msg(result.text) : describeFriendError(t, result.error)}
+        </Notice>
+      )}
       <DrawnButton
-        label={pending ? 'Envoi…' : 'Envoyer la demande'}
+        label={pending ? t('common.sending') : t('friends.sendRequest')}
         busy={pending}
         size="small"
         onPress={submit}
@@ -295,31 +309,32 @@ function FriendRow({
   first: boolean;
   onRemove: () => void;
 }) {
-  const rank = friend.rank === null ? '—' : formatRank(friend.rank);
-  const spokenRank = friend.rank === null ? 'pas encore de rang' : `${formatRank(friend.rank)} au classement`;
+  const t = useT();
+  const rank = formatRank(t, friend.rank);
+  const spokenRank = friend.rank === null ? t('friends.noRank') : t('friends.rankSpoken', { rank });
   return (
     <View style={[styles.row, !first && styles.rowSeparator]}>
       <ProfileTouch
         userId={friend.userId}
         myId={myId}
         pseudo={friend.pseudo}
-        details={`${formatScore('points', friend.points)}, ${spokenRank}`}>
+        details={`${formatScore(t, 'points', friend.points)}, ${spokenRank}`}>
         <Avatar value={friend.avatar} seed={friend.avatar} size={44} />
         <View style={styles.flex}>
           <Text style={[Typography.heading, styles.pseudo]} numberOfLines={1}>
             {friend.pseudo}
           </Text>
-          <Text style={Typography.caption}>Rang {rank}</Text>
+          <Text style={Typography.caption}>{t('friends.rank', { rank })}</Text>
         </View>
         <View style={styles.scoreBox}>
-          <Text style={styles.score}>{formatValue(friend.points)}</Text>
-          <Text style={styles.unit}>{Math.abs(friend.points) > 1 ? 'points' : 'point'}</Text>
+          <Text style={styles.score}>{formatValue(t, friend.points)}</Text>
+          <Text style={styles.unit}>{formatUnit(t, 'points', friend.points)}</Text>
         </View>
       </ProfileTouch>
       <Pressable
         onPress={onRemove}
         accessibilityRole="button"
-        accessibilityLabel={`Retirer ${friend.pseudo} de tes amis`}
+        accessibilityLabel={t('friends.removeLabel', { name: friend.pseudo })}
         hitSlop={Spacing.one}
         style={styles.remove}>
         <Text style={styles.removeText} accessibilityElementsHidden importantForAccessibility="no">
@@ -339,8 +354,9 @@ function RequestList({
   myId: string;
   onChange: () => void;
 }) {
+  const t = useT();
   const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ error: unknown } | null>(null);
 
   const respond = async (request: FriendRequest, accept: boolean) => {
     setBusy(request.id);
@@ -348,7 +364,7 @@ function RequestList({
     try {
       await respondFriendRequest(getSupabase(), request.id, accept);
     } catch (e) {
-      setError(describeFriendError(e));
+      setError({ error: e });
     } finally {
       setBusy(null);
       onChange();
@@ -359,14 +375,14 @@ function RequestList({
     return (
       <EmptyState
         icon={<MailboxIcon size={72} />}
-        title="Aucune demande"
-        message="Les demandes d’ami que tu reçois arrivent ici, dès qu’elles sont envoyées."
+        title={t('friends.noRequestsTitle')}
+        message={t('friends.noRequestsText')}
       />
     );
   }
   return (
     <>
-      {error && <Notice>{error}</Notice>}
+      {error && <Notice>{describeFriendError(t, error.error)}</Notice>}
       <DrawnCard contentStyle={styles.rows}>
         {requests.map((request, index) => (
           <View key={request.id} style={[styles.request, index > 0 && styles.rowSeparator]}>
@@ -374,32 +390,32 @@ function RequestList({
               userId={request.userId}
               myId={myId}
               pseudo={request.pseudo}
-              details={`demande d’ami ${formatRequestAge(request.createdAt)}`}>
+              details={t('friends.requestSpoken', { age: formatRequestAge(t, request.createdAt) })}>
               <Avatar value={request.avatar} seed={request.avatar} size={44} />
               <View style={styles.flex}>
                 <Text style={[Typography.heading, styles.pseudo]} numberOfLines={1}>
                   {request.pseudo}
                 </Text>
-                <Text style={Typography.caption}>{formatRequestAge(request.createdAt)}</Text>
+                <Text style={Typography.caption}>{formatRequestAge(t, request.createdAt)}</Text>
               </View>
             </ProfileTouch>
             <View style={styles.requestActions}>
               <DrawnButton
-                label="Accepter"
+                label={t('common.accept')}
                 size="small"
                 color={playerColor(2).piece}
                 busy={busy === request.id}
                 disabled={busy !== null && busy !== request.id}
                 onPress={() => respond(request, true)}
-                accessibilityHint={`Devenir ami avec ${request.pseudo}`}
+                accessibilityHint={t('friends.becomeFriendHint', { name: request.pseudo })}
                 style={styles.flex}
               />
               <DrawnButton
-                label="Refuser"
+                label={t('common.refuse')}
                 size="small"
                 disabled={busy !== null}
                 onPress={() => respond(request, false)}
-                accessibilityHint={`Refuser la demande de ${request.pseudo}`}
+                accessibilityHint={t('friends.refuseHint', { name: request.pseudo })}
                 style={styles.flex}
               />
             </View>

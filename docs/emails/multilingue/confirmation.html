@@ -1,0 +1,64 @@
+<!-- FICHIER GÉNÉRÉ par scripts/email-templates.cjs à partir de docs/emails/confirmation*.html : ne pas le modifier à la main.
+     Sujet : voir docs/emails/multilingue/sujets.md -->
+{{- $lang := printf "%v" .Data.language -}}
+{{- if eq $lang "en" }}
+<div lang="en" style="margin:0;padding:24px 12px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+  <div style="max-width:480px;margin:0 auto;border:3px solid #111111;border-radius:24px;padding:28px 24px;background:#ffffff;box-shadow:4px 4px 0 #111111;">
+    <p style="margin:0 0 4px;font-size:28px;font-weight:bold;letter-spacing:-0.5px;">Halma</p>
+    <p style="margin:0 0 24px;font-size:13px;color:#555555;">Chinese checkers</p>
+    <p style="margin:0 0 12px;font-size:20px;font-weight:bold;">Welcome!</p>
+    <p style="margin:0;font-size:16px;line-height:1.5;">One step left to create your Halma account with the address {{ .Email }}: tap the button below. The app will notice on its own, even if you open this email on another device.</p>
+    <p style="margin:24px 0;">
+      <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email" style="display:inline-block;padding:14px 24px;border:3px solid #111111;border-radius:999px;background:#A9CBEF;color:#111111;font-size:17px;font-weight:bold;text-decoration:none;">Confirm my account</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:13px;color:#555555;">Button not working? Copy this link into your browser or onto your phone:<br>
+      <span style="word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email</span></p>
+    <p style="margin:16px 0 0;font-size:13px;color:#555555;">Didn’t create a Halma account? Just ignore this email.</p>
+  </div>
+</div>
+{{- else if eq $lang "de" }}
+<div lang="de" style="margin:0;padding:24px 12px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+  <div style="max-width:480px;margin:0 auto;border:3px solid #111111;border-radius:24px;padding:28px 24px;background:#ffffff;box-shadow:4px 4px 0 #111111;">
+    <p style="margin:0 0 4px;font-size:28px;font-weight:bold;letter-spacing:-0.5px;">Halma</p>
+    <p style="margin:0 0 24px;font-size:13px;color:#555555;">Sternhalma</p>
+    <p style="margin:0 0 12px;font-size:20px;font-weight:bold;">Willkommen!</p>
+    <p style="margin:0;font-size:16px;line-height:1.5;">Nur noch ein Schritt, um dein Halma-Konto mit der Adresse {{ .Email }} zu erstellen: Tipp auf den Button unten. Die App merkt es von selbst, auch wenn du diese E-Mail auf einem anderen Gerät öffnest.</p>
+    <p style="margin:24px 0;">
+      <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email" style="display:inline-block;padding:14px 24px;border:3px solid #111111;border-radius:999px;background:#A9CBEF;color:#111111;font-size:17px;font-weight:bold;text-decoration:none;">Mein Konto bestätigen</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:13px;color:#555555;">Der Button funktioniert nicht? Kopier diesen Link in deinen Browser oder auf dein Handy:<br>
+      <span style="word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email</span></p>
+    <p style="margin:16px 0 0;font-size:13px;color:#555555;">Du hast kein Halma-Konto erstellt? Dann ignorier diese E-Mail einfach.</p>
+  </div>
+</div>
+{{- else if eq $lang "es" }}
+<div lang="es" style="margin:0;padding:24px 12px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+  <div style="max-width:480px;margin:0 auto;border:3px solid #111111;border-radius:24px;padding:28px 24px;background:#ffffff;box-shadow:4px 4px 0 #111111;">
+    <p style="margin:0 0 4px;font-size:28px;font-weight:bold;letter-spacing:-0.5px;">Halma</p>
+    <p style="margin:0 0 24px;font-size:13px;color:#555555;">Damas chinas</p>
+    <p style="margin:0 0 12px;font-size:20px;font-weight:bold;">¡Te damos la bienvenida!</p>
+    <p style="margin:0;font-size:16px;line-height:1.5;">Solo queda un paso para crear tu cuenta de Halma con la dirección {{ .Email }}: toca el botón de abajo. La aplicación se dará cuenta sola, aunque abras este correo en otro dispositivo.</p>
+    <p style="margin:24px 0;">
+      <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email" style="display:inline-block;padding:14px 24px;border:3px solid #111111;border-radius:999px;background:#A9CBEF;color:#111111;font-size:17px;font-weight:bold;text-decoration:none;">Confirmar mi cuenta</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:13px;color:#555555;">¿El botón no funciona? Copia este enlace en tu navegador o en tu móvil:<br>
+      <span style="word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email</span></p>
+    <p style="margin:16px 0 0;font-size:13px;color:#555555;">¿No has creado una cuenta de Halma? Simplemente ignora este correo.</p>
+  </div>
+</div>
+{{- else }}
+<div lang="fr" style="margin:0;padding:24px 12px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+  <div style="max-width:480px;margin:0 auto;border:3px solid #111111;border-radius:24px;padding:28px 24px;background:#ffffff;box-shadow:4px 4px 0 #111111;">
+    <p style="margin:0 0 4px;font-size:28px;font-weight:bold;letter-spacing:-0.5px;">Halma</p>
+    <p style="margin:0 0 24px;font-size:13px;color:#555555;">Dames chinoises</p>
+    <p style="margin:0 0 12px;font-size:20px;font-weight:bold;">Bienvenue !</p>
+    <p style="margin:0;font-size:16px;line-height:1.5;">Il reste une étape pour créer ton compte Halma avec l’adresse {{ .Email }} : touche le bouton ci-dessous. L’appli s’en apercevra toute seule, même si tu ouvres cet e-mail sur un autre appareil.</p>
+    <p style="margin:24px 0;">
+      <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email" style="display:inline-block;padding:14px 24px;border:3px solid #111111;border-radius:999px;background:#A9CBEF;color:#111111;font-size:17px;font-weight:bold;text-decoration:none;">Valider mon compte</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:13px;color:#555555;">Le bouton ne marche pas ? Copie ce lien dans ton navigateur ou sur ton téléphone :<br>
+      <span style="word-break:break-all;">{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email</span></p>
+    <p style="margin:16px 0 0;font-size:13px;color:#555555;">Tu n’as pas créé de compte Halma ? Ignore simplement cet e-mail.</p>
+  </div>
+</div>
+{{- end }}
