@@ -665,9 +665,6 @@ export const fr = {
   'credits.librariesTitle': 'Bibliothèques open source',
   'credits.librariesText': 'Les principales bibliothèques utilisées par l’application, et leur licence.',
   'legal.version': 'Version : {version}',
-  'legal.draftTitle': 'Brouillon à faire relire',
-  'legal.draftText':
-    'Ce texte n’a pas encore été relu. Les passages entre crochets [À COMPLÉTER] restent à remplir par l’éditeur de l’application.',
 
   // --- Éditeur d'avatar -------------------------------------------------------
   'avatar.title': 'Ton avatar',

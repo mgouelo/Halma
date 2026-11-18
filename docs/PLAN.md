@@ -137,7 +137,7 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
 - Page `/credits` (Humation et sa licence MIT complète, police, bibliothèques ; `npm run licenses`).
 - Suppression de compte dans l'application (Edge Function `delete-account`, trigger de préparation, place
   « Compte supprimé » dans les parties lancées).
-- Pages `/privacy` et `/terms` : brouillons à faire relire, champs à compléter.
+- Pages `/privacy` et `/terms` : textes en quatre langues, éditeur et transferts de données renseignés.
 - Nettoyage des rooms abandonnées (pg_cron), limites d'essais de codes et de rooms en attente.
 - Dépendances inutilisées retirées, permissions Android inutiles bloquées, `ErrorBoundary` globale.
 - Checklist de publication : `docs/PUBLICATION.md`.
@@ -270,7 +270,7 @@ Configure EAS Build (eas.json) pour Android et iOS. Ouvre une pull request.
   et l'écran de connexion, appliqué tout de suite ; `<html lang>` suit la langue sur le web.
 - Erreurs traduites côté client à partir de leur code (SQL, Edge Functions, Supabase Auth).
 - Langue du compte (colonne privée `profiles.language`, métadonnée `language`) pour les e-mails : modèles
-  multilingues (Go templates) dans `docs/emails/multilingue/`. Pages légales traduites (brouillons à relire).
+  multilingues (Go templates) dans `docs/emails/multilingue/`. Pages légales traduites.
 
 ## Plus tard
 
