@@ -79,8 +79,12 @@ export function parseAuthLink(url: string | null | undefined): AuthLink {
   const queryIndex = beforeHash.indexOf('?');
   const query = paramsOf(queryIndex >= 0 ? beforeHash.slice(queryIndex + 1) : '');
   const hash = paramsOf(fragment);
+  // Le fragment l'emporte : Supabase y ecrit les erreurs et les jetons du flux
+  // implicite ; la requete porte `token_hash` et `type` (modeles de docs/emails/).
   const get = (name: string) => hash.get(name) ?? query.get(name);
 
+  // Une erreur passe avant tout jeton : Supabase la met dans la redirection
+  // quand la verification a deja echoue chez lui (lien expire, deja utilise).
   const error = get('error_code') ?? get('error');
   if (error) return { kind: 'error', code: error, description: get('error_description') };
 

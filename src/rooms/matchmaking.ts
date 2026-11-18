@@ -108,6 +108,10 @@ export function formatElapsed(ms: number): string {
 
 async function statusRpc(client: SupabaseClient, name: string): Promise<MatchmakingStatus> {
   const { data, error } = await client.rpc(name);
+  // Heure locale prise a la reception : `server_now` a ete lu un peu avant
+  // (temps de reponse), l'ecart d'horloge est donc sous-estime d'au plus un
+  // aller-retour. Le compte a rebours finit alors un peu tard plutot que trop
+  // tot, et la base refuse de toute facon un depart anticipe (start_too_early).
   const receivedAt = Date.now();
   if (error) throw isOnlineErrorCode(error.message) ? new OnlineError(error.message) : error;
   const row = (Array.isArray(data) ? data[0] : data) as StatusRow | null;

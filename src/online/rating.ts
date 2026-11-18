@@ -22,7 +22,11 @@ export const RATING_FLOOR = -999;
  * comptent peu.
  */
 export const RATING_SCALE = 200;
-/** Gain d'une victoire à niveau égal. */
+/**
+ * Gain d'une victoire a niveau egal. Le systeme n'est pas a somme nulle : a
+ * niveau egal le gagnant prend 30 points et le perdant n'en perd que 15, donc
+ * la moyenne des points monte avec le nombre de parties classees.
+ */
 export const WIN_POINTS = 30;
 /** Perte d'une défaite à niveau égal. */
 export const LOSS_POINTS = 15;
@@ -154,6 +158,9 @@ export interface RatingChange {
  */
 export function ratingChanges(roles: readonly RatingRole[], ratings: Readonly<Record<string, number>>): RatingChange[] {
   const ratingOf = (userId: string) => ratings[userId] ?? RATING_START;
+  // `against` n'est jamais vide pour un gain ou une perte : `ratingOutcome` ne
+  // classe une partie qu'avec au moins deux humains. `delta` est la variation
+  // reelle (apres plancher), pas le montant brut : c'est elle qui est envoyee a la base.
   return roles.map((role) => {
     const before = ratingOf(role.userId);
     let raw = 0;

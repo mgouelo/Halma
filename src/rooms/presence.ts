@@ -50,6 +50,9 @@ export function planTicks(game: StoredGame, participants: readonly Participant[]
   if (isGameOver(game)) return { aiDelay: null, checkForfeits: false };
   const inGame = participants.filter((p) => p.playerIndex !== null && !game.forfeited.includes(p.playerIndex));
   const humans = inGame.filter((p) => p.userId !== null);
+  // On se compte toujours comme connecte : son propre `lastSeenAt` (lu avec la
+  // room) peut dater d'avant le dernier signe de vie envoye. Tous les clients
+  // font le meme calcul sur les memes donnees, donc un seul se croit pilote.
   const driver = humans.find((p) => p.userId === userId || isOnline(p, now));
   const aiDelay = aiToPlay(game, participants)
     ? driver?.userId === userId
@@ -57,6 +60,8 @@ export function planTicks(game: StoredGame, participants: readonly Participant[]
       : AI_TURN_FALLBACK_MS
     : null;
   // Un joueur parti depuis trop longtemps, ou dont le compte a été supprimé : le serveur le déclarera forfait.
+  // Calcul sur l'horloge de l'appareil : si elle avance, on demande trop tot et
+  // le serveur, qui decide sur la sienne, ne fait rien (demande sans effet).
   const checkForfeits =
     inGame.some(isDeparted) ||
     humans.some((p) => p.userId !== userId && now - parseTimestamp(p.lastSeenAt) > FORFEIT_AFTER_MS);

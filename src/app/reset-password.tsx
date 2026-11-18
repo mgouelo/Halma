@@ -35,6 +35,9 @@ export default function ResetPasswordScreen() {
   const t = useT();
   const { configured } = useAuth();
   const link = useIncomingAuthLink(AUTH_LINK_PATHS.resetPassword);
+  // Client de l'application, pas un client jetable : `updateUser({ password })`
+  // a besoin de la session de recuperation. Elle remplace une session deja
+  // ouverte dans ce navigateur ; apres le changement, on reste connecte a ce compte.
   const verification = useLinkVerification(link, (incoming) => sessionFromLink(getSupabase(), incoming));
   useStripAuthParamsFromAddressBar(verification.status !== 'pending');
 

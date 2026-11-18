@@ -49,6 +49,8 @@ const initialStored = readStoredSync();
 let current: Language = detectLanguage(initialStored, deviceLanguages());
 let preference: Language | null = isLanguage(initialStored) ? initialStored : null;
 /** Vrai une fois la préférence relue (immédiat sur le web). */
+// Sur mobile, AsyncStorage est asynchrone : l'ecran de demarrage attend
+// `ready` pour ne pas afficher la langue de l'appareil puis basculer.
 let ready = Platform.OS === 'web';
 const listeners = new Set<() => void>();
 
