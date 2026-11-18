@@ -987,8 +987,7 @@ tutoiement en français, et l'équivalent décontracté ailleurs (« you » fami
   les autres joueurs ne la voient pas) et métadonnée `user_metadata.language`, que lisent les modèles d'e-mails
   (voir « E-mails d'authentification » et `docs/emails/README.md`).
 - **Pages légales** : une version par langue (`PRIVACY_DOCS`, `TERMS_DOCS` dans `src/legal/`), même structure ; le
-  français fait foi, les traductions sont à faire relire (champs `[TO BE COMPLETED]`, `[ZU ERGÄNZEN]`,
-  `[POR COMPLETAR]`).
+  français fait foi, les autres langues en sont des traductions fidèles.
 - **Tests** : l'appareil simulé est en français (`jest.setup.ts`) ; les tests d'autres langues prennent
   `translator('en')` ou changent la langue (`applyLanguage('de')`, voir `src/i18n/__tests__/screens.test.tsx`).
 
@@ -1003,8 +1002,7 @@ tutoiement en français, et l'équivalent décontracté ailleurs (« you » fami
 1. L'ajouter à `LANGUAGES`, `LANGUAGE_NAMES` (son nom dans sa langue) et `LANGUAGE_LOCALES` (`src/i18n/types.ts`).
 2. Créer `src/i18n/<code>.ts` (`export const xx: Messages = { … }`, `tsc` guide jusqu'à la dernière clé), et
    l'ajouter à `MESSAGES` (`translate.ts`), avec ses règles dans `pluralForm` et `formatOrdinal` si besoin.
-3. Pages légales : une version dans `src/legal/privacy.ts` et `terms.ts`, et sa marque dans `PLACEHOLDER_MARKERS`
-   et `PLACEHOLDER` (`document.ts`).
+3. Pages légales : une version dans `src/legal/privacy.ts` et `terms.ts`.
 4. E-mails : les trois sources `docs/emails/<modèle>.<code>.html`, la langue dans `OTHER_LANGUAGES`
    (`scripts/email-templates.cjs`), puis `node scripts/email-templates.cjs`.
 5. Base : la liste des langues de `profiles_language_check` et de `set_my_language` (nouvelle migration).
@@ -1237,12 +1235,14 @@ peut supprimer que son propre compte.
 `/privacy` (politique de confidentialité) et `/terms` (conditions d'utilisation), accessibles depuis le profil
 (connecté ou non) et depuis la page des crédits (lien « Crédits » à côté du titre de l'accueil). Sur le site, elles
 s'ouvrent sans compte à une adresse stable (`https://halma-game.com/privacy`, `/terms`, `/credits`), utilisable
-dans les fiches des stores. **Ce sont des brouillons à faire relire** : un bandeau le signale. Il reste deux
-champs `[À COMPLÉTER : …]` : le nom complet et le statut de l'éditeur (« Matth » pour l'instant), et les pays où
-Brevo et Cloudflare traitent les données (transferts hors de l'UE). Le contact est `contact@halma-game.com`
-(`src/legal/contact.ts`), l'âge minimum est de 15 ans, la région Supabase est eu-west-1 (Irlande) ; la politique
-nomme les trois prestataires (Supabase : données ; Brevo : envoi des e-mails ; Cloudflare : site et réception des
-e-mails). Un test vérifie qu'aucune autre coordonnée n'y est inventée.
+dans les fiches des stores. L'éditeur est Matthieu Gouélo, à titre non professionnel (particulier), sans adresse
+postale dans les textes. Chaque page existe en français (qui fait foi), anglais, allemand et espagnol, avec la
+même structure. Le contact est `contact@halma-game.com` (`src/legal/contact.ts`), l'âge minimum est de 15 ans, la
+région Supabase est eu-west-1 (Irlande) ; la politique nomme les trois prestataires (Supabase : données ; Brevo :
+envoi des e-mails ; Cloudflare : site et réception des e-mails) et indique les garanties de transfert hors de l'UE.
+Des tests vérifient qu'aucune autre coordonnée n'y est inventée, qu'aucune trace de brouillon ne subsiste et que
+les quatre langues nomment le même éditeur. Les textes n'ont pas fait l'objet d'une relecture juridique
+professionnelle.
 
 ### Crédits et licences
 
@@ -1328,7 +1328,7 @@ Toujours installer les paquets Expo avec `npx expo install <paquet>` pour obteni
   `src/components/player/` : son écran.
 - `src/stats/` : statistiques, classements et séries de connexion (voir « Statistiques et classements »).
 - `src/credits/` : données de la page Crédits (générées par `scripts/generate-licenses.mjs`) ; `src/legal/` : textes
-  de la politique de confidentialité et des conditions d'utilisation (brouillons).
+  de la politique de confidentialité et des conditions d'utilisation .
 - `src/lib/flash-notice.ts` : message à usage unique affiché sur l'écran suivant (room fermée par l'hôte).
 - `src/i18n/` : traductions (fr, en, de, es), langue active et sélecteur (voir « Traductions »).
 - `src/components/` : composants d'affichage, dont `board/` (plateau SVG, pion animé, calcul de mise en page), `game-layout.tsx` (mise en page des parties, téléphone et grand écran) et `state-view.tsx` (chargement, erreurs).
@@ -1428,7 +1428,7 @@ minimax classique.
 4. ~~Comptes et parties en ligne avec Supabase.~~ Fait.
 5. ~~Finitions de l'interface, EAS Build.~~ Fait.
 6. ~~Barre de navigation, statistiques et cinq classements (comptés côté serveur).~~ Fait.
-7. ~~Préparation à la production : police, crédits, suppression de compte, pages légales (brouillons),
+7. ~~Préparation à la production : police, crédits, suppression de compte, pages légales,
    nettoyage des rooms, limites d'abus.~~ Fait.
 8. ~~Retouches : confirmations dans les parties locales, parties entre amis de 2 à 6, barre de navigation des
    invités, invités hors des classements.~~ Fait.

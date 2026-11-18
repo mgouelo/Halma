@@ -669,9 +669,6 @@ export const de: Messages = {
   'credits.librariesTitle': 'Open-Source-Bibliotheken',
   'credits.librariesText': 'Die wichtigsten Bibliotheken, die die App verwendet, und ihre Lizenz.',
   'legal.version': 'Version: {version}',
-  'legal.draftTitle': 'Entwurf, noch zu prüfen',
-  'legal.draftText':
-    'Dieser Text wurde noch nicht geprüft. Die Stellen in eckigen Klammern [ZU ERGÄNZEN] muss der Herausgeber der App noch ausfüllen. Maßgeblich ist die französische Fassung.',
 
   // --- Avatar-Editor ----------------------------------------------------------
   'avatar.title': 'Dein Avatar',

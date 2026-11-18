@@ -661,9 +661,6 @@ export const es: Messages = {
   'credits.librariesTitle': 'Bibliotecas de código abierto',
   'credits.librariesText': 'Las principales bibliotecas que usa la aplicación, y su licencia.',
   'legal.version': 'Versión: {version}',
-  'legal.draftTitle': 'Borrador pendiente de revisión',
-  'legal.draftText':
-    'Este texto aún no se ha revisado. Los fragmentos entre corchetes [POR COMPLETAR] los tiene que rellenar el editor de la aplicación. La versión francesa es la de referencia.',
 
   // --- Editor de avatar -------------------------------------------------------
   'avatar.title': 'Tu avatar',

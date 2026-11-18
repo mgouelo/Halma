@@ -1,21 +1,15 @@
 import { CONTACT_EMAIL } from './contact';
 import type { LegalDocument, LegalDocuments } from './document';
 
-// BROUILLON À FAIRE RELIRE avant toute publication. Les champs
-// [À COMPLÉTER …] doivent être remplis ; ne rien inventer. Le français fait
-// foi : l'anglais, l'allemand et l'espagnol en sont des traductions fidèles, à
-// faire relire elles aussi.
-
 const fr: LegalDocument = {
   title: 'Conditions d’utilisation',
   description: 'Conditions d’utilisation du jeu Halma : le service, votre compte, les règles de conduite et le contact.',
-  version: '1er octobre 2026',
-  draft: true,
+  version: '18 novembre 2026',
   sections: [
     {
       title: 'Le service',
       paragraphs: [
-        'Halma est un jeu de dames chinoises édité par Matth [À COMPLÉTER : nom complet et statut de l’éditeur (particulier, entreprise…)]. On peut y jouer hors ligne sans compte, ou en ligne avec un compte e-mail ou invité. Le jeu est gratuit.',
+        'Halma est un jeu de dames chinoises édité par Matthieu Gouélo, éditeur à titre non professionnel (particulier). On peut y jouer hors ligne sans compte, ou en ligne avec un compte e-mail ou invité. Le jeu est gratuit.',
         'En créant un compte, vous acceptez ces conditions.',
       ],
     },
@@ -76,13 +70,12 @@ const fr: LegalDocument = {
 const en: LegalDocument = {
   title: 'Terms of use',
   description: 'Terms of use of the Halma game: the service, your account, the rules of conduct and contact.',
-  version: 'October 1, 2026',
-  draft: true,
+  version: 'November 18, 2026',
   sections: [
     {
       title: 'The service',
       paragraphs: [
-        'Halma is a Chinese checkers game published by Matth [TO BE COMPLETED: full name and status of the publisher (individual, company…)]. It can be played offline without an account, or online with an email or guest account. The game is free.',
+        'Halma is a Chinese checkers game published by Matthieu Gouélo, a non-professional publisher (individual). It can be played offline without an account, or online with an email or guest account. The game is free.',
         'By creating an account, you accept these terms.',
       ],
     },
@@ -143,13 +136,12 @@ const en: LegalDocument = {
 const de: LegalDocument = {
   title: 'Nutzungsbedingungen',
   description: 'Nutzungsbedingungen des Spiels Halma: der Dienst, Ihr Konto, die Verhaltensregeln und der Kontakt.',
-  version: '1. Oktober 2026',
-  draft: true,
+  version: '18. November 2026',
   sections: [
     {
       title: 'Der Dienst',
       paragraphs: [
-        'Halma ist ein Sternhalma-Spiel (chinesisches Halma), herausgegeben von Matth [ZU ERGÄNZEN: vollständiger Name und Rechtsform des Herausgebers (Privatperson, Unternehmen …)]. Man kann es offline ohne Konto spielen oder online mit einem E-Mail- oder Gastkonto. Das Spiel ist kostenlos.',
+        'Halma ist ein Sternhalma-Spiel (chinesisches Halma), herausgegeben von Matthieu Gouélo, einem nicht gewerblichen Herausgeber (Privatperson). Man kann es offline ohne Konto spielen oder online mit einem E-Mail- oder Gastkonto. Das Spiel ist kostenlos.',
         'Mit der Erstellung eines Kontos akzeptieren Sie diese Bedingungen.',
       ],
     },
@@ -210,13 +202,12 @@ const de: LegalDocument = {
 const es: LegalDocument = {
   title: 'Condiciones de uso',
   description: 'Condiciones de uso del juego Halma: el servicio, su cuenta, las normas de conducta y el contacto.',
-  version: '1 de octubre de 2026',
-  draft: true,
+  version: '18 de noviembre de 2026',
   sections: [
     {
       title: 'El servicio',
       paragraphs: [
-        'Halma es un juego de damas chinas editado por Matth [POR COMPLETAR: nombre completo y condición del editor (particular, empresa…)]. Se puede jugar sin conexión y sin cuenta, o en línea con una cuenta de correo electrónico o de invitado. El juego es gratuito.',
+        'Halma es un juego de damas chinas editado por Matthieu Gouélo, editor a título no profesional (particular). Se puede jugar sin conexión y sin cuenta, o en línea con una cuenta de correo electrónico o de invitado. El juego es gratuito.',
         'Al crear una cuenta, usted acepta estas condiciones.',
       ],
     },

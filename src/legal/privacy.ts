@@ -1,22 +1,16 @@
 import { CONTACT_EMAIL, SITE_DOMAIN } from './contact';
 import type { LegalDocument, LegalDocuments } from './document';
 
-// BROUILLON À FAIRE RELIRE (par une personne compétente en droit des données
-// personnelles) avant toute publication. Les champs [À COMPLÉTER …] doivent
-// être remplis ; ne rien inventer. Le français fait foi : l'anglais, l'allemand
-// et l'espagnol en sont des traductions fidèles, à faire relire elles aussi.
-
 const fr: LegalDocument = {
   title: 'Politique de confidentialité',
   description:
     'Politique de confidentialité de Halma : données collectées, prestataires techniques, durées de conservation et vos droits.',
-  version: '17 novembre 2026',
-  draft: true,
+  version: '18 novembre 2026',
   sections: [
     {
       title: 'Qui est responsable de vos données',
       paragraphs: [
-        'Halma est édité par Matth [À COMPLÉTER : nom complet et statut de l’éditeur (particulier, entreprise…)].',
+        'Halma est édité par Matthieu Gouélo, éditeur à titre non professionnel (particulier), qui est aussi le responsable du traitement de vos données.',
         `Pour toute question sur vos données : ${CONTACT_EMAIL}.`,
       ],
     },
@@ -72,7 +66,7 @@ const fr: LegalDocument = {
         'Supabase : hébergement des données et des comptes (voir ci-dessus).',
         'Brevo : envoi des e-mails du service (validation du compte, changement d’adresse, mot de passe oublié). Brevo reçoit votre adresse e-mail et le contenu de ces messages.',
         `Cloudflare : hébergement du site ${SITE_DOMAIN} (qui traite l’adresse IP de ses visiteurs pour afficher les pages) et réception des e-mails écrits à ${CONTACT_EMAIL}, transférés vers la boîte du projet.`,
-        '[À COMPLÉTER : pays où Brevo et Cloudflare traitent les données, et garanties en cas de transfert hors de l’Union européenne]',
+        'Brevo stocke les données principalement dans l’Union européenne ; les transferts hors UE sont sécurisés par le Data Privacy Framework et des clauses contractuelles types. Cloudflare traite les données (IP) mondialement, notamment aux États-Unis, sous le couvert de sa certification EU-US Data Privacy Framework.',
       ],
     },
     {
@@ -105,13 +99,12 @@ const en: LegalDocument = {
   title: 'Privacy policy',
   description:
     'Halma’s privacy policy: data collected, technical service providers, retention periods and your rights.',
-  version: 'November 17, 2026',
-  draft: true,
+  version: 'November 18, 2026',
   sections: [
     {
       title: 'Who is responsible for your data',
       paragraphs: [
-        'Halma is published by Matth [TO BE COMPLETED: full name and status of the publisher (individual, company…)].',
+        'Halma is published by Matthieu Gouélo, a non-professional publisher (individual), who is also the controller of your data.',
         `For any question about your data: ${CONTACT_EMAIL}.`,
       ],
     },
@@ -167,7 +160,7 @@ const en: LegalDocument = {
         'Supabase: hosting of data and accounts (see above).',
         'Brevo: sending the service’s emails (account confirmation, change of address, forgotten password). Brevo receives your email address and the content of these messages.',
         `Cloudflare: hosting of the website ${SITE_DOMAIN} (which processes the IP address of its visitors to display the pages) and reception of emails written to ${CONTACT_EMAIL}, forwarded to the project’s mailbox.`,
-        '[TO BE COMPLETED: countries where Brevo and Cloudflare process the data, and safeguards in the event of a transfer outside the European Union]',
+        'Brevo stores data mainly within the European Union; transfers outside the EU are secured by the Data Privacy Framework and standard contractual clauses. Cloudflare processes data (IP addresses) worldwide, notably in the United States, under its EU-US Data Privacy Framework certification.',
       ],
     },
     {
@@ -200,13 +193,12 @@ const de: LegalDocument = {
   title: 'Datenschutzerklärung',
   description:
     'Datenschutzerklärung von Halma: erhobene Daten, technische Dienstleister, Speicherdauer und Ihre Rechte.',
-  version: '17. November 2026',
-  draft: true,
+  version: '18. November 2026',
   sections: [
     {
       title: 'Wer für Ihre Daten verantwortlich ist',
       paragraphs: [
-        'Halma wird herausgegeben von Matth [ZU ERGÄNZEN: vollständiger Name und Rechtsform des Herausgebers (Privatperson, Unternehmen …)].',
+        'Halma wird von Matthieu Gouélo herausgegeben, einem nicht gewerblichen Herausgeber (Privatperson), der auch der Verantwortliche für die Verarbeitung Ihrer Daten ist.',
         `Bei Fragen zu Ihren Daten: ${CONTACT_EMAIL}.`,
       ],
     },
@@ -262,7 +254,7 @@ const de: LegalDocument = {
         'Supabase: Hosting der Daten und Konten (siehe oben).',
         'Brevo: Versand der E-Mails des Dienstes (Bestätigung des Kontos, Änderung der Adresse, vergessenes Passwort). Brevo erhält Ihre E-Mail-Adresse und den Inhalt dieser Nachrichten.',
         `Cloudflare: Hosting der Website ${SITE_DOMAIN} (die die IP-Adresse ihrer Besucher verarbeitet, um die Seiten anzuzeigen) und Empfang der an ${CONTACT_EMAIL} geschriebenen E-Mails, die an das Postfach des Projekts weitergeleitet werden.`,
-        '[ZU ERGÄNZEN: Länder, in denen Brevo und Cloudflare die Daten verarbeiten, und Garantien bei einer Übermittlung außerhalb der Europäischen Union]',
+        'Brevo speichert Daten hauptsächlich innerhalb der Europäischen Union; Übermittlungen außerhalb der EU werden durch das Data Privacy Framework und Standardvertragsklauseln abgesichert. Cloudflare verarbeitet Daten (IP-Adressen) weltweit, insbesondere in den Vereinigten Staaten, auf Grundlage seiner Zertifizierung im EU-US Data Privacy Framework.',
       ],
     },
     {
@@ -295,13 +287,12 @@ const es: LegalDocument = {
   title: 'Política de privacidad',
   description:
     'Política de privacidad de Halma: datos recogidos, proveedores técnicos, plazos de conservación y sus derechos.',
-  version: '17 de noviembre de 2026',
-  draft: true,
+  version: '18 de noviembre de 2026',
   sections: [
     {
       title: 'Quién es responsable de sus datos',
       paragraphs: [
-        'Halma es editado por Matth [POR COMPLETAR: nombre completo y condición del editor (particular, empresa…)].',
+        'Halma es editado por Matthieu Gouélo, editor a título no profesional (particular), que es también el responsable del tratamiento de sus datos.',
         `Para cualquier pregunta sobre sus datos: ${CONTACT_EMAIL}.`,
       ],
     },
@@ -357,7 +348,7 @@ const es: LegalDocument = {
         'Supabase: alojamiento de los datos y de las cuentas (véase más arriba).',
         'Brevo: envío de los correos electrónicos del servicio (confirmación de la cuenta, cambio de dirección, contraseña olvidada). Brevo recibe su dirección de correo electrónico y el contenido de estos mensajes.',
         `Cloudflare: alojamiento del sitio web ${SITE_DOMAIN} (que trata la dirección IP de sus visitantes para mostrar las páginas) y recepción de los correos electrónicos escritos a ${CONTACT_EMAIL}, reenviados al buzón del proyecto.`,
-        '[POR COMPLETAR: países en los que Brevo y Cloudflare tratan los datos, y garantías en caso de transferencia fuera de la Unión Europea]',
+        'Brevo almacena los datos principalmente en la Unión Europea; las transferencias fuera de la UE están protegidas por el Data Privacy Framework y cláusulas contractuales tipo. Cloudflare trata los datos (direcciones IP) en todo el mundo, en particular en Estados Unidos, al amparo de su certificación en el EU-US Data Privacy Framework.',
       ],
     },
     {

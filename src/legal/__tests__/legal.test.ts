@@ -3,22 +3,27 @@ import { describe, expect, it } from '@jest/globals';
 import { LANGUAGES } from '@/i18n';
 
 import { CONTACT_EMAIL } from '../contact';
-import { documentText as text, missingFields, PLACEHOLDER_MARKERS, type LegalDocuments } from '../document';
+import { documentText as text, type LegalDocuments } from '../document';
 import { PRIVACY, PRIVACY_DOCS } from '../privacy';
 import { TERMS, TERMS_DOCS } from '../terms';
 
 describe('pages légales', () => {
-  it('sont marquées comme brouillons à faire relire', () => {
-    for (const doc of [PRIVACY, TERMS]) expect(doc.draft).toBe(true);
+  it('ne gardent aucune trace de brouillon : ni champ à compléter, ni mention de relecture', () => {
+    for (const docs of [PRIVACY_DOCS, TERMS_DOCS]) {
+      for (const language of LANGUAGES) {
+        const doc = docs[language] as unknown as Record<string, unknown>;
+        expect('draft' in doc).toBe(false);
+        expect(text(docs[language])).not.toMatch(/\[[^\]]*(COMPLÉTER|COMPLETED|ERGÄNZEN|COMPLETAR)[^\]]*\]|brouillon|draft|Entwurf|borrador/i);
+      }
+    }
   });
 
-  it('ne gardent que les champs à compléter connus (identité de l’éditeur, transferts), et indiquent la région Supabase', () => {
-    const publisher = '[À COMPLÉTER : nom complet et statut de l’éditeur (particulier, entreprise…)]';
-    expect(missingFields(PRIVACY)).toEqual([
-      publisher,
-      '[À COMPLÉTER : pays où Brevo et Cloudflare traitent les données, et garanties en cas de transfert hors de l’Union européenne]',
-    ]);
-    expect(missingFields(TERMS)).toEqual([publisher]);
+  it('nomment le même éditeur partout, sans adresse postale, et indiquent la région Supabase', () => {
+    for (const language of LANGUAGES) {
+      expect(text(PRIVACY_DOCS[language])).toContain('Matthieu Gouélo');
+      expect(text(TERMS_DOCS[language])).toContain('Matthieu Gouélo');
+      expect(text(PRIVACY_DOCS[language]) + text(TERMS_DOCS[language])).not.toMatch(/fauvette|Bourgbarr|35230/);
+    }
     expect(text(PRIVACY)).toMatch(/région Irlande, au sein de l’Union européenne/);
   });
 
@@ -40,7 +45,7 @@ describe('pages légales', () => {
 
   it('donnent l’adresse de contact, sans inventer d’autre coordonnée (e-mail, téléphone)', () => {
     for (const doc of [PRIVACY, TERMS]) {
-      const body = text(doc).replace(/\[À COMPLÉTER[^\]]*\]/g, '');
+      const body = text(doc);
       expect(body).toContain(CONTACT_EMAIL);
       expect(body.split(CONTACT_EMAIL).join('')).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
       expect(body).not.toMatch(/\+?\d[\d .]{8,}\d/);
@@ -73,21 +78,12 @@ describe('pages légales traduites (en, de, es)', () => {
     expect(docs.fr === PRIVACY || docs.fr === TERMS).toBe(true);
   });
 
-  it.each(sets)('%s : même structure qu’en français (sections, paragraphes, puces), toujours brouillon', (_name, docs) => {
+  it.each(sets)('%s : même structure qu’en français (sections, paragraphes, puces)', (_name, docs) => {
     const shape = (doc: LegalDocuments['fr']) =>
       doc.sections.map((s) => [s.paragraphs?.length ?? 0, s.bullets?.length ?? 0]);
     for (const language of LANGUAGES) {
-      expect(docs[language].draft).toBe(true);
       expect(shape(docs[language])).toEqual(shape(docs.fr));
       expect(docs[language].description.length).toBeGreaterThan(20);
-    }
-  });
-
-  it.each(sets)('%s : autant de champs à compléter, marqués dans la langue de la page', (_name, docs) => {
-    for (const language of LANGUAGES) {
-      const fields = missingFields(docs[language]);
-      expect(fields).toHaveLength(missingFields(docs.fr).length);
-      for (const field of fields) expect(field.startsWith(`[${PLACEHOLDER_MARKERS[language]}`)).toBe(true);
     }
   });
 
