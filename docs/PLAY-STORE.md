@@ -7,7 +7,13 @@ Langue par défaut de la fiche : français. Ajouter les trois autres dans Play C
 Présence sur le Store → Fiches personnalisées / Traductions. Captures d'écran par langue dans
 `docs/screenshots/play-store/{fr,en,de,es}/`.
 
-Catégorie conseillée : Jeux → Jeux de société. Tags : jeu de société, stratégie, multijoueur.
+Catégorie : Jeux → Jeux de société.
+
+Tags (liste fixe de Google, pas de texte libre) : **Jeu de stratégie abstrait**, **Jeux de société**, **Jeu de dames**
+(« dames chinoises » est le nom français de Halma). À ne pas cocher : « Accéder » (c'est le jeu de Go dans la
+traduction de Google), Ludo, Échecs, Mah-jong, Dés. La liste ne propose ni « Multijoueur » ni « Hors connexion ».
+
+Coordonnées de la fiche : e-mail `contact@halma-game.com`, site `https://halma-game.com`, téléphone laissé vide.
 
 ---
 
