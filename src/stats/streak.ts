@@ -1,8 +1,8 @@
-// Serie de connexion : jour calendaire de Paris et serie a afficher.
+// Série de connexion : jour calendaire de Paris et série à afficher.
 // Le serveur fait foi : seule la fonction SQL advance_login_streak (appelee par
 // record_daily_login, jour de Paris lu sur l'horloge du serveur) fait avancer
-// la serie. Ce module sert seulement a afficher une serie a jour meme si la
-// connexion du jour n'a pas encore ete enregistree (hors ligne, par exemple).
+// la série. Ce module sert seulement à afficher une série à jour même si la
+// connexion du jour n'a pas encore été enregistrée (hors ligne, par exemple).
 
 /** Fuseau des jours de connexion : un jour commence à minuit, heure de Paris. */
 const STREAK_TIME_ZONE = 'Europe/Paris';

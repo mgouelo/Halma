@@ -241,10 +241,10 @@ export function applyMove(state: GameState, move: Move): GameState {
 
   const player = state.currentPlayer;
   const destination = move.path[move.path.length - 1];
-  // Copie du plateau sans la case de depart, puis la destination ajoutee a la
-  // fin : meme ordre des cles qu'avant (l'ordre des coups, donc les choix de
-  // l'IA, en dependent). Pas de `delete` : il ferait passer l'objet en mode
-  // dictionnaire, nettement plus lent a lire ensuite (recherche de l'IA).
+  // Copie du plateau sans la case de départ, puis la destination ajoutée à la
+  // fin : même ordre des clés qu'avant (l'ordre des coups, donc les choix de
+  // l'IA, en dépendent). Pas de `delete` : il ferait passer l'objet en mode
+  // dictionnaire, nettement plus lent à lire ensuite (recherche de l'IA).
   const fromKey = cellKey(move.from);
   const board: Record<CellKey, PlayerId> = {};
   for (const key in state.board) {

@@ -3,9 +3,9 @@
 // Trois niveaux :
 // - facile : coup tiré au hasard, pondéré pour préférer ceux qui avancent ;
 // - moyen : meilleur coup immédiat selon la distance à l'objectif ;
-// - difficile : minimax avec elagage alpha-beta, en "meilleure reponse"
-//   (Best-Reply Search) a plus de deux joueurs (voir `alphaBeta`), profondeur
-//   limitee, approfondissement iteratif et limite de temps.
+// - difficile : minimax avec élagage alpha-beta, en "meilleure réponse"
+//   (Best-Reply Search) à plus de deux joueurs (voir `alphaBeta`), profondeur
+//   limitée, approfondissement itératif et limite de temps.
 //
 // La recherche est un générateur qui rend la main régulièrement :
 // `chooseMoveAsync` la découpe en tranches courtes entre lesquelles
@@ -33,18 +33,18 @@ export interface AiOptions {
 export const DEFAULT_TIME_LIMIT_MS = 800;
 const DEFAULT_MAX_DEPTH = 5;
 /**
- * Nombre de coups gardes a chaque noeud de la recherche (les plus prometteurs).
+ * Nombre de coups gardés à chaque nœud de la recherche (les plus prometteurs).
  * Recherche en faisceau : un pion compte souvent des dizaines de destinations
- * par sauts enchaines, on ne garde que celles qui avancent le plus. L'IA peut
+ * par sauts enchaînés, on ne garde que celles qui avancent le plus. L'IA peut
  * donc manquer un coup qui recule pour mieux sauter ensuite : c'est le prix
  * d'une profondeur 5 en moins d'une seconde.
  */
 const BEAM_WIDTH = 8;
 const ROOT_BEAM_WIDTH = 16;
 /**
- * Nombre de noeuds visites entre deux passages de main. C'est aussi le rythme
- * de lecture de l'horloge : la limite de temps peut donc etre depassee de la
- * duree de 32 noeuds au plus (quelques millisecondes).
+ * Nombre de nœuds visités entre deux passages de main. C'est aussi le rythme
+ * de lecture de l'horloge : la limite de temps peut donc être dépassée de la
+ * durée de 32 nœuds au plus (quelques millisecondes).
  */
 const NODES_PER_YIELD = 32;
 /** Durée d'une tranche de calcul avant de rendre la main à l'interface (ms). */
@@ -149,9 +149,9 @@ function chooseMedium(state: GameState, moves: Move[], random: () => number): Mo
 }
 
 /**
- * Levee au milieu de la recherche quand la limite de temps est atteinte : elle
+ * Levée au milieu de la recherche quand la limite de temps est atteinte : elle
  * remonte toute la pile d'un coup, et `searchHard` jette la profondeur en
- * cours (resultat partiel, donc biaise) pour garder la derniere terminee.
+ * cours (résultat partiel, donc biaisé) pour garder la dernière terminée.
  */
 class SearchTimeout extends Error {}
 
@@ -212,7 +212,7 @@ function* alphaBeta(
 
   const opponents = state.players.filter((p) => p.id !== ctx.me).map((p) => p.id);
   // Au niveau "min", les coups de tous les adversaires sont mis en concurrence
-  // (le faisceau est partage entre eux, au moins 2 coups chacun) ; un seul est
+  // (le faisceau est partagé entre eux, au moins 2 coups chacun) ; un seul est
   // joue, comme si les autres passaient.
   const children: [PlayerId, Move][] = maximizing
     ? orderedMovesOf(state, ctx.me, BEAM_WIDTH, ctx.random).map((m): [PlayerId, Move] => [ctx.me, m])
@@ -225,7 +225,7 @@ function* alphaBeta(
 
   let value = maximizing ? -Infinity : Infinity;
   for (const [player, move] of children) {
-    // A qui la main est rendue importe peu : chaque niveau choisit lui-meme qui
+    // À qui la main est rendue importe peu : chaque niveau choisit lui-même qui
     // joue (`orderedMovesOf` et `playAs` imposent le joueur avant de jouer).
     const next = playAs(state, player, move, maximizing ? opponents[0] : ctx.me);
     const score = yield* alphaBeta(next, depth - 1, alpha, beta, !maximizing, ctx);
@@ -264,9 +264,9 @@ function* searchHard(state: GameState, options: AiOptions): Generator<void, Move
       const ordered = [best, ...rootMoves.filter((m) => m !== best)];
       for (const move of ordered) {
         const next = playAs(root, ctx.me, move, ctx.me);
-        // Fenetre (bestScore, +inf) : un coup qui ne peut pas battre le meilleur
-        // deja trouve est coupe tot. Le malus d'aller-retour est applique apres,
-        // a la racine seulement (l'historique est vide dans la recherche).
+        // Fenêtre (bestScore, +inf) : un coup qui ne peut pas battre le meilleur
+        // déjà trouvé est coupé tôt. Le malus d'aller-retour est appliqué après,
+        // à la racine seulement (l'historique est vide dans la recherche).
         const score = yield* alphaBeta(next, depth - 1, bestScore, Infinity, false, ctx);
         const adjusted = score - (undoesLastMove(state, move, ctx.me) ? 3 : 0);
         if (adjusted > bestScore) {

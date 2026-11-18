@@ -1,7 +1,7 @@
 // Libellés de l'éditeur d'avatar (les noms Humation sont en anglais), traduits
 // avec les clés `avatar.slot.*`, `avatar.color.*` et `avatar.part.*`.
-// Seuls les emplacements et couleurs proposes dans l'editeur ont une cle : le
-// bas (pantalons, jupes) est sous le cadrage et n'est jamais nomme.
+// Seuls les emplacements et couleurs proposés dans l'éditeur ont une clé : le
+// bas (pantalons, jupes) est sous le cadrage et n'est jamais nommé.
 
 import { hasMessage, type Translator } from '@/i18n';
 

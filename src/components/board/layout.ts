@@ -64,9 +64,9 @@ export function computeBoardLayout(maxWidth: number, maxHeight = Infinity): Boar
     y: height / 2 + 1.5 * size * cell.r,
   });
 
-  // Contour : chaque sommet est pousse vers l'exterieur, le long de la droite
-  // qui le relie au centre, d'un peu moins d'un ecart de case. Les creux sont
-  // aussi pousses (moins loin en proportion, car plus proches du centre).
+  // Contour : chaque sommet est poussé vers l'extérieur, le long de la droite
+  // qui le relie au centre, d'un peu moins d'un écart de case. Les creux sont
+  // aussi poussés (moins loin en proportion, car plus proches du centre).
   const outline = spacing * 0.95;
   const starPoints = STAR_VERTICES.map((vertex) => {
     const p = toPoint(vertex);
@@ -99,11 +99,11 @@ export function cellAt(layout: Pick<BoardLayout, 'width' | 'height' | 'spacing'>
   const dq = Math.abs(q - fq);
   const dr = Math.abs(r - fr);
   const ds = Math.abs(s - fs);
-  // Arrondir chaque coordonnee separement peut donner q + r + s != 0 : on
-  // recalcule celle qui s'est le plus ecartee de sa valeur exacte.
+  // Arrondir chaque coordonnée séparément peut donner q + r + s != 0 : on
+  // recalcule celle qui s'est le plus écartée de sa valeur exacte.
   if (dq > dr && dq > ds) q = -r - s;
   else if (dr > ds) r = -q - s;
-  // `+ 0` change -0 (Math.round(-0.3)) en 0, pour que la case soit egale a celle du moteur.
+  // `+ 0` change -0 (Math.round(-0.3)) en 0, pour que la case soit égale à celle du moteur.
   const cell = { q: q + 0, r: r + 0 };
   return BOARD_KEYS.has(cellKey(cell)) ? cell : null;
 }

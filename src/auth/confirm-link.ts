@@ -37,8 +37,8 @@ export async function confirmFromLink(link: AuthLink, deps: ConfirmDeps): Promis
   }
   // Flux implicite : Supabase a déjà validé l'e-mail avant de rediriger, rien à faire ici.
   if (link.kind === 'session') return 'elsewhere';
-  // Client jetable : verifier le jeton avec le client de l'application
-  // remplacerait la session de cet appareil (peut-etre un autre compte).
+  // Client jetable : vérifier le jeton avec le client de l'application
+  // remplacerait la session de cet appareil (peut-être un autre compte).
   await sessionFromLink(deps.ephemeralClient(), link);
   return 'elsewhere';
 }

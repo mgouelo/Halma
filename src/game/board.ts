@@ -29,8 +29,8 @@ export function cellKey(cell: Cell): CellKey {
   return `${cell.q},${cell.r}`;
 }
 
-// Appelee pour chaque pion a chaque coup examine par l'IA : on coupe la cle
-// "q,r" sans creer de tableau intermediaire (pas de split ni de map).
+// Appelée pour chaque pion à chaque coup examiné par l'IA : on coupe la clé
+// "q,r" sans créer de tableau intermédiaire (pas de split ni de map).
 export function parseCellKey(key: CellKey): Cell {
   const comma = key.indexOf(',');
   return { q: Number(key.slice(0, comma)), r: Number(key.slice(comma + 1)) };

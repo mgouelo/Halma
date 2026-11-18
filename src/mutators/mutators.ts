@@ -150,7 +150,7 @@ export function resolveTap({ game, player, selected, moves, cell, mutators }: Ta
   return { kind: 'clear' };
 }
 
-/** Message du retour discret d'une touche refusee, affiche par-dessus le bas du plateau. */
+/** Message du retour discret d'une touche refusée, affiché par-dessus le bas du plateau. */
 export function tapNoticeText(t: Translator, notice: TapNotice): string {
   return notice === 'illegal' ? t('mutators.illegal') : t('mutators.locked');
 }

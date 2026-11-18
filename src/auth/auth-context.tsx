@@ -154,9 +154,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const preference = getLanguagePreference();
   const accountLanguage = session?.user.user_metadata?.language;
   const languageToAdopt = userId && preference === null && isLanguage(accountLanguage) ? accountLanguage : null;
-  // Pas de boucle : une fois `user_metadata.language` enregistre, la session
-  // mise a jour (onAuthStateChange) porte la meme langue et `languageToSave`
-  // redevient null. Un echec n'est pas reessaye en boucle non plus : l'effet ne
+  // Pas de boucle : une fois `user_metadata.language` enregistré, la session
+  // mise à jour (onAuthStateChange) porte la même langue et `languageToSave`
+  // redevient null. Un échec n'est pas réessayé en boucle non plus : l'effet ne
   // se rejoue qu'au prochain changement de compte ou de langue.
   const languageToSave =
     userId && (!isLanguage(accountLanguage) || (preference !== null && accountLanguage !== language)) ? language : null;

@@ -87,14 +87,14 @@ function sync(state: OnlineGameState, next: StoredGame): OnlineGameState {
   const shown = state.game;
   const incoming = next.state;
   // Le coup en attente est confirmé si le serveur l'a enregistré à son numéro.
-  // Invariant du moteur : history[n] est le coup joue au tour n (un coup par
-  // tour, les joueurs bloques sont sautes sans entree). On compare donc le coup
-  // enregistre a cet indice, pas seulement le numero de tour : un autre coup au
-  // meme tour veut dire que le notre n'a pas ete retenu.
+  // Invariant du moteur : history[n] est le coup joué au tour n (un coup par
+  // tour, les joueurs bloqués sont sautés sans entrée). On compare donc le coup
+  // enregistré à cet indice, pas seulement le numéro de tour : un autre coup au
+  // même tour veut dire que le nôtre n'a pas été retenu.
   const pendingEntry = state.pending ? incoming.history[state.pending.turn] : undefined;
   const confirmed = state.pending !== null && pendingEntry !== undefined && sameMove(pendingEntry.move, state.pending.move);
-  // Pas encore confirme, et le serveur n'a pas depasse notre tour : la reponse
-  // de l'Edge Function peut encore arriver. S'il l'a depasse sans notre coup
+  // Pas encore confirmé, et le serveur n'a pas dépassé notre tour : la réponse
+  // de l'Edge Function peut encore arriver. S'il l'a dépassé sans notre coup
   // (forfait, coup d'un autre), on l'oublie et on affiche la version du serveur.
   const pending = state.pending && !confirmed && incoming.turn <= state.pending.turn ? state.pending : null;
   if (pending) {
@@ -104,9 +104,9 @@ function sync(state: OnlineGameState, next: StoredGame): OnlineGameState {
   }
 
   // Animer le coup reçu s'il est le seul nouveau coup et n'est pas déjà affiché.
-  // Notre propre coup, confirme, est deja affiche (meme numero de tour) : on
+  // Notre propre coup, confirmé, est déjà affiché (même numéro de tour) : on
   // laisse son animation finir au lieu de la rejouer. Plusieurs coups d'un coup
-  // (retour au premier plan, reconnexion) : pas d'animation, on saute a l'etat.
+  // (retour au premier plan, reconnexion) : pas d'animation, on saute à l'état.
   const entry = lastEntry(incoming);
   const alreadyShown = shown.turn === incoming.turn;
   const animating =
@@ -140,8 +140,8 @@ export function onlineGameReducer(state: OnlineGameState, action: OnlineGameActi
       return state.error ? { ...state, error: null } : state;
 
     case 'rejected':
-      // Comparaison par identite : un refus qui arrive en retard pour un coup
-      // deja remplace ne doit pas annuler le coup en attente actuel.
+      // Comparaison par identité : un refus qui arrive en retard pour un coup
+      // déjà remplacé ne doit pas annuler le coup en attente actuel.
       if (state.pending !== action.pending) return state;
       return {
         ...state,
@@ -173,9 +173,9 @@ export function onlineGameReducer(state: OnlineGameState, action: OnlineGameActi
             game: applyMove(game, move),
             selected: null,
             moves: [],
-            // Affichage optimiste : le coup est joue et anime tout de suite ;
+            // Affichage optimiste : le coup est joué et animé tout de suite ;
             // `pending.turn` est le tour avant le coup (indice attendu dans
-            // l'historique du serveur), `animating.turn` celui d'apres.
+            // l'historique du serveur), `animating.turn` celui d'après.
             animating: { move, player: game.currentPlayer, turn: game.turn + 1 },
             pending: { move, turn: game.turn },
             error: null,
