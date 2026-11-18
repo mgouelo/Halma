@@ -4,9 +4,9 @@ import { getSupabase } from '@/lib/supabase';
 import { fetchGameRating, type GameRating } from '@/stats/stats-service';
 
 /** Délai entre deux lectures du résultat, le temps que le serveur le calcule. */
-const RATING_POLL_MS = 1500;
+export const RATING_POLL_MS = 1500;
 /** Au-delà, on arrête d'attendre à l'écran (les points restent visibles sur le profil). */
-const RATING_POLL_LIMIT = 30;
+export const RATING_POLL_LIMIT = 30;
 
 /** Ce qu'affiche l'écran de fin : rien, l'attente, la variation, ou « plus tard ». */
 export type GameRatingView = { status: 'hidden' } | { status: 'pending' } | { status: 'late' } | Extract<GameRating, { status: 'ranked' }>;
