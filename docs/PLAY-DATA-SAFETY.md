@@ -25,7 +25,8 @@ revente, ni outil de mesure d'audience (voir la politique, « Ce que nous ne fai
 | Catégorie Google | Type | Collecté | Partagé | Facultatif ou obligatoire | Finalités |
 |---|---|---|---|---|---|
 | Informations personnelles | **Adresse e-mail** | Oui | Non | Facultatif (jeu en invité possible) | Fonctionnalités de l'appli, Gestion du compte |
-| Informations personnelles | **ID utilisateur** (pseudo, identifiant du compte, identifiant technique de l'invité) | Oui | Non | Facultatif | Fonctionnalités de l'appli, Gestion du compte |
+| Informations personnelles | **Nom** (le pseudo : pour Google, « Nom » inclut le surnom) | Oui | Non | Facultatif | Fonctionnalités de l'appli, Gestion du compte |
+| Informations personnelles | **ID utilisateur** (identifiant technique du compte, y compris celui d'un invité) | Oui | Non | Facultatif | Fonctionnalités de l'appli, Gestion du compte |
 | Activité dans l'appli | **Interactions avec l'appli** (parties en ligne, coups, victoires, série de connexion, amis, présence en room) | Oui | Non | Facultatif | Fonctionnalités de l'appli |
 | Activité dans l'appli | **Autre contenu généré par les utilisateurs** (avatar composé dans l'éditeur ; la langue de l'appli y est rattachée, car elle sert à écrire les e-mails du compte) | Oui | Non | Facultatif | Fonctionnalités de l'appli, Personnalisation |
 | Identifiants de l'appareil ou autres | **Adresse IP** (journaux techniques de Supabase, mentionnés dans la politique) | Oui | Non | Obligatoire (inhérent à toute connexion) | Sécurité, prévention de la fraude et conformité |
@@ -59,4 +60,4 @@ navigation web, plantages et diagnostics (aucun outil de rapport de plantage), i
    données uniquement pour toi. Si tu ajoutes un jour un outil de mesure d'audience ou de la publicité,
    il faudra repasser sur ce formulaire.
 3. **Comptes invités** : ils reçoivent un identifiant technique automatique, d'où « ID utilisateur » même sans
-   e-mail.
+   e-mail. Le pseudo, lui, relève de « Nom » (définition de Google : prénom, nom ou surnom).
