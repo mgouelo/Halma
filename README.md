@@ -949,8 +949,8 @@ tutoiement en français, et l'équivalent décontracté ailleurs (« you » fami
 ### Comment ça marche
 
 - **Bibliothèque** : aucune, une solution maison de quelques fonctions (`src/i18n/`). Raisons : clés et variables
-  vérifiées par `tsc` sans configuration, aucun `Intl.PluralRules` (absent de Hermes : i18next demanderait un
-  polyfill), rien à ajouter au paquet, compatible React Native Web, rendu statique et React Compiler.
+  vérifiées par `tsc` sans configuration, rien à ajouter au paquet, règles de pluriel des quatre langues écrites à
+  la main (`pluralForm`), compatible React Native Web, rendu statique et React Compiler.
 - **Messages** : un fichier par langue, `fr.ts`, `en.ts`, `de.ts`, `es.ts`, des clés à plat (`'game.move'`).
   **Le français est la source** : le type des autres langues (`Messages`) vient de `fr.ts`, donc une clé manquante
   ou en trop dans `en.ts`, `de.ts` ou `es.ts` est une erreur de `tsc`. Un test vérifie en plus que chaque langue a
