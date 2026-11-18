@@ -981,7 +981,8 @@ tutoiement en français, et l'équivalent décontracté ailleurs (« you » fami
 - **Web** : le HTML exporté est en français (`<html lang="fr">`) ; l'hydratation se fait en français (pas d'écart),
   puis l'application passe à la langue du joueur et met à jour `document.documentElement.lang`, le titre de
   l'onglet, la description et `og:locale` (`PageHead`).
-- **Compte** : la langue affichée est enregistrée sur le compte connecté (invité compris) dès qu'elle diffère :
+- **Compte** : la langue choisie dans le sélecteur est enregistrée sur le compte connecté (invité compris) ; sur
+  un appareil sans choix, c'est la langue du compte qui s'applique, pas celle de l'appareil :
   colonne privée `profiles.language` (migration `profile_language`, fonctions `set_my_language` et `my_language` ;
   les autres joueurs ne la voient pas) et métadonnée `user_metadata.language`, que lisent les modèles d'e-mails
   (voir « E-mails d'authentification » et `docs/emails/README.md`).

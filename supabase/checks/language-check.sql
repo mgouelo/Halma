@@ -14,6 +14,18 @@ begin
     'sans choix, pas de langue enregistrée (français par défaut)';
 end $$;
 
+-- La langue choisie à l'inscription est copiée dans le profil ; une valeur inconnue est ignorée.
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('c1000000-0000-0000-0000-000000000003', 'ana@example.com', '{"pseudo": "Anabel", "language": "es"}'),
+  ('c1000000-0000-0000-0000-000000000004', 'kim@example.com', '{"pseudo": "Kimberly", "language": "xx"}');
+do $$
+begin
+  assert (select language from public.profiles where id = 'c1000000-0000-0000-0000-000000000003') = 'es',
+    'la langue d’inscription est copiée dans le profil';
+  assert (select language from public.profiles where id = 'c1000000-0000-0000-0000-000000000004') is null,
+    'une langue inconnue est ignorée';
+end $$;
+
 -- Lena connectée.
 set role authenticated;
 set request.jwt.claim.sub = 'c1000000-0000-0000-0000-000000000001';

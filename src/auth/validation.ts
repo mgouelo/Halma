@@ -17,6 +17,8 @@ export const PSEUDO_MIN_LETTERS = 3;
 export const PSEUDO_MIN_LENGTH = 3;
 export const PSEUDO_MAX_LENGTH = 20;
 export const PASSWORD_MIN_LENGTH = 8;
+/** Délai minimal entre deux changements de pseudo (même valeur que change_pseudo côté base). */
+export const PSEUDO_CHANGE_DELAY_DAYS = 7;
 /** Préfixe réservé aux pseudos générés pour les invités. */
 export const GUEST_PSEUDO_PREFIX = 'invite-';
 

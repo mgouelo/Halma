@@ -2,10 +2,10 @@
 // délai est imposé par la base (change_pseudo) ; ce module sert seulement à
 // l'annoncer à l'avance (le message est dans src/auth/errors.ts).
 
-import { GUEST_PSEUDO_PREFIX } from './validation';
+import { GUEST_PSEUDO_PREFIX, PSEUDO_CHANGE_DELAY_DAYS } from './validation';
 
-/** Délai minimal entre deux changements de pseudo (même valeur que change_pseudo côté base). */
-export const PSEUDO_CHANGE_DELAY_DAYS = 7;
+export { PSEUDO_CHANGE_DELAY_DAYS };
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Profil tel que lu par l'application (seulement ce qui compte pour le délai). */

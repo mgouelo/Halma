@@ -24,9 +24,11 @@ reste fiable :
    `fr`, `en`, `de` ou `es`), les seules données du compte que les modèles savent lire (`{{ .Data }}`) :
    - à l'inscription (`signUp`, `options.data.language`) et à la connexion invité (`signInAnonymously`) :
      l'e-mail de confirmation part déjà dans la bonne langue ;
-   - ensuite, chaque fois que la langue affichée diffère de celle du compte (choix dans le sélecteur, ou
-     langue de l'appareil) : `auth.updateUser({ data: { language } })`, plus la colonne `profiles.language`
-     (fonction `set_my_language`, migration `profile_language`). Voir `AuthProvider` (src/auth/auth-context.tsx).
+   - ensuite, quand le joueur choisit une langue dans le sélecteur (ou si le compte n'en a pas encore) :
+     `auth.updateUser({ data: { language } })`, plus la colonne `profiles.language` (fonction
+     `set_my_language`, migrations `profile_language` et `profile_language_from_signup`, qui copie aussi la
+     langue d'inscription). Sans choix fait sur l'appareil, l'application reprend la langue du compte.
+     Voir `AuthProvider` (src/auth/auth-context.tsx).
 2. **Le modèle choisit la branche de la langue** avec les Go templates de Supabase :
 
    ```
@@ -48,8 +50,9 @@ reste fiable :
   `{{ .Token }} is your verification code`) : `multilingue/sujets.md` donne un sujet multilingue sur le même
   principe. Ce n'est pas documenté pour `.Data` en particulier : **envoyer un e-mail de test** après l'avoir
   collé. Si le sujet reçu montre le code, utiliser le sujet de secours bilingue (« … · … ») du même fichier.
-- **La langue enregistrée est la dernière vue par le joueur** sur un appareil connecté (choix explicite ou
-  langue de l'appareil). Un joueur qui change de langue sans être connecté (« Mot de passe oublié » depuis
+- **La langue du compte** est celle que le joueur a choisie dans le sélecteur (sur n'importe quel appareil) ;
+  sur un autre appareil sans choix, l'application reprend celle du compte au lieu de l'écraser. Un compte
+  sans langue reçoit celle affichée. Un joueur qui change de langue sans être connecté (« Mot de passe oublié » depuis
   l'écran de connexion) reçoit l'e-mail dans la langue de son compte, pas forcément celle de l'écran.
 - **Comptes existants** : tant que le joueur n'a pas ouvert la nouvelle version de l'application connecté,
   ses e-mails restent en français.

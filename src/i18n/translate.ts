@@ -27,10 +27,6 @@ export function hasMessage(key: string): key is MessageKey {
   return Object.prototype.hasOwnProperty.call(MESSAGES[DEFAULT_LANGUAGE], key);
 }
 
-export function isMsg(value: unknown): value is Msg {
-  return typeof value === 'object' && value !== null && typeof (value as Msg).key === 'string';
-}
-
 /** Traducteur d'une langue : `t('home.title')`, `t('game.move', { n: 3 })`. */
 export interface Translator {
   <K extends MessageKey>(key: K, ...args: MessageArgs<K>): string;

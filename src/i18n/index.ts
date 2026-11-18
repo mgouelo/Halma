@@ -3,6 +3,7 @@
 
 export type { MessageArgs, MessageKey, Messages } from './messages';
 export {
+  applyLanguage,
   chooseLanguage,
   detectLanguage,
   getLanguage,
@@ -17,7 +18,6 @@ export {
   formatOrdinal,
   formatTime,
   hasMessage,
-  isMsg,
   msg,
   pluralForm,
   translator,

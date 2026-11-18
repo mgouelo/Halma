@@ -5,6 +5,8 @@ import { FunctionsFetchError, isAuthError, isAuthRetryableFetchError } from '@su
 
 import { formatDay, formatTime, type MessageKey, type Translator } from '@/i18n';
 
+import { PSEUDO_CHANGE_DELAY_DAYS } from './validation';
+
 export type AuthFailureCode =
   | 'pseudo_taken'
   | 'pseudo_invalid'
@@ -78,13 +80,10 @@ function rateLimitSeconds(message: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
-/** Même valeur que PSEUDO_CHANGE_DELAY_DAYS (pseudo-change.ts), qui importe ce module. */
-const PSEUDO_DELAY_DAYS = 7;
-
 function describeFailure(t: Translator, error: AuthFailure): string {
   switch (error.code) {
     case 'pseudo_too_soon':
-      return tooSoonMessage(t, PSEUDO_DELAY_DAYS, error.detail.next ?? null);
+      return tooSoonMessage(t, PSEUDO_CHANGE_DELAY_DAYS, error.detail.next ?? null);
     case 'link_invalid':
       return linkErrorMessage(t, error.detail.linkCode);
     default:
