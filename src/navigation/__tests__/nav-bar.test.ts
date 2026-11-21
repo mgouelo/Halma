@@ -32,9 +32,6 @@ describe('barre de navigation', () => {
 
   it.each([
     ['/', 'home'],
-    ['/online', 'home'],
-    ['/ai-setup', 'home'],
-    ['/local-setup', 'home'],
     ['/friends', 'friends'],
     ['/friends/', 'friends'],
     ['/leaderboard', 'leaderboard'],
@@ -52,7 +49,6 @@ describe('barre de navigation', () => {
   it('revient à l’accueil sans l’empiler une deuxième fois', () => {
     expect(navAction('/leaderboard', '/')).toEqual({ type: 'dismissTo', href: '/' });
     expect(navAction('/friends', '/')).toEqual({ type: 'dismissTo', href: '/' });
-    expect(navAction('/online', '/')).toEqual({ type: 'dismissTo', href: '/' });
   });
 
   it('empile depuis l’accueil, puis remplace d’une entrée à l’autre', () => {
@@ -60,7 +56,6 @@ describe('barre de navigation', () => {
     expect(navAction('/', '/leaderboard')).toEqual({ type: 'push', href: '/leaderboard' });
     expect(navAction('/friends', '/leaderboard')).toEqual({ type: 'replace', href: '/leaderboard' });
     expect(navAction('/leaderboard', '/friends')).toEqual({ type: 'replace', href: '/friends' });
-    expect(navAction('/online', '/friends')).toEqual({ type: 'replace', href: '/friends' });
   });
 });
 
@@ -97,7 +92,7 @@ describe('écrans avec ou sans la barre', () => {
       .filter((entry) => entry.isFile() && entry.name.endsWith('.tsx'))
       .map((entry) => entry.name.replace(/\.tsx$/, ''));
 
-  it.each(['index', 'online', 'friends', 'leaderboard', 'ai-setup', 'local-setup'])(
+  it.each(['index', 'friends', 'leaderboard'])(
     '%s est dans le groupe (main) : la barre reste affichée',
     (screen) => {
       expect(existsSync(join(app, '(main)', `${screen}.tsx`))).toBe(true);
@@ -107,11 +102,11 @@ describe('écrans avec ou sans la barre', () => {
 
   it('le groupe (main) ne contient que les écrans avec la barre', () => {
     expect(routes(join(app, '(main)')).filter((name) => name !== '_layout').sort()).toEqual(
-      ['ai-setup', 'friends', 'index', 'leaderboard', 'local-setup', 'online'].sort(),
+      ['friends', 'index', 'leaderboard'].sort(),
     );
   });
 
-  it.each(['profile', 'player/[id]', 'sign-in', 'sign-up', 'upgrade', 'forgot-password', 'reset-password', 'auth/confirmed', 'avatar', 'credits', 'privacy', 'terms', 'delete-account'])(
+  it.each(['online', 'ai-setup', 'local-setup', 'profile', 'player/[id]', 'sign-in', 'sign-up', 'upgrade', 'forgot-password', 'reset-password', 'auth/confirmed', 'avatar', 'credits', 'privacy', 'terms', 'delete-account'])(
     '%s est par-dessus le groupe : pas de barre, un bouton « ‹ Retour »',
     (screen) => {
       expect(SCREENS_WITHOUT_NAV_BAR).toContain(screen);

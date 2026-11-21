@@ -8,12 +8,12 @@ import { Colors } from '@/constants/theme';
 import { useT } from '@/i18n';
 
 /**
- * Écrans avec la barre de navigation du bas : accueil, jouer en ligne, réglage
- * des parties hors ligne, amis et classements. Les parties, les rooms, le
- * profil, les écrans de compte (connexion, inscription, création de compte,
- * avatar) et les pages d'information (crédits, confidentialité, conditions)
- * sont dans la pile principale, par-dessus : pas de barre, seulement un bouton
- * « ‹ Retour ».
+ * Écrans avec la barre de navigation du bas : accueil, amis et classements.
+ * Tout le reste est dans la pile principale, par-dessus : jouer en ligne, le
+ * réglage des parties hors ligne, les parties, les rooms, le profil, les
+ * écrans de compte (connexion, inscription, création de compte, avatar) et les
+ * pages d'information (crédits, confidentialité, conditions) n'ont pas de
+ * barre, seulement un bouton « ‹ Retour » ou « ‹ Accueil ».
  */
 export default function MainLayout() {
   const t = useT();
@@ -27,9 +27,6 @@ export default function MainLayout() {
             contentStyle: { backgroundColor: Colors.paper },
           }}>
           <Stack.Screen name="index" options={{ title: t('common.appName') }} />
-          <Stack.Screen name="online" options={{ title: t('page.online') }} />
-          <Stack.Screen name="ai-setup" options={{ title: t('page.aiSetup') }} />
-          <Stack.Screen name="local-setup" options={{ title: t('page.localSetup') }} />
           <Stack.Screen name="friends" options={{ title: t('page.friends') }} />
           <Stack.Screen name="leaderboard" options={{ title: t('page.leaderboard') }} />
         </Stack>

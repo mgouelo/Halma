@@ -60,9 +60,12 @@ export default function RootLayout() {
           headerShown: false,
           contentStyle: { backgroundColor: Colors.paper },
         }}>
-        {/* Accueil, jouer en ligne, amis, classements : avec la barre de navigation du bas. */}
+        {/* Accueil, amis, classements : avec la barre de navigation du bas. */}
         <Stack.Screen name="(main)" options={{ title: t('common.appName') }} />
-        {/* Par-dessus, sans la barre : parties et rooms. */}
+        {/* Par-dessus, sans la barre : lancer une partie (en ligne, contre l'IA, entre amis), parties et rooms. */}
+        <Stack.Screen name="online" options={{ title: t('page.online') }} />
+        <Stack.Screen name="ai-setup" options={{ title: t('page.aiSetup') }} />
+        <Stack.Screen name="local-setup" options={{ title: t('page.localSetup') }} />
         <Stack.Screen name="game" options={{ title: t('page.game') }} />
         <Stack.Screen name="room/[id]" options={{ title: t('page.room') }} />
         <Stack.Screen name="matchmaking" options={{ title: t('page.matchmaking') }} />

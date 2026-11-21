@@ -43,11 +43,16 @@ export const SCREENS_WITH_PROFILE_BUTTON: readonly string[] = ['index', 'friends
 
 /**
  * Écrans qui ne montrent pas la barre : ils sont affichés par-dessus le groupe
- * (main) et n'ont qu'un bouton « ‹ Retour ». C'est le cas des parties, des
- * rooms, du profil (le sien et celui d'un autre joueur), des écrans de compte (connexion, inscription, création de
- * compte), de l'éditeur d'avatar et des pages d'information.
+ * (main) et n'ont qu'un bouton « ‹ Retour » (ou « ‹ Accueil »). C'est le cas des
+ * écrans qui lancent une partie (jouer en ligne, contre l'IA, entre amis), des
+ * parties, des rooms, du profil (le sien et celui d'un autre joueur), des
+ * écrans de compte (connexion, inscription, création de compte), de l'éditeur
+ * d'avatar et des pages d'information.
  */
 export const SCREENS_WITHOUT_NAV_BAR: readonly string[] = [
+  'online',
+  'ai-setup',
+  'local-setup',
   'game',
   'room/[id]',
   'matchmaking',
@@ -72,8 +77,7 @@ function normalize(pathname: string): string {
 
 /**
  * Entrée active pour l'écran affiché : amis et classements sont chacun le seul
- * écran de leur entrée ; les autres écrans de la barre (jouer en ligne, réglage
- * d'une partie contre l'IA ou entre amis) partent de l'accueil.
+ * écran de leur entrée ; l'accueil est l'entrée de tout le reste.
  */
 export function activeTab(pathname: string): NavTab {
   const path = normalize(pathname);

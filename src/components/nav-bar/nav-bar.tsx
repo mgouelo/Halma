@@ -102,9 +102,10 @@ function CenterItem({ active, onPress }: Omit<ItemProps, 'tab' | 'children'>) {
 
 /**
  * Barre de navigation du bas : amis, accueil (logo, au centre), classements.
- * Affichée par le layout du groupe (main) : absente des parties, des rooms, du
- * profil et des écrans de connexion, qui sont empilés par-dessus. Le profil
- * s'ouvre par l'avatar en haut à droite (`ProfileButton`).
+ * Affichée par le layout du groupe (main) : absente des écrans qui lancent une
+ * partie, des parties, des rooms, du profil et des écrans de connexion, qui
+ * sont empilés par-dessus. Le profil s'ouvre par l'avatar en haut à droite
+ * (`ProfileButton`).
  */
 export function NavBar({ onHeight }: { onHeight?: (height: number) => void }) {
   const pathname = usePathname();
